@@ -10,8 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Compass, Gem, Anchor, CheckCircle2, Lock, MapPin, Loader2, Star, Flag } from "lucide-react";
 import { toast } from "sonner";
+import { ASSETS } from "@/lib/assets";
 
-const MAP_BG = "https://images.unsplash.com/photo-1538983478601-bcd0134c6919?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzNDR8MHwxfHNlYXJjaHwxfHxlcGljJTIwb2NlYW4lMjBmYW50YXN5JTIwY2FydG9ncmFwaHl8ZW58MHx8fHwxNzg1NzAzMTYyfDA&ixlib=rb-4.1.0&q=85";
+const MAP_BG = ASSETS.worldMap;
 const TERRITORY_ICONS = [Compass, MapPin, Star, Flag];
 
 export default function JourneyMap() {
@@ -94,7 +95,7 @@ export default function JourneyMap() {
                 <p className="text-xs text-muted-foreground mt-1">Horizon Points</p>
               </div>
               <div>
-                <div className="flex items-center gap-2 text-[#06B6D4]"><Anchor className="w-5 h-5" /><span className="font-mono-data text-2xl">{user.compass_marks ?? 0}</span></div>
+                <div className="flex items-center gap-2 text-[#22D3EE]"><Anchor className="w-5 h-5" /><span className="font-mono-data text-2xl">{user.compass_marks ?? 0}</span></div>
                 <p className="text-xs text-muted-foreground mt-1">Compass Marks</p>
               </div>
               {user.fleet && (
@@ -128,7 +129,7 @@ export default function JourneyMap() {
                 className="bg-white/5 border-white/10 font-mono-data uppercase"
                 maxLength={6}
               />
-              <Button data-testid="join-expedition-btn" onClick={join} disabled={joining} className="bg-primary text-primary-foreground hover:bg-[#FBBF24]">
+              <Button data-testid="join-expedition-btn" onClick={join} disabled={joining} className="bg-primary text-primary-foreground hover:bg-[#FDBA74]">
                 {joining ? <Loader2 className="w-4 h-4 animate-spin" /> : "Join"}
               </Button>
             </div>
@@ -139,8 +140,8 @@ export default function JourneyMap() {
         <div className="hq-fade-up" style={{ animationDelay: "0.2s" }}>
           <h2 className="font-display text-3xl mb-4 flex items-center gap-3"><Compass className="w-7 h-7 text-primary" /> The Journey Map</h2>
           <div className="relative w-full rounded-3xl overflow-hidden border border-white/10" style={{ aspectRatio: "16 / 8" }}>
-            <img src={MAP_BG} alt="" className="absolute inset-0 w-full h-full object-cover opacity-40" />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#060B19] via-[#060B19]/40 to-[#060B19]/20" />
+            <img src={MAP_BG} alt="" className="absolute inset-0 w-full h-full object-cover opacity-60" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#060B19] via-[#060B19]/30 to-transparent" />
 
             <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none" viewBox="0 0 100 100">
               <polyline

@@ -28,6 +28,14 @@ AUTH_SESSION_URL = "https://demobackend.emergentagent.com/auth/v1/env/oauth/sess
 
 FLEETS = ["North Star", "Dawn Treaders", "Sea Wolves", "Trade Winds"]
 
+
+def rank_tier(points):
+    if points >= 800:
+        return "Conqueror"
+    if points >= 300:
+        return "Voyager"
+    return "Navigator"
+
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
@@ -390,6 +398,7 @@ async def leaderboard(expedition_id: Optional[str] = None, user=Depends(get_curr
             "name": u.get("name"),
             "picture": u.get("picture"),
             "fleet": u.get("fleet"),
+            "tier": rank_tier(u.get("horizon_points", 0)),
             "horizon_points": u.get("horizon_points", 0),
             "compass_marks": u.get("compass_marks", 0),
             "is_me": u["user_id"] == user["user_id"],

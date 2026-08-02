@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Trophy, Gem, Anchor, Flag, Crown, Loader2 } from "lucide-react";
 
-const MEDAL = ["#D4AF37", "#C0C0C0", "#CD7F32"];
+const MEDAL = ["#FB923C", "#C0C0C0", "#CD7F32"];
 
 export default function Leaderboard() {
   const { user } = useAuth();
@@ -87,19 +87,22 @@ export default function Leaderboard() {
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium truncate">{e.name}{e.is_me && <span className="text-primary text-xs ml-2">(you)</span>}</p>
-                    <p className="text-xs text-muted-foreground flex items-center gap-1"><Flag className="w-3 h-3" />{e.fleet || "Unaligned"}</p>
+                    <p className="text-xs text-muted-foreground flex items-center gap-2">
+                      <span className="flex items-center gap-1"><Flag className="w-3 h-3" />{e.fleet || "Unaligned"}</span>
+                      {e.tier && <span className="px-2 py-0.5 rounded-full bg-white/5 text-[10px] uppercase tracking-wider font-mono-data text-[#22D3EE] border border-[#22D3EE]/20">{e.tier}</span>}
+                    </p>
                   </div>
                   <div className="text-right shrink-0">
                     <div className="flex items-center gap-1.5 justify-end text-primary"><Gem className="w-4 h-4" /><span className="font-mono-data text-lg">{e.horizon_points}</span></div>
-                    <div className="flex items-center gap-1 justify-end text-[#06B6D4] text-xs"><Anchor className="w-3 h-3" />{e.compass_marks}</div>
+                    <div className="flex items-center gap-1 justify-end text-[#22D3EE] text-xs"><Anchor className="w-3 h-3" />{e.compass_marks}</div>
                   </div>
                 </div>
               ))}
             </div>
 
             {/* Fleet standings */}
-            <div className="hq-glass rounded-2xl p-6 h-fit border-t border-t-[#06B6D4]/30 hq-fade-up">
-              <h2 className="font-display text-2xl flex items-center gap-2 mb-5"><Flag className="w-5 h-5 text-[#06B6D4]" /> Fleet Standings</h2>
+            <div className="hq-glass rounded-2xl p-6 h-fit border-t border-t-[#22D3EE]/30 hq-fade-up">
+              <h2 className="font-display text-2xl flex items-center gap-2 mb-5"><Flag className="w-5 h-5 text-[#22D3EE]" /> Fleet Standings</h2>
               <div className="space-y-4">
                 {data.fleets.map((f, i) => {
                   const max = data.fleets[0]?.points || 1;
@@ -107,10 +110,10 @@ export default function Leaderboard() {
                     <div key={f.fleet} data-testid={`fleet-${i}`}>
                       <div className="flex justify-between text-sm mb-1.5">
                         <span>{f.fleet}</span>
-                        <span className="font-mono-data text-[#06B6D4]">{f.points}</span>
+                        <span className="font-mono-data text-[#22D3EE]">{f.points}</span>
                       </div>
                       <div className="h-2 rounded-full bg-white/5 overflow-hidden">
-                        <div className="h-full rounded-full bg-[#06B6D4] transition-all duration-500" style={{ width: `${(f.points / max) * 100}%` }} />
+                        <div className="h-full rounded-full bg-[#22D3EE] transition-all duration-500" style={{ width: `${(f.points / max) * 100}%` }} />
                       </div>
                     </div>
                   );

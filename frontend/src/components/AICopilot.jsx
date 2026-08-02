@@ -62,15 +62,15 @@ export default function AICopilot({ questId, questTitle }) {
       <SheetTrigger asChild>
         <button
           data-testid="copilot-open-btn"
-          className="fixed bottom-6 right-6 z-40 flex items-center gap-2 px-5 py-3.5 rounded-full bg-[#06B6D4] text-[#04121f] font-medium hq-glow-teal hover:-translate-y-1 transition-transform duration-200"
+          className="fixed bottom-6 right-6 z-40 flex items-center gap-2 px-5 py-3.5 rounded-full bg-[#22D3EE] text-[#04121f] font-medium hq-glow-teal hover:-translate-y-1 transition-transform duration-200"
         >
           <Sparkles className="w-5 h-5" /> Copilot
         </button>
       </SheetTrigger>
-      <SheetContent side="right" className="w-full sm:max-w-md hq-glass border-l border-[#06B6D4]/30 flex flex-col p-0">
+      <SheetContent side="right" className="w-full sm:max-w-md hq-glass border-l border-[#22D3EE]/30 flex flex-col p-0">
         <SheetHeader className="p-6 pb-4 border-b border-white/10">
           <SheetTitle className="flex items-center gap-2 font-display text-2xl">
-            <Bot className="w-6 h-6 text-[#06B6D4]" /> Copilot
+            <Bot className="w-6 h-6 text-[#22D3EE]" /> Copilot
           </SheetTitle>
           {questTitle && <p className="text-sm text-muted-foreground text-left">Guiding you through “{questTitle}”</p>}
         </SheetHeader>
@@ -82,7 +82,7 @@ export default function AICopilot({ questId, questTitle }) {
                 className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
                   m.role === "user"
                     ? "bg-primary/20 text-foreground rounded-br-sm"
-                    : "bg-white/5 text-foreground/90 rounded-bl-sm border border-[#06B6D4]/20"
+                    : "bg-white/5 text-foreground/90 rounded-bl-sm border border-[#22D3EE]/20"
                 }`}
               >
                 {m.content || <span className="text-muted-foreground">…</span>}
@@ -100,7 +100,7 @@ export default function AICopilot({ questId, questTitle }) {
             placeholder="Ask for a hint…"
             className="bg-white/5 border-white/10"
           />
-          <Button data-testid="copilot-send-btn" onClick={send} disabled={streaming} size="icon" className="bg-[#06B6D4] text-[#04121f] hover:bg-[#22d3ee]">
+          <Button data-testid="copilot-send-btn" onClick={send} disabled={streaming} size="icon" className="bg-[#22D3EE] text-[#04121f] hover:bg-[#67E8F9]">
             <Send className="w-4 h-4" />
           </Button>
         </div>

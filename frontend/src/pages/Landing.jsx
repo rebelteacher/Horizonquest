@@ -2,8 +2,9 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { Compass, Map, Trophy, Sparkles, Anchor, ArrowRight } from "lucide-react";
+import { ASSETS } from "@/lib/assets";
 
-const HERO = "https://images.unsplash.com/photo-1608924066819-930edc42986a?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzB8MHwxfHNlYXJjaHwyfHxuYXV0aWNhbCUyMGNhcnRvZ3JhcGh5JTIwcGFyY2htZW50JTIwbWFwfGVufDB8fHx8MTc4NTcwMzE3MXww&ixlib=rb-4.1.0&q=85";
+const HERO = ASSETS.worldMap;
 
 export default function Landing() {
   const { user, loading } = useAuth();
@@ -23,9 +24,9 @@ export default function Landing() {
   };
 
   const features = [
-    { icon: Map, title: "Chart 4 Territories", desc: "33 quests across a living world map, from the Coding Coast to the Frontier Peaks." },
-    { icon: Trophy, title: "Climb the Rankings", desc: "Earn Horizon Points, win Compass Marks, and rally your Fleet up the leaderboard." },
-    { icon: Sparkles, title: "AI Copilot", desc: "A Claude-powered guide gives hints — never the answer — so every discovery is yours." },
+    { icon: Map, title: "4 Territories", desc: "Master Leadership, Productivity & AI, the Cyber Frontier, and Data Delta across 33 standards-aligned quests." },
+    { icon: Trophy, title: "Climb the Rankings", desc: "Earn Horizon Points and Compass Marks, rise from Navigator to Conqueror, and rally your Fleet." },
+    { icon: Sparkles, title: "AI Copilot", desc: "A Claude-powered guide gives hints — never the answer — so every discovery is truly yours." },
   ];
 
   return (
@@ -38,7 +39,7 @@ export default function Landing() {
       <div className="relative z-10">
         <header className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <Compass className="w-8 h-8 text-primary hq-float" />
+            <img src={ASSETS.logo} alt="HorizonQuest" className="w-10 h-10 rounded-lg object-cover ring-1 ring-primary/40 hq-float" />
             <span className="font-display text-3xl tracking-tight">HorizonQuest</span>
           </div>
           <button

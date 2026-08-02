@@ -41,7 +41,15 @@ class TestCurriculum:
         assert r.status_code == 200
         d = r.json()
         assert len(d["territories"]) == 4
+        names = [t["name"] for t in d["territories"]]
+        assert names == ["Summit of Leadership", "Productivity Peaks", "The Cyber Frontier", "Data Delta"]
         assert len(d["quests"]) == 33
+        # standards should reflect new codes
+        codes = [q["standard"]["code"] for q in d["quests"]]
+        assert any(c.startswith("BL.1.") for c in codes)
+        assert any(c.startswith("PA.2.") for c in codes)
+        assert any(c.startswith("CY.3.") for c in codes)
+        assert any(c.startswith("DS.4.") for c in codes)
         # should not leak answers
         for q in d["quests"]:
             for qq in q["trial"]["questions"]:
@@ -119,27 +127,26 @@ class TestExpeditions:
 class TestTrial:
     def test_submit_t1q1_full(self):
         payload = {
-            "answers": {"a": "Stores a value you can reuse", "b": "8", "c": "player_lives"},
-            "reflection": "TEST reflection - variables track my daily water glasses."
+            "answers": {"a": "Call the meeting to order", "b": "Agenda", "c": "The official written record"},
+            "reflection": "TEST reflection - agendas keep meetings focused and productive."
         }
         r = requests.post(f"{API}/trials/t1-q1/submit", headers=EH, json=payload)
         assert r.status_code == 200
         d = r.json()
         assert d["score"] == 100
         assert d["mastery"] is True
-        # since already mastered previously, points_awarded may be 0 (idempotent)
         assert d["horizon_points"] >= 100
         assert d["compass_marks"] >= 1
 
     def test_submit_partial(self):
-        payload = {"answers": {"a": "Stores a value you can reuse", "b": "5", "c": "2fast"}, "reflection": ""}
+        payload = {"answers": {"a": "Call the meeting to order", "b": "Motion", "c": "The break time"}, "reflection": ""}
         r = requests.post(f"{API}/trials/t1-q1/submit", headers=EH, json=payload)
         assert r.status_code == 200
         d = r.json()
         # score for this attempt is 33; mastery in response reflects THIS attempt
         assert d["score"] == 33
         assert d["mastery"] is False
-        # But stored best/mastery should be preserved (no lost points)
+        # But stored best/mastery should be preserved
         assert d["horizon_points"] >= 100
         assert d["compass_marks"] >= 1
 
@@ -158,6 +165,9 @@ class TestLeaderboard:
         me = [e for e in d["entries"] if e["is_me"]]
         assert len(me) == 1
         assert me[0]["horizon_points"] >= 100
+        # tier field present on every entry
+        for e in d["entries"]:
+            assert e.get("tier") in ("Navigator", "Voyager", "Conqueror")
 
     def test_leaderboard_by_expedition(self):
         # use one that explorer is in

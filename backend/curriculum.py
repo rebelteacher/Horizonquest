@@ -1,46 +1,46 @@
-"""HorizonQuest v1 Curriculum Content Pack.
-4 Territories, 33 quests. Standards mapped (DOK 2-4). Auto-grading answer keys included.
+"""HorizonQuest v1 Curriculum — CTE Learning Platform.
+4 Territories mapped to the four CTE modules, 33 quests, DOK 2-4, auto-grading answer keys.
+Territories: Summit of Leadership, Productivity Peaks, The Cyber Frontier, Data Delta.
 """
 
-# Point values by DOK level
 _PTS = {2: 100, 3: 150, 4: 200}
 
 TERRITORIES = [
     {
         "id": "t1",
-        "name": "The Coding Coast",
-        "subtitle": "Computational Thinking Foundations",
+        "name": "Summit of Leadership",
+        "subtitle": "Business & Leadership",
         "order": 1,
-        "color": "#06B6D4",
-        "position": {"x": 18, "y": 68},
-        "lore": "Where every great expedition begins — the shores of logic and instruction.",
+        "color": "#FB923C",
+        "position": {"x": 16, "y": 70},
+        "lore": "Nordic fortress peaks where Explorers learn to lead, meet, and decide.",
     },
     {
         "id": "t2",
-        "name": "The Data Isles",
-        "subtitle": "Data, Charts & Statistics",
+        "name": "Productivity Peaks",
+        "subtitle": "Productivity Tools & AI",
         "order": 2,
-        "color": "#D4AF37",
-        "position": {"x": 42, "y": 32},
-        "lore": "Scattered islands rich with numbers waiting to be read and understood.",
+        "color": "#22D3EE",
+        "position": {"x": 40, "y": 34},
+        "lore": "Crystalline tech spires where documents, data, and AI come alive.",
     },
     {
         "id": "t3",
-        "name": "The Logic Highlands",
-        "subtitle": "Reasoning & Argument",
+        "name": "The Cyber Frontier",
+        "subtitle": "Cybersecurity",
         "order": 3,
         "color": "#A855F7",
-        "position": {"x": 66, "y": 60},
-        "lore": "Rugged peaks where only sound reasoning finds the safe path.",
+        "position": {"x": 64, "y": 62},
+        "lore": "Neon shield rune-gates guarding the secrets of safe systems.",
     },
     {
         "id": "t4",
-        "name": "The Frontier Peaks",
-        "subtitle": "Problem-Solving & Capstone",
+        "name": "Data Delta",
+        "subtitle": "Data Science",
         "order": 4,
-        "color": "#E11D48",
-        "position": {"x": 86, "y": 24},
-        "lore": "The final, uncharted summit. Only master Explorers plant their flag here.",
+        "color": "#34D399",
+        "position": {"x": 87, "y": 28},
+        "lore": "Glowing binary streams where data becomes decisions.",
     },
 ]
 
@@ -49,211 +49,217 @@ def _q(qid, prompt, options, answer):
     return {"id": qid, "type": "mc", "prompt": prompt, "options": options, "answer": answer}
 
 
-# Each entry: (id, territory, order, title, dok, standard_code, standard_desc, [questions], reflection)
+# (id, territory, order, title, dok, standard_code, standard_desc, [questions], reflection)
 _RAW = [
-    # ---------------- Territory 1: The Coding Coast ----------------
-    ("t1-q1", "t1", 1, "Variables & Values", 2, "CS.1.A", "Store and retrieve values using named variables.", [
-        _q("a", "What does a variable do in a program?", ["Stores a value you can reuse", "Deletes the program", "Prints the screen color", "Slows the computer"], "Stores a value you can reuse"),
-        _q("b", "If score = 5 and then score = 8, what is the value of score now?", ["5", "8", "13", "Error"], "8"),
-        _q("c", "Which is a valid variable name?", ["2fast", "player_lives", "my name", "$$$"], "player_lives"),
-    ], "In your own words, describe something in real life you could track with a variable."),
+    # ---------------- T1: Summit of Leadership (Business & Leadership) ----------------
+    ("t1-q1", "t1", 1, "Meeting Structure & Order of Business", 2, "BL.1.A", "Identify the parts and correct order of a business meeting.", [
+        _q("a", "What is the FIRST step in a formal meeting?", ["Call the meeting to order", "Adjourn", "Vote on motions", "Read new business"], "Call the meeting to order"),
+        _q("b", "The written plan of what a meeting will cover is the:", ["Agenda", "Minutes", "Motion", "Quorum"], "Agenda"),
+        _q("c", "'Minutes' of a meeting are:", ["The official written record", "The length of the meeting", "A type of motion", "The break time"], "The official written record"),
+    ], "Why does following an agenda make a meeting more effective?"),
 
-    ("t1-q2", "t1", 2, "Sequencing & Algorithms", 2, "CS.1.B", "Order steps correctly to accomplish a task.", [
-        _q("a", "An algorithm is best described as:", ["A random guess", "A step-by-step set of instructions", "A type of computer", "A drawing"], "A step-by-step set of instructions"),
-        _q("b", "To make toast, which step comes FIRST?", ["Spread butter", "Put bread in toaster", "Eat toast", "Wait for it to pop"], "Put bread in toaster"),
-        _q("c", "Why does order matter in an algorithm?", ["It doesn't matter", "Wrong order can give a wrong result", "It makes it longer", "It saves battery"], "Wrong order can give a wrong result"),
-    ], "Write a 4-step algorithm for a daily task you do."),
+    ("t1-q2", "t1", 2, "Opening & Closing Procedures", 2, "BL.1.B", "Apply proper opening and closing procedures.", [
+        _q("a", "To officially end a meeting, a member moves to:", ["Adjourn", "Second", "Table", "Nominate"], "Adjourn"),
+        _q("b", "A 'quorum' is:", ["The minimum members needed to conduct business", "The meeting leader", "A written report", "A closing prayer"], "The minimum members needed to conduct business"),
+        _q("c", "Who typically leads/opens the meeting?", ["The chair (president)", "The newest member", "A guest", "No one"], "The chair (president)"),
+    ], "Describe how you would open a club meeting from start to first agenda item."),
 
-    ("t1-q3", "t1", 3, "Loops & Iteration", 3, "CS.1.C", "Use loops to repeat actions efficiently.", [
-        _q("a", "A loop is used to:", ["Repeat a block of instructions", "End the program", "Store text", "Change the color"], "Repeat a block of instructions"),
-        _q("b", "How many times does 'repeat 3 times: step forward' move you?", ["1", "2", "3", "Infinite"], "3"),
-        _q("c", "Which task is BEST solved with a loop?", ["Printing 'hi' 100 times", "Adding two numbers once", "Naming a variable", "Turning off the screen"], "Printing 'hi' 100 times"),
-    ], "Give an example of something repetitive a loop could automate for you."),
+    ("t1-q3", "t1", 3, "Motions & Parliamentary Basics", 3, "BL.1.C", "Use motions and voting in parliamentary procedure.", [
+        _q("a", "After a member makes a motion, what must happen next?", ["Another member seconds it", "It passes automatically", "The meeting ends", "It is filed"], "Another member seconds it"),
+        _q("b", "'Table a motion' means to:", ["Set it aside for later", "Approve it instantly", "Reject it forever", "Read it aloud"], "Set it aside for later"),
+        _q("c", "A motion usually passes with a:", ["Majority vote", "Single vote", "Unanimous vote always", "Coin flip"], "Majority vote"),
+    ], "Write a motion you might make in a student organization and how it would be voted on."),
 
-    ("t1-q4", "t1", 4, "Conditionals & Branching", 3, "CS.1.D", "Make decisions in code using if/else logic.", [
-        _q("a", "An IF statement lets a program:", ["Make a decision", "Repeat forever", "Store a list", "Draw a circle"], "Make a decision"),
-        _q("b", "'IF raining THEN take umbrella' — you take an umbrella when:", ["Always", "It is raining", "It is sunny", "Never"], "It is raining"),
-        _q("c", "The ELSE branch runs when:", ["The IF condition is true", "The IF condition is false", "The program starts", "You press a key"], "The IF condition is false"),
-    ], "Describe a decision in a game that could use an if/else."),
+    ("t1-q4", "t1", 4, "Business Etiquette & Norms", 2, "BL.1.D", "Demonstrate professional etiquette and workplace norms.", [
+        _q("a", "Professional etiquette includes:", ["Being punctual and respectful", "Interrupting often", "Ignoring emails", "Arriving late"], "Being punctual and respectful"),
+        _q("b", "A professional email should have:", ["A clear subject and polite tone", "All caps", "No greeting", "Slang only"], "A clear subject and polite tone"),
+        _q("c", "When someone else is speaking in a meeting you should:", ["Listen actively", "Talk over them", "Check your phone", "Leave the room"], "Listen actively"),
+    ], "Give two etiquette rules you'd set for a classroom business team."),
 
-    ("t1-q5", "t1", 5, "Functions & Abstraction", 3, "CS.1.E", "Package reusable behavior into functions.", [
-        _q("a", "A function is like:", ["A reusable mini-program", "A single number", "A screen", "A mouse"], "A reusable mini-program"),
-        _q("b", "Why use functions?", ["To avoid repeating code", "To slow things down", "To use more memory", "To confuse people"], "To avoid repeating code"),
-        _q("c", "'Abstraction' means:", ["Hiding details to focus on what matters", "Adding more details", "Deleting the code", "Painting"], "Hiding details to focus on what matters"),
-    ], "Name a function you would create to help in a project."),
+    ("t1-q5", "t1", 5, "Characteristics of Effective Leaders", 2, "BL.1.E", "Identify traits of effective leaders.", [
+        _q("a", "An effective leader most importantly:", ["Communicates clearly and listens", "Never asks for input", "Takes all the credit", "Avoids decisions"], "Communicates clearly and listens"),
+        _q("b", "Integrity means a leader:", ["Does the right thing even when it's hard", "Follows the crowd", "Hides mistakes", "Breaks promises"], "Does the right thing even when it's hard"),
+        _q("c", "A leader shows empathy by:", ["Understanding others' feelings", "Ignoring the team", "Only focusing on tasks", "Rushing everyone"], "Understanding others' feelings"),
+    ], "Name a leader you admire and one trait that makes them effective."),
 
-    ("t1-q6", "t1", 6, "Debugging Strategies", 3, "CS.1.F", "Locate and fix errors systematically.", [
-        _q("a", "A 'bug' in code is:", ["An error or mistake", "A new feature", "A fast program", "An insect icon"], "An error or mistake"),
-        _q("b", "A good FIRST debugging step is:", ["Delete everything", "Read the error and test small parts", "Restart the computer", "Give up"], "Read the error and test small parts"),
-        _q("c", "Testing your code often helps you:", ["Find bugs early", "Make more bugs", "Skip planning", "Avoid learning"], "Find bugs early"),
-    ], "Describe a time you fixed a mistake by breaking a problem into parts."),
+    ("t1-q6", "t1", 6, "Leadership Styles", 3, "BL.1.F", "Compare leadership styles and their effects.", [
+        _q("a", "A 'democratic' leader:", ["Involves the team in decisions", "Decides alone always", "Gives no direction", "Ignores the team"], "Involves the team in decisions"),
+        _q("b", "An 'autocratic' leader:", ["Makes decisions without much input", "Always votes", "Never leads", "Only follows"], "Makes decisions without much input"),
+        _q("c", "A 'laissez-faire' style means the leader:", ["Gives the team lots of freedom", "Controls every detail", "Never trusts anyone", "Cancels all meetings"], "Gives the team lots of freedom"),
+    ], "Which leadership style fits you best and why?"),
 
-    ("t1-q7", "t1", 7, "Decomposition", 3, "CS.1.G", "Break large problems into smaller solvable parts.", [
-        _q("a", "Decomposition means:", ["Breaking a big problem into smaller ones", "Rotting food", "Adding complexity", "Ignoring the problem"], "Breaking a big problem into smaller ones"),
-        _q("b", "Building a whole game is easier if you:", ["Do it all at once", "Split it into features", "Never plan", "Copy randomly"], "Split it into features"),
-        _q("c", "Smaller sub-problems are usually:", ["Easier to solve and test", "Impossible", "Useless", "Slower always"], "Easier to solve and test"),
-    ], "Break down 'plan a birthday party' into 3 smaller tasks."),
+    ("t1-q7", "t1", 7, "Scenario Decisions: What Would You Do?", 3, "BL.1.G", "Make and justify leadership decisions in scenarios.", [
+        _q("a", "Two teammates argue over a task. A good leader first:", ["Listens to both sides", "Picks a favorite", "Ignores it", "Ends the project"], "Listens to both sides"),
+        _q("b", "The team will miss a deadline. You should:", ["Communicate early and adjust the plan", "Hide it", "Blame one person", "Do nothing"], "Communicate early and adjust the plan"),
+        _q("c", "A member has a great idea but is shy. A leader:", ["Invites and encourages their input", "Talks over them", "Ignores them", "Mocks the idea"], "Invites and encourages their input"),
+    ], "Describe a tough team decision and how you'd handle it as a leader."),
 
-    ("t1-q8", "t1", 8, "Pattern Recognition", 4, "CS.1.H", "Identify patterns to generalize solutions.", [
-        _q("a", "Recognizing patterns helps you:", ["Predict and reuse solutions", "Forget the problem", "Slow down", "Add errors"], "Predict and reuse solutions"),
-        _q("b", "In 2, 4, 6, 8, ... the next number is:", ["9", "10", "12", "7"], "10"),
-        _q("c", "Patterns let programmers:", ["Generalize one solution to many cases", "Avoid all thinking", "Write longer code always", "Break the internet"], "Generalize one solution to many cases"),
-    ], "Describe a pattern you notice in nature or daily life and how you'd use it."),
+    ("t1-q8", "t1", 8, "Capstone: Lead a Mock Meeting", 4, "BL.1.CAP", "Plan and lead a complete business meeting.", [
+        _q("a", "The correct order is:", ["Call to order → agenda → motions → adjourn", "Adjourn → agenda → order", "Motions → call to order → agenda", "Agenda → adjourn → order"], "Call to order → agenda → motions → adjourn"),
+        _q("b", "To keep the meeting on track, the chair uses:", ["The agenda and time limits", "Random topics", "No plan", "Only jokes"], "The agenda and time limits"),
+        _q("c", "A successful leader closes the meeting by:", ["Summarizing decisions and adjourning", "Leaving silently", "Starting new arguments", "Deleting the minutes"], "Summarizing decisions and adjourning"),
+    ], "Draft the agenda for a 15-minute meeting you would lead."),
 
-    # ---------------- Territory 2: The Data Isles ----------------
-    ("t2-q1", "t2", 1, "Reading Data Tables", 2, "DA.2.A", "Extract values from organized data tables.", [
-        _q("a", "A data table organizes information into:", ["Rows and columns", "Circles", "Sounds", "Random piles"], "Rows and columns"),
-        _q("b", "To find one student's score, you look at:", ["Their row", "The title only", "The last column always", "Nowhere"], "Their row"),
-        _q("c", "Column headers tell you:", ["What each column means", "The password", "The date only", "Nothing"], "What each column means"),
-    ], "Describe a table you might make to track your week."),
+    # ---------------- T2: Productivity Peaks (Productivity Tools & AI) ----------------
+    ("t2-q1", "t2", 1, "Document Formatting", 2, "PA.2.A", "Apply formatting: styles, headers, footers.", [
+        _q("a", "A header appears:", ["At the top of every page", "Only on page 1", "At the bottom", "Never"], "At the top of every page"),
+        _q("b", "To make text stand out as a title you use:", ["A heading style", "Random spaces", "All lowercase", "A footnote"], "A heading style"),
+        _q("c", "Page numbers are usually placed in the:", ["Footer", "Title", "Margin note", "Table of contents only"], "Footer"),
+    ], "When is consistent formatting important in a real document?"),
 
-    ("t2-q2", "t2", 2, "Measures of Center", 2, "DA.2.B", "Compute mean, median, and mode.", [
-        _q("a", "The mean of 2, 4, 6 is:", ["2", "4", "6", "12"], "4"),
-        _q("b", "The median of 3, 7, 9 is:", ["3", "7", "9", "6"], "7"),
-        _q("c", "The mode is the value that:", ["Appears most often", "Is largest", "Is smallest", "Is the average"], "Appears most often"),
-    ], "When would the median be a better summary than the mean?"),
+    ("t2-q2", "t2", 2, "Spreadsheet Formulas", 3, "PA.2.B", "Use Sum, Average, and Count formulas.", [
+        _q("a", "=SUM(A1:A5) will:", ["Add the values in A1 through A5", "Count the cells", "Average them", "Delete them"], "Add the values in A1 through A5"),
+        _q("b", "To find the average of a range you use:", ["=AVERAGE(range)", "=SUM(range)", "=COUNT(range)", "=MAX(range)"], "=AVERAGE(range)"),
+        _q("c", "=COUNT(B1:B10) returns:", ["The number of numeric cells", "Their total", "Their average", "The largest value"], "The number of numeric cells"),
+    ], "Describe a real situation where AVERAGE is more useful than SUM."),
 
-    ("t2-q3", "t2", 3, "Range & Spread", 3, "DA.2.C", "Measure how spread out data is.", [
-        _q("a", "The range of 5, 2, 9 is:", ["7", "9", "2", "16"], "7"),
-        _q("b", "A large range means the data is:", ["More spread out", "All the same", "Wrong", "Small"], "More spread out"),
-        _q("c", "Range is calculated by:", ["Max minus min", "Adding all values", "Middle value", "Most common value"], "Max minus min"),
-    ], "Give an example where knowing the spread matters more than the average."),
+    ("t2-q3", "t2", 3, "Charts & Sorting Data", 3, "PA.2.C", "Create charts and sort data meaningfully.", [
+        _q("a", "To compare categories, the best chart is often a:", ["Bar chart", "Random scatter", "Blank cell", "Formula"], "Bar chart"),
+        _q("b", "Sorting data 'ascending' means:", ["Smallest to largest", "Largest to smallest", "Random order", "Deleting rows"], "Smallest to largest"),
+        _q("c", "A pie chart is best for showing:", ["Parts of a whole", "Change over years", "Raw formulas", "Page numbers"], "Parts of a whole"),
+    ], "Pick a dataset from your life and say which chart would show it best."),
 
-    ("t2-q4", "t2", 4, "Building Bar Charts", 2, "DA.2.D", "Represent categorical data with bar charts.", [
-        _q("a", "Bar charts are best for comparing:", ["Categories", "One number", "Colors only", "Time of day"], "Categories"),
-        _q("b", "Taller bars represent:", ["Larger values", "Smaller values", "Errors", "Nothing"], "Larger values"),
-        _q("c", "The axis labels should:", ["Explain what is measured", "Be blank", "Be random", "Be hidden"], "Explain what is measured"),
-    ], "What data from your class would you show in a bar chart?"),
+    ("t2-q4", "t2", 4, "Slide Design & the 5x5 Rule", 2, "PA.2.D", "Design clear slides using the 5x5 rule.", [
+        _q("a", "The 5x5 rule suggests about:", ["5 lines per slide, 5 words per line", "50 words per slide", "5 slides total", "5 fonts per slide"], "5 lines per slide, 5 words per line"),
+        _q("b", "Good slides use:", ["Few words and clear visuals", "Full paragraphs", "Tiny font", "Clashing colors"], "Few words and clear visuals"),
+        _q("c", "Slides should support the speaker by:", ["Highlighting key points", "Reading every word aloud", "Distracting the audience", "Hiding the topic"], "Highlighting key points"),
+    ], "Rewrite a wordy slide idea into a clean 5x5 version."),
 
-    ("t2-q5", "t2", 5, "Interpreting Graphs", 3, "DA.2.E", "Draw meaning from visualized data.", [
-        _q("a", "A line going up over time shows:", ["An increase", "A decrease", "No change", "An error"], "An increase"),
-        _q("b", "The best way to spot a trend is to:", ["Look at the overall direction", "Read one point", "Ignore the axes", "Guess"], "Look at the overall direction"),
-        _q("c", "A misleading graph often has:", ["A cut-off or unlabeled axis", "Clear labels", "Honest scale", "A title"], "A cut-off or unlabeled axis"),
-    ], "Describe a graph you've seen and what story it told."),
+    ("t2-q5", "t2", 5, "AI Assist: Grammar, Data & Design", 3, "PA.2.E", "Use AI tools to improve writing, data, and design.", [
+        _q("a", "An AI grammar assistant helps you:", ["Fix spelling and clarity", "Grade math tests", "Cook dinner", "Delete files"], "Fix spelling and clarity"),
+        _q("b", "An AI data helper is best used to:", ["Suggest summaries and patterns", "Guarantee perfect answers", "Replace all thinking", "Hide the data"], "Suggest summaries and patterns"),
+        _q("c", "You should always ______ AI suggestions.", ["Review and verify", "Blindly accept", "Ignore completely", "Copy without reading"], "Review and verify"),
+    ], "How can AI help you work faster without doing your thinking for you?"),
 
-    ("t2-q6", "t2", 6, "Probability Basics", 3, "DA.2.F", "Reason about the likelihood of events.", [
-        _q("a", "The probability of flipping heads on a fair coin is:", ["1/2", "1/6", "1", "0"], "1/2"),
-        _q("b", "A probability of 0 means the event is:", ["Impossible", "Certain", "Likely", "Unknown"], "Impossible"),
-        _q("c", "Rolling a 7 on a normal 6-sided die has probability:", ["0", "1/6", "1/2", "1"], "0"),
-    ], "Describe an event in your life that is 'likely' vs 'unlikely'."),
+    ("t2-q6", "t2", 6, "Chatbot Forge & Prompt Engineering", 3, "PA.2.F", "Build a simple chatbot and refine prompts.", [
+        _q("a", "A clear prompt to an AI should be:", ["Specific about the task and goal", "Vague and short", "Empty", "All in symbols"], "Specific about the task and goal"),
+        _q("b", "If an AI answer is off, a good next step is to:", ["Refine the prompt with more detail", "Give up", "Ask the exact same thing", "Turn off the computer"], "Refine the prompt with more detail"),
+        _q("c", "A chatbot's 'persona/system message' defines:", ["How it should behave and respond", "The user's password", "The wifi", "The battery level"], "How it should behave and respond"),
+    ], "Write a prompt for a study-helper chatbot and explain your choices."),
 
-    ("t2-q7", "t2", 7, "Data Cleaning", 3, "DA.2.G", "Identify and handle messy or missing data.", [
-        _q("a", "'Dirty data' might include:", ["Typos and missing values", "Perfect numbers", "Nothing", "Only titles"], "Typos and missing values"),
-        _q("b", "Before analyzing, you should:", ["Clean and check the data", "Delete it all", "Ignore errors", "Add fake rows"], "Clean and check the data"),
-        _q("c", "A missing value should be:", ["Handled carefully", "Always replaced with 0", "Ignored forever", "Randomized"], "Handled carefully"),
-    ], "Why can bad data lead to bad decisions? Give an example."),
+    ("t2-q7", "t2", 7, "Ethics of AI in Productivity", 3, "PA.2.G", "Evaluate ethical use of AI tools.", [
+        _q("a", "Using AI to do your homework and claiming it as your own is:", ["Academic dishonesty", "Good practice", "Encouraged", "Required"], "Academic dishonesty"),
+        _q("b", "A responsible AI user should:", ["Give credit and check for bias", "Hide AI use", "Trust it blindly", "Share private data"], "Give credit and check for bias"),
+        _q("c", "AI outputs can sometimes be:", ["Wrong or biased", "Always perfect", "Never useful", "Impossible to check"], "Wrong or biased"),
+    ], "Describe one ethical rule you'd follow when using AI for schoolwork."),
 
-    ("t2-q8", "t2", 8, "Drawing Conclusions from Data", 4, "DA.2.H", "Make and defend claims supported by evidence.", [
-        _q("a", "A good conclusion from data is:", ["Supported by the evidence", "A random opinion", "Ignoring the numbers", "Always negative"], "Supported by the evidence"),
-        _q("b", "Correlation means two things:", ["Move together, but may not cause each other", "Are always cause and effect", "Are unrelated", "Are equal"], "Move together, but may not cause each other"),
-        _q("c", "To trust a conclusion you should ask:", ["Is the data enough and fair?", "Is it colorful?", "Is it short?", "Who made it famous?"], "Is the data enough and fair?"),
-    ], "Make a claim from imaginary data and explain your evidence."),
+    ("t2-q8", "t2", 8, "Career Pathways Explorer", 2, "PA.2.H", "Explore productivity-related career pathways.", [
+        _q("a", "A data analyst mainly:", ["Interprets data to inform decisions", "Fixes plumbing", "Drives trucks", "Teaches gym"], "Interprets data to inform decisions"),
+        _q("b", "A digital marketer focuses on:", ["Promoting products online", "Writing legal contracts", "Building bridges", "Repairing engines"], "Promoting products online"),
+        _q("c", "An administrative professional often:", ["Organizes and supports office operations", "Performs surgery", "Flies planes", "Designs microchips"], "Organizes and supports office operations"),
+    ], "Which of these careers interests you and what skill would you build first?"),
 
-    # ---------------- Territory 3: The Logic Highlands ----------------
-    ("t3-q1", "t3", 1, "True / False Statements", 2, "LO.3.A", "Classify statements as true or false.", [
-        _q("a", "A statement that must be true or false is called a:", ["Proposition", "Question", "Command", "Guess"], "Proposition"),
-        _q("b", "'The sky is green' is:", ["False", "True", "A question", "A command"], "False"),
-        _q("c", "'2 + 2 = 4' is:", ["True", "False", "Unknown", "A guess"], "True"),
-    ], "Write one true and one false statement about your favorite topic."),
+    # ---------------- T3: The Cyber Frontier (Cybersecurity) ----------------
+    ("t3-q1", "t3", 1, "Why Cybersecurity Matters", 2, "CY.3.A", "Explain the importance of cybersecurity.", [
+        _q("a", "Cybersecurity protects:", ["Data, systems, and people", "Only games", "Nothing important", "Just printers"], "Data, systems, and people"),
+        _q("b", "A data breach can lead to:", ["Stolen personal information", "Faster internet", "Better grades", "Free software"], "Stolen personal information"),
+        _q("c", "Everyone online should care about security because:", ["Threats can affect anyone", "Only companies are targets", "It's not real", "Hackers are polite"], "Threats can affect anyone"),
+    ], "Why does protecting your own data matter, even as a student?"),
 
-    ("t3-q2", "t3", 2, "AND / OR / NOT", 2, "LO.3.B", "Combine conditions with logical operators.", [
-        _q("a", "'A AND B' is true when:", ["Both are true", "Either is true", "Both are false", "Never"], "Both are true"),
-        _q("b", "'A OR B' is true when:", ["At least one is true", "Both are false", "Never", "Only both"], "At least one is true"),
-        _q("c", "'NOT true' equals:", ["False", "True", "Maybe", "Both"], "False"),
-    ], "Describe a rule that uses AND (e.g., entry requires ticket AND ID)."),
+    ("t3-q2", "t3", 2, "Threat Types: Malware, Phishing, Ransomware", 2, "CY.3.B", "Identify common cyber threats.", [
+        _q("a", "Phishing is an attempt to:", ["Trick you into revealing info", "Speed up your PC", "Back up files", "Update software"], "Trick you into revealing info"),
+        _q("b", "Ransomware typically:", ["Locks files and demands payment", "Cleans your disk", "Improves security", "Sends fan mail"], "Locks files and demands payment"),
+        _q("c", "'Malware' is short for:", ["Malicious software", "Mail hardware", "Manual warning", "Major wire"], "Malicious software"),
+    ], "Describe a phishing message you might receive and one red flag in it."),
 
-    ("t3-q3", "t3", 3, "If-Then Reasoning", 3, "LO.3.C", "Evaluate conditional statements.", [
-        _q("a", "'If it rains, then the ground is wet.' It rains. So:", ["The ground is wet", "It is sunny", "Nothing happens", "The ground is dry"], "The ground is wet"),
-        _q("b", "The 'if' part of a conditional is the:", ["Hypothesis", "Conclusion", "Answer", "Error"], "Hypothesis"),
-        _q("c", "A conditional can be false when:", ["The if is true but the then is false", "Both are true", "Both are false", "Never"], "The if is true but the then is false"),
-    ], "Write an if-then rule for a game or a chore."),
+    ("t3-q3", "t3", 3, "The CIA Triad", 3, "CY.3.C", "Apply the CIA triad (Confidentiality, Integrity, Availability).", [
+        _q("a", "In the CIA triad, 'C' stands for:", ["Confidentiality", "Computer", "Coding", "Control"], "Confidentiality"),
+        _q("b", "'Integrity' means data is:", ["Accurate and unaltered", "Always hidden", "Deleted", "Slow"], "Accurate and unaltered"),
+        _q("c", "'Availability' means:", ["Authorized users can access data when needed", "No one can log in", "Data is public", "Servers are off"], "Authorized users can access data when needed"),
+    ], "Give a real example of protecting confidentiality at school."),
 
-    ("t3-q4", "t3", 4, "Logical Fallacies", 3, "LO.3.D", "Spot flawed reasoning.", [
-        _q("a", "Attacking the person instead of their argument is called:", ["Ad hominem", "Evidence", "A fact", "A theorem"], "Ad hominem"),
-        _q("b", "'Everyone does it, so it's right' is a:", ["Bandwagon fallacy", "Valid proof", "Statistic", "Definition"], "Bandwagon fallacy"),
-        _q("c", "A strong argument relies on:", ["Evidence and logic", "Insults", "Popularity", "Volume"], "Evidence and logic"),
-    ], "Describe a flawed argument you've heard and why it's weak."),
+    ("t3-q4", "t3", 4, "Safe Practices & Password Strength", 2, "CY.3.D", "Use safe practices and strong passwords.", [
+        _q("a", "The strongest password is:", ["A long mix of letters, numbers, symbols", "'password'", "Your name", "'12345'"], "A long mix of letters, numbers, symbols"),
+        _q("b", "Two-factor authentication (2FA) adds:", ["A second verification step", "More spam", "A slower PC", "A new password only"], "A second verification step"),
+        _q("c", "You should ______ reuse the same password everywhere.", ["never", "always", "sometimes must", "be required to"], "never"),
+    ], "Describe how you'd create a strong, memorable password."),
 
-    ("t3-q5", "t3", 5, "Sets & Venn Diagrams", 3, "LO.3.E", "Represent groups and overlaps with sets.", [
-        _q("a", "The overlap of two circles in a Venn diagram shows items that are:", ["In both sets", "In neither", "Only in one", "Deleted"], "In both sets"),
-        _q("b", "The union of sets A and B contains:", ["Everything in A or B", "Only shared items", "Nothing", "Only A"], "Everything in A or B"),
-        _q("c", "The intersection of {1,2,3} and {2,3,4} is:", ["{2,3}", "{1,4}", "{1,2,3,4}", "{}"], "{2,3}"),
-    ], "Draw (describe) a Venn diagram for two of your interests."),
+    ("t3-q5", "t3", 5, "Phishing Spotter", 3, "CY.3.E", "Detect red flags in suspicious messages.", [
+        _q("a", "A phishing red flag is:", ["Urgent threats and odd links", "A known sender", "Correct grammar", "A normal signature"], "Urgent threats and odd links"),
+        _q("b", "A suspicious email asks for your password. You should:", ["Never send it and report the email", "Reply with it", "Click all links", "Forward to friends"], "Never send it and report the email"),
+        _q("c", "Hovering over a link lets you:", ["See the real destination URL", "Download it instantly", "Delete your account", "Change your grade"], "See the real destination URL"),
+    ], "List three things you'd check before trusting an email."),
 
-    ("t3-q6", "t3", 6, "Sequences & Patterns", 3, "LO.3.F", "Extend and generalize patterns.", [
-        _q("a", "In 1, 3, 5, 7, ... the next is:", ["8", "9", "10", "11"], "9"),
-        _q("b", "In 3, 6, 12, 24, ... the pattern is:", ["Double each time", "Add 3", "Subtract 3", "Random"], "Double each time"),
-        _q("c", "A rule for a pattern helps you:", ["Predict future terms", "Forget the pattern", "Slow down", "Make errors"], "Predict future terms"),
-    ], "Invent a number pattern and state its rule."),
+    ("t3-q6", "t3", 6, "Cipher Playground: Caesar, Pigpen, Substitution", 3, "CY.3.F", "Encode and decode with classic ciphers.", [
+        _q("a", "A Caesar cipher works by:", ["Shifting each letter by a fixed amount", "Deleting letters", "Adding emojis", "Reversing words only"], "Shifting each letter by a fixed amount"),
+        _q("b", "With a Caesar shift of +1, 'A' becomes:", ["B", "Z", "A", "C"], "B"),
+        _q("c", "A substitution cipher replaces:", ["Each letter with another symbol/letter", "Whole sentences with images", "Numbers with colors only", "Nothing"], "Each letter with another symbol/letter"),
+    ], "Encode the word 'HI' with a Caesar shift of +1 and show your work."),
 
-    ("t3-q7", "t3", 7, "Deductive Reasoning", 4, "LO.3.G", "Reach valid conclusions from premises.", [
-        _q("a", "All Explorers wear compasses. Mia is an Explorer. So Mia:", ["Wears a compass", "Has no compass", "Might be a Guide", "Is lost"], "Wears a compass"),
-        _q("b", "Deduction moves from:", ["General rules to specific cases", "Guesses to facts", "Nothing to something", "Colors to sounds"], "General rules to specific cases"),
-        _q("c", "A valid argument with true premises has:", ["A true conclusion", "A false conclusion", "No conclusion", "An error"], "A true conclusion"),
-    ], "Write your own two premises that lead to a valid conclusion."),
+    ("t3-q7", "t3", 7, "Symmetric vs Asymmetric & AI Detection", 3, "CY.3.G", "Compare encryption types; AI in security.", [
+        _q("a", "Symmetric encryption uses:", ["The same key to encrypt and decrypt", "Two different keys", "No key", "A password hint"], "The same key to encrypt and decrypt"),
+        _q("b", "Asymmetric encryption uses:", ["A public and a private key", "One shared key", "No keys", "A single symbol"], "A public and a private key"),
+        _q("c", "AI helps cybersecurity by:", ["Detecting unusual (anomalous) activity", "Creating more viruses only", "Slowing defenses", "Guessing passwords for hackers"], "Detecting unusual (anomalous) activity"),
+    ], "Why might a bank use asymmetric encryption? Explain simply."),
 
-    ("t3-q8", "t3", 8, "Puzzle Mastery", 4, "LO.3.H", "Apply combined reasoning to solve puzzles.", [
-        _q("a", "The best puzzle strategy is to:", ["Use clues to eliminate options", "Guess wildly", "Give up", "Skip clues"], "Use clues to eliminate options"),
-        _q("b", "If A > B and B > C, then:", ["A > C", "C > A", "A = C", "Unknown"], "A > C"),
-        _q("c", "When stuck on a puzzle, a good move is to:", ["Re-check the clues", "Erase everything", "Panic", "Change the rules"], "Re-check the clues"),
-    ], "Describe a puzzle you solved and the strategy you used."),
+    ("t3-q8", "t3", 8, "Adversarial Thinking Challenge", 4, "CY.3.CAP", "Analyze a system, find weaknesses, propose defenses.", [
+        _q("a", "'Thinking like an attacker' helps you:", ["Find vulnerabilities before they do", "Break laws", "Ignore risks", "Trust everything"], "Find vulnerabilities before they do"),
+        _q("b", "A weak point in a school network might be:", ["Shared, simple passwords", "Strong 2FA", "Regular updates", "Encrypted data"], "Shared, simple passwords"),
+        _q("c", "A good defense against phishing is:", ["Training people to spot red flags", "Turning off email forever", "Ignoring reports", "Sharing passwords"], "Training people to spot red flags"),
+    ], "Pick a system (phone, app, or network) — name one weakness and one defense."),
 
-    # ---------------- Territory 4: The Frontier Peaks ----------------
-    ("t4-q1", "t4", 1, "Defining the Problem", 3, "PS.4.A", "State a problem clearly before solving.", [
-        _q("a", "A well-defined problem includes:", ["A clear goal and constraints", "Only a guess", "No details", "Random words"], "A clear goal and constraints"),
-        _q("b", "Before solving, you should:", ["Understand what's being asked", "Start randomly", "Copy an answer", "Give up"], "Understand what's being asked"),
-        _q("c", "A vague problem statement leads to:", ["Confused solutions", "Perfect answers", "Faster work", "No effort needed"], "Confused solutions"),
-    ], "Restate a problem you face this week clearly, with its goal."),
+    # ---------------- T4: Data Delta (Data Science) ----------------
+    ("t4-q1", "t4", 1, "The Data Problem-Solving Process", 2, "DS.4.A", "Follow the steps of the data problem-solving process.", [
+        _q("a", "The data process usually starts with:", ["Defining a question", "Making a chart", "Deleting data", "Guessing"], "Defining a question"),
+        _q("b", "After collecting data you should:", ["Clean and organize it", "Ignore errors", "Publish immediately", "Delete it"], "Clean and organize it"),
+        _q("c", "The final step is often to:", ["Communicate the findings", "Hide the results", "Start over randomly", "Erase everything"], "Communicate the findings"),
+    ], "Write a data question you'd like to investigate about your school."),
 
-    ("t4-q2", "t4", 2, "Breaking Down Complexity", 3, "PS.4.B", "Manage complexity with structured steps.", [
-        _q("a", "Complex problems are handled best by:", ["Breaking them into parts", "Ignoring them", "Solving all at once", "Guessing"], "Breaking them into parts"),
-        _q("b", "A milestone is:", ["A smaller checkpoint goal", "The final answer only", "A mistake", "A distraction"], "A smaller checkpoint goal"),
-        _q("c", "Tracking sub-tasks helps you:", ["See progress", "Lose focus", "Add errors", "Skip work"], "See progress"),
-    ], "List the milestones for a project you'd like to complete."),
+    ("t4-q2", "t4", 2, "Choosing Data Representations", 3, "DS.4.B", "Select appropriate representations for data.", [
+        _q("a", "To show change over time, use a:", ["Line graph", "Pie chart", "Word cloud", "Single number"], "Line graph"),
+        _q("b", "To compare amounts across groups, use a:", ["Bar chart", "Timeline", "Paragraph", "Formula"], "Bar chart"),
+        _q("c", "A table is best when you need:", ["Exact values", "A quick visual trend", "Emotion", "Decoration"], "Exact values"),
+    ], "Give an example where the wrong chart could mislead someone."),
 
-    ("t4-q3", "t4", 3, "Estimation Skills", 3, "PS.4.C", "Make reasonable estimates to guide decisions.", [
-        _q("a", "A good estimate is:", ["Close enough to be useful", "Always exact", "A random number", "Never needed"], "Close enough to be useful"),
-        _q("b", "Estimating 19 x 21 is about:", ["400", "40", "4000", "20"], "400"),
-        _q("c", "Estimation is useful when:", ["You need a quick, rough answer", "You have infinite time", "Exactness is impossible ever", "You want errors"], "You need a quick, rough answer"),
-    ], "Estimate how many steps you take in a day and explain your reasoning."),
+    ("t4-q3", "t4", 3, "ASCII & Binary Lab", 3, "DS.4.C", "Encode and decode text and numbers in binary.", [
+        _q("a", "Binary uses only the digits:", ["0 and 1", "0 through 9", "A and B", "1 and 2"], "0 and 1"),
+        _q("b", "The binary number 10 in decimal is:", ["2", "10", "1", "0"], "2"),
+        _q("c", "ASCII is a system that:", ["Maps characters to numbers", "Compresses videos", "Encrypts wifi", "Draws charts"], "Maps characters to numbers"),
+    ], "Convert the decimal number 5 to binary and show your steps."),
 
-    ("t4-q4", "t4", 4, "Working Backwards", 3, "PS.4.D", "Solve by starting from the goal.", [
-        _q("a", "Working backwards starts from:", ["The desired result", "A random step", "The middle", "Nothing"], "The desired result"),
-        _q("b", "This strategy works well for:", ["Mazes and planning", "Nothing", "Only art", "Only sports"], "Mazes and planning"),
-        _q("c", "To be home by 6, working backwards helps you find:", ["When to leave", "The weather", "Your shoe size", "A password"], "When to leave"),
-    ], "Pick a goal and plan the last 3 steps backwards from it."),
+    ("t4-q4", "t4", 4, "Data Cleaning Workbench", 3, "DS.4.D", "Remove irrelevant/erroneous data.", [
+        _q("a", "Data cleaning includes:", ["Fixing typos and removing duplicates", "Adding fake rows", "Random deleting", "Nothing"], "Fixing typos and removing duplicates"),
+        _q("b", "'Irrelevant data' is data that:", ["Doesn't help answer the question", "Is always useful", "Must be kept", "Is encrypted"], "Doesn't help answer the question"),
+        _q("c", "Dirty data can cause:", ["Wrong conclusions", "Perfect results", "Faster analysis", "No effect"], "Wrong conclusions"),
+    ], "Describe a messy dataset and one thing you'd clean first."),
 
-    ("t4-q5", "t4", 5, "Modeling with Math", 4, "PS.4.E", "Represent real situations with math models.", [
-        _q("a", "A model is:", ["A simplified representation of reality", "A perfect copy", "A guess", "A drawing only"], "A simplified representation of reality"),
-        _q("b", "If a ticket costs 8 and you buy n, the cost model is:", ["8 * n", "8 + n", "8 - n", "n / 8"], "8 * n"),
-        _q("c", "Good models help you:", ["Predict outcomes", "Ignore reality", "Slow down", "Add confusion"], "Predict outcomes"),
-    ], "Describe a real situation and a simple math model for it."),
+    ("t4-q5", "t4", 5, "Building & Reading Bar Charts", 2, "DS.4.E", "Build and interpret bar charts.", [
+        _q("a", "In a bar chart, taller bars mean:", ["Larger values", "Smaller values", "Errors", "Nothing"], "Larger values"),
+        _q("b", "Axis labels should:", ["Explain what is measured", "Be blank", "Be random", "Be hidden"], "Explain what is measured"),
+        _q("c", "A bar chart is best for:", ["Comparing categories", "Showing exact formulas", "Encrypting data", "Writing essays"], "Comparing categories"),
+    ], "What data from your class would you turn into a bar chart?"),
 
-    ("t4-q6", "t4", 6, "Optimization Choices", 4, "PS.4.F", "Choose the best option under constraints.", [
-        _q("a", "Optimization means finding the:", ["Best option given limits", "Slowest option", "Most expensive option", "Random option"], "Best option given limits"),
-        _q("b", "A 'trade-off' is:", ["Giving up one thing for another", "Getting everything", "A free lunch", "A mistake"], "Giving up one thing for another"),
-        _q("c", "With a tight budget you optimize for:", ["Value within the budget", "Highest price", "No plan", "Waste"], "Value within the budget"),
-    ], "Describe a decision where you balanced two trade-offs."),
+    ("t4-q6", "t4", 6, "Patterns & Supporting a Claim", 4, "DS.4.F", "Spot patterns and support a claim with data.", [
+        _q("a", "A trend is:", ["A general pattern in the data", "A single value", "A random guess", "A title"], "A general pattern in the data"),
+        _q("b", "A strong data claim is:", ["Backed by evidence from the data", "Just an opinion", "Ignoring the numbers", "Always negative"], "Backed by evidence from the data"),
+        _q("c", "Correlation means two things:", ["Move together, may not cause each other", "Always cause each other", "Are unrelated", "Are equal"], "Move together, may not cause each other"),
+    ], "Make a claim from imaginary data and cite the evidence you'd show."),
 
-    ("t4-q7", "t4", 7, "Systems Thinking", 4, "PS.4.G", "See how parts of a system interact.", [
-        _q("a", "Systems thinking focuses on:", ["How parts connect and affect each other", "One part alone", "Ignoring connections", "Random parts"], "How parts connect and affect each other"),
-        _q("b", "A change in one part of a system can:", ["Affect other parts", "Never matter", "Only help", "Disappear"], "Affect other parts"),
-        _q("c", "A feedback loop is when:", ["An output influences the input", "Nothing connects", "The system stops", "Data is deleted"], "An output influences the input"),
-    ], "Describe a system you know and how its parts affect each other."),
+    ("t4-q7", "t4", 7, "Decision Algorithm Builder", 4, "DS.4.G", "Design a simple data-driven decision algorithm.", [
+        _q("a", "A decision algorithm is:", ["A step-by-step rule for choosing", "A random pick", "A single number", "A drawing"], "A step-by-step rule for choosing"),
+        _q("b", "'IF temperature > 30 THEN suggest water' is an example of:", ["A conditional rule", "A pie chart", "A cipher", "A footer"], "A conditional rule"),
+        _q("c", "Good algorithms use ______ to decide.", ["data and clear rules", "guesses only", "feelings only", "no inputs"], "data and clear rules"),
+    ], "Write a simple IF-THEN rule that helps make a decision from data."),
 
-    ("t4-q8", "t4", 8, "Ethical Tech Decisions", 4, "PS.4.H", "Weigh fairness and impact in technology.", [
-        _q("a", "An ethical decision considers:", ["Fairness and impact on people", "Only speed", "Only profit", "Nothing"], "Fairness and impact on people"),
-        _q("b", "Biased data in a system can cause:", ["Unfair outcomes", "Perfect fairness", "Faster results only", "No effect"], "Unfair outcomes"),
-        _q("c", "Responsible creators should:", ["Consider consequences of their work", "Ignore users", "Hide problems", "Rush blindly"], "Consider consequences of their work"),
-    ], "Describe a technology and one ethical question it raises."),
+    ("t4-q8", "t4", 8, "AI in Data Science: ML & Data Mining", 3, "DS.4.H", "Explain ML and data mining concepts.", [
+        _q("a", "Machine learning lets computers:", ["Learn patterns from data", "Only follow fixed rules", "Never improve", "Delete data"], "Learn patterns from data"),
+        _q("b", "'Data mining' means:", ["Finding useful patterns in large data", "Digging for gold", "Deleting databases", "Printing reports"], "Finding useful patterns in large data"),
+        _q("c", "An ML model improves when it gets:", ["More quality training data", "Less data", "No feedback", "Random noise only"], "More quality training data"),
+    ], "Describe one everyday app that uses machine learning and how."),
 
-    ("t4-q9", "t4", 9, "Capstone: The Grand Expedition", 4, "PS.4.CAP", "Integrate all skills to solve a complex challenge.", [
-        _q("a", "To plan a real expedition you'd FIRST:", ["Define the goal and constraints", "Buy random things", "Skip planning", "Start walking"], "Define the goal and constraints"),
-        _q("b", "You'd use DATA skills to:", ["Compare routes and supplies", "Guess blindly", "Ignore facts", "Avoid math"], "Compare routes and supplies"),
-        _q("c", "You'd use LOGIC to:", ["Reason through decisions", "Argue loudly", "Skip clues", "Panic"], "Reason through decisions"),
-        _q("d", "A capstone shows that you can:", ["Combine many skills to solve a big problem", "Do only one thing", "Avoid challenges", "Forget everything"], "Combine many skills to solve a big problem"),
-    ], "Design your own grand expedition: state the goal, the data you'd gather, and the key decisions."),
+    ("t4-q9", "t4", 9, "Career Clusters Explorer", 2, "DS.4.I", "Explore data-related career clusters.", [
+        _q("a", "A cybersecurity analyst works to:", ["Protect systems and data", "Design clothing", "Cook food", "Teach music"], "Protect systems and data"),
+        _q("b", "Genetics/bioinformatics uses data to:", ["Study genes and biology", "Fix cars", "Sell shoes", "Build roads"], "Study genes and biology"),
+        _q("c", "A business data role helps a company:", ["Make smarter decisions with data", "Ignore its customers", "Avoid all planning", "Lose money on purpose"], "Make smarter decisions with data"),
+    ], "Which data career cluster excites you most, and why?"),
 ]
+
+
+def _lesson_for(title, sdesc):
+    return [
+        f"Welcome, Explorer. This quest sharpens one real skill: {title}. {sdesc}",
+        "Study the lesson, ask the Copilot for a hint if you get stuck, and score at least 80% to earn your Compass Mark and full Horizon Points.",
+    ]
 
 
 def _build():
@@ -274,28 +280,19 @@ def _build():
     return quests
 
 
-def _lesson_for(title, sdesc):
-    return [
-        f"Welcome, Explorer. In this trial you'll master {title}. {sdesc}",
-        "Read carefully, use the Copilot if you get stuck, and aim for at least 80% to earn your Compass Mark and full Horizon Points.",
-    ]
-
-
 QUESTS = _build()
-
 QUEST_INDEX = {q["id"]: q for q in QUESTS}
 TERRITORY_INDEX = {t["id"]: t for t in TERRITORIES}
 
 
 def public_curriculum():
-    """Curriculum without answer keys (safe for the client)."""
     out_territories = []
     for t in TERRITORIES:
-        tq = sorted([q for q in QUESTS if q["territory_id"] == t["id"]], key=lambda x: x["order"])
+        tq = [q for q in QUESTS if q["territory_id"] == t["id"]]
         out_territories.append({**t, "quest_count": len(tq)})
     out_quests = []
     for q in QUESTS:
-        oq = {
+        out_quests.append({
             "id": q["id"],
             "territory_id": q["territory_id"],
             "order": q["order"],
@@ -312,13 +309,11 @@ def public_curriculum():
                     for qq in q["trial"]["questions"]
                 ],
             },
-        }
-        out_quests.append(oq)
+        })
     return {"territories": out_territories, "quests": out_quests}
 
 
 def grade(quest_id, answers):
-    """answers: {question_id: selected_option}. Returns (score_pct, correct, total, per_question)."""
     quest = QUEST_INDEX.get(quest_id)
     if not quest:
         return None

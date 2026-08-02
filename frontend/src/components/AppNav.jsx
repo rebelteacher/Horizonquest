@@ -11,6 +11,7 @@ import {
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ASSETS } from "@/lib/assets";
 
 export default function AppNav() {
   const { user, logout } = useAuth();
@@ -45,7 +46,7 @@ export default function AppNav() {
     <header className="sticky top-0 z-40 hq-glass border-b border-white/10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
         <Link to={isExplorer ? "/map" : "/guide"} className="flex items-center gap-2.5" data-testid="nav-logo">
-          <Compass className="w-7 h-7 text-primary hq-float" />
+          <img src={ASSETS.logo} alt="HorizonQuest" className="w-9 h-9 rounded-lg object-cover ring-1 ring-primary/40 hq-float" />
           <span className="font-display text-2xl tracking-tight">HorizonQuest</span>
         </Link>
 
@@ -58,8 +59,8 @@ export default function AppNav() {
                 <span className="font-mono-data text-primary">{user.horizon_points ?? 0}</span>
               </span>
               <span className="flex items-center gap-1.5 text-sm" data-testid="nav-marks">
-                <Anchor className="w-4 h-4 text-[#06B6D4]" />
-                <span className="font-mono-data text-[#06B6D4]">{user.compass_marks ?? 0}</span>
+                <Anchor className="w-4 h-4 text-[#22D3EE]" />
+                <span className="font-mono-data text-[#22D3EE]">{user.compass_marks ?? 0}</span>
               </span>
             </div>
           )}

@@ -64,11 +64,11 @@ export default function RoleSelect() {
             className={`hq-fade-up text-left hq-glass rounded-2xl p-8 border transition-all duration-200 hover:-translate-y-1 disabled:opacity-60 ${
               c.accent === "primary"
                 ? "border-primary/25 hover:border-primary/60 hover:hq-glow-gold"
-                : "border-[#06B6D4]/25 hover:border-[#06B6D4]/60 hover:hq-glow-teal"
+                : "border-[#22D3EE]/25 hover:border-[#22D3EE]/60 hover:hq-glow-teal"
             }`}
           >
             <div className="flex items-center justify-between mb-6">
-              <c.icon className={`w-10 h-10 ${c.accent === "primary" ? "text-primary" : "text-[#06B6D4]"}`} />
+              <c.icon className={`w-10 h-10 ${c.accent === "primary" ? "text-primary" : "text-[#22D3EE]"}`} />
               <span className="text-xs font-mono-data uppercase tracking-widest text-muted-foreground">{c.tag}</span>
             </div>
             <h2 className="font-display text-3xl mb-2">{c.title}</h2>

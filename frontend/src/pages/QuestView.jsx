@@ -123,7 +123,7 @@ export default function QuestView() {
           data-testid="submit-trial-btn"
           onClick={submit}
           disabled={submitting}
-          className="mt-8 w-full py-6 text-base bg-primary text-primary-foreground hover:bg-[#FBBF24] hq-glow-gold"
+          className="mt-8 w-full py-6 text-base bg-primary text-primary-foreground hover:bg-[#FDBA74] hq-glow-gold"
         >
           {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : "Complete the Trial ⚔️"}
         </Button>
@@ -148,14 +148,14 @@ export default function QuestView() {
 
                 <div className="flex justify-center gap-6 mt-6">
                   <div className="flex items-center gap-2 text-primary"><Gem className="w-5 h-5" /><span className="font-mono-data text-xl">+{result.points_awarded}</span></div>
-                  {result.compass_mark_earned && <div className="flex items-center gap-2 text-[#06B6D4]"><Anchor className="w-5 h-5" /><span className="font-mono-data text-xl">+1 Mark</span></div>}
+                  {result.compass_mark_earned && <div className="flex items-center gap-2 text-[#22D3EE]"><Anchor className="w-5 h-5" /><span className="font-mono-data text-xl">+1 Mark</span></div>}
                 </div>
 
                 {!result.mastery && <p className="text-sm text-muted-foreground mt-5">Reach 80% to earn full points and a Compass Mark. Retry anytime!</p>}
               </div>
               <div className="flex gap-3">
                 <Button data-testid="result-retry-btn" variant="outline" className="flex-1 border-white/15" onClick={() => setResult(null)}>Review answers</Button>
-                <Button data-testid="result-map-btn" className="flex-1 bg-primary text-primary-foreground hover:bg-[#FBBF24]" onClick={() => navigate("/leaderboard")}>
+                <Button data-testid="result-map-btn" className="flex-1 bg-primary text-primary-foreground hover:bg-[#FDBA74]" onClick={() => navigate("/leaderboard")}>
                   <Trophy className="w-4 h-4 mr-2" /> See rankings
                 </Button>
               </div>

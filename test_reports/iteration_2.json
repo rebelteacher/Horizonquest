@@ -1,0 +1,40 @@
+{
+  "summary": "Re-validated HorizonQuest after CTE curriculum realignment + rebrand + leaderboard tier. Backend pytest 22 passed / 1 skipped (skip = no pending review under qa-guide from prior run; not a defect). UI Playwright: Guide console (create expedition + mastery tab shows BL/PA/CY/DS standards + approve review +25), Explorer join+t1 quest submit with new answer keys yields Territory Conquered dialog, Leaderboard shows tier pills (Navigator/Voyager/Conqueror), AI Copilot streams a Claude hint. Curriculum endpoint returns exact 4 CTE territory names and 33 quests; t1-q1 with new keys grades 100% mastery; partial (1/3) grades 33 with mastery false and preserves best score. Leaderboard entries include tier field.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/trials/{quest_id}/submit", "issue": "Response `mastery` reflects only current attempt (can flip false on partial retry) even though DB preserves best. Consider adding best_score / stored_mastery to response for accurate UI display."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Shadcn Dialogs (Result, Members, Copilot Sheet)", "issues": ["React a11y console warning: 'Missing Description or aria-describedby for DialogContent'. Add DialogDescription to silence the warning."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Optional: add DialogDescription (or aria-describedby) to shadcn Dialog usages to remove a11y console warnings.",
+    "Optional: enrich /api/trials/.../submit response with best_score/stored_mastery so the UI can display cumulative status on repeat/partial retries."
+  ],
+  "critical_code_review_comments": [
+    "curriculum.py: cleanly refactored to 4 CTE modules with _RAW tuple + _build(); public_curriculum() correctly strips answers before returning (verified in test).",
+    "server.py rank_tier() thresholds (300/800) applied consistently; leaderboard entries now include `tier` on every row.",
+    "join_expedition still assigns fleet via count-before-insert -> concurrent joins could double-assign a fleet index. Low risk for MVP but note.",
+    "Copilot streaming (Claude sonnet-4-6 via emergentintegrations) verified end-to-end; system prompt correctly forbids direct answers."
+  ],
+  "updated_files": [
+    "/app/backend/tests/backend_test.py (updated for new curriculum answer keys, added territory-name + standard-prefix + leaderboard tier assertions)"
+  ],
+  "success_rate": {"backend": "100% (22 passed, 1 conditional skip)", "frontend": "100% of tested flows"},
+  "test_credentials": "Reseeded via mongosh: Guide bearer 'qa_guide_tok' -> user 'qa-guide', Explorer bearer 'qa_exp_tok' -> user 'qa-exp'. Both httpOnly cookie and Authorization: Bearer accepted.",
+  "seed_data_creation": "Playwright created expedition 'TEST_UI_Voyage_v2' (join code XXICTF this run) via Guide UI. qa-exp joined it, submitted t1-q1 to mastery, reflection generated a review which qa-guide approved for +25.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Test sessions qa_guide_tok / qa_exp_tok were reseeded fresh this iteration and clear old progress/reviews. Explorer qa-exp now has >=125 horizon_points and 1 compass_mark from t1-q1. Use is_me on leaderboard entries. Backend pytest at /app/backend/tests/backend_test.py; run with -n auto for parallel. Curriculum: 4 territories (Summit of Leadership, Productivity Peaks, The Cyber Frontier, Data Delta), 33 quests, standards BL.1.*/PA.2.*/CY.3.*/DS.4.*. Tier thresholds: Navigator<300, Voyager<800, Conqueror>=800.",
+  "rca of the issue": "No blocking issue. Only cosmetic a11y console warnings on Dialogs (Missing DialogDescription) — same as iteration 1; unchanged after rebrand."
+}

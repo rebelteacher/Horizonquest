@@ -33,7 +33,7 @@ export default function GuideConsole() {
       <AppNav />
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
         <div className="mb-8 hq-fade-up">
-          <p className="text-xs uppercase tracking-widest font-mono-data text-[#06B6D4]">Guide Console</p>
+          <p className="text-xs uppercase tracking-widest font-mono-data text-[#22D3EE]">Guide Console</p>
           <h1 className="font-display text-5xl tracking-tight">Chart the course, {(user.name || "Guide").split(" ")[0]}</h1>
         </div>
 
@@ -84,12 +84,12 @@ function ExpeditionsTab({ expeditions, loading, reload }) {
 
   return (
     <div className="grid gap-6 lg:grid-cols-3">
-      <div className="hq-glass rounded-2xl p-6 border-t border-t-[#06B6D4]/30 h-fit">
-        <h2 className="font-display text-2xl mb-4 flex items-center gap-2"><Plus className="w-5 h-5 text-[#06B6D4]" /> New Expedition</h2>
+      <div className="hq-glass rounded-2xl p-6 border-t border-t-[#22D3EE]/30 h-fit">
+        <h2 className="font-display text-2xl mb-4 flex items-center gap-2"><Plus className="w-5 h-5 text-[#22D3EE]" /> New Expedition</h2>
         <div className="space-y-3">
           <Input data-testid="expedition-name-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Expedition name (e.g. Period 3 Voyage)" className="bg-white/5 border-white/10" />
           <Textarea data-testid="expedition-desc-input" value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="Description (optional)" className="bg-white/5 border-white/10" />
-          <Button data-testid="create-expedition-btn" onClick={create} disabled={creating} className="w-full bg-[#06B6D4] text-[#04121f] hover:bg-[#22d3ee]">
+          <Button data-testid="create-expedition-btn" onClick={create} disabled={creating} className="w-full bg-[#22D3EE] text-[#04121f] hover:bg-[#67E8F9]">
             {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : "Create Expedition"}
           </Button>
         </div>
@@ -168,7 +168,7 @@ function ReviewsTab() {
             <p className="text-sm"><b>{r.user_name}</b> · <span className="text-muted-foreground">{r.quest_title}</span></p>
             <p className="mt-2 text-slate-300 italic">“{r.reflection}”</p>
           </div>
-          <Button data-testid={`approve-review-${i}`} onClick={() => approve(r.review_id)} className="shrink-0 bg-primary text-primary-foreground hover:bg-[#FBBF24]">
+          <Button data-testid={`approve-review-${i}`} onClick={() => approve(r.review_id)} className="shrink-0 bg-primary text-primary-foreground hover:bg-[#FDBA74]">
             <Check className="w-4 h-4 mr-1" /> Approve
           </Button>
         </div>
