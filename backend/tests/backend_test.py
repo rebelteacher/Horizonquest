@@ -249,3 +249,57 @@ class TestCopilot:
             if time.time() - start > 45:
                 break
         assert len(body.strip()) > 5, f"Empty copilot response: {body!r}"
+
+
+# --------- Hands-On Labs (Mock Meeting bonus) ----------
+class TestLabs:
+    """Lab endpoints: idempotent +75 bonus for t1-q8, explorer-only."""
+
+    def _reset(self):
+        # Ensure clean state: remove qa-exp's lab_completion for t1-q8 and reset HP baseline
+        import pymongo, os
+        c = pymongo.MongoClient(os.environ.get("MONGO_URL"))
+        db = c[os.environ.get("DB_NAME", "test_database")]
+        db.lab_completions.delete_many({"user_id": "qa-exp", "quest_id": "t1-q8"})
+        # capture current HP as baseline
+        u = db.users.find_one({"user_id": "qa-exp"})
+        return u.get("horizon_points", 0)
+
+    def test_lab_flow_and_idempotency(self):
+        baseline = self._reset()
+        # first call
+        r1 = requests.post(f"{API}/labs/t1-q8/complete", headers=EH)
+        assert r1.status_code == 200
+        d1 = r1.json()
+        assert d1["already_completed"] is False
+        assert d1["bonus"] == 75
+        assert d1["horizon_points"] == baseline + 75
+
+        # second call (idempotent)
+        r2 = requests.post(f"{API}/labs/t1-q8/complete", headers=EH)
+        assert r2.status_code == 200
+        d2 = r2.json()
+        assert d2["already_completed"] is True
+        assert d2["bonus"] == 0
+        assert d2["horizon_points"] == baseline + 75  # no double award
+
+        # /auth/me reflects the +75
+        me = requests.get(f"{API}/auth/me", headers=EH).json()
+        assert me["horizon_points"] == baseline + 75
+
+        # completions list contains t1-q8
+        comps = requests.get(f"{API}/labs/completions", headers=EH)
+        assert comps.status_code == 200
+        assert "t1-q8" in comps.json()
+
+    def test_lab_guide_forbidden(self):
+        r = requests.post(f"{API}/labs/t1-q8/complete", headers=GH)
+        assert r.status_code == 403
+
+    def test_lab_unknown_quest_404(self):
+        r = requests.post(f"{API}/labs/no-such-quest/complete", headers=EH)
+        assert r.status_code == 404
+
+    def test_lab_completions_requires_auth(self):
+        r = requests.get(f"{API}/labs/completions")
+        assert r.status_code == 401

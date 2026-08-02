@@ -1,0 +1,31 @@
+{
+  "summary": "Validated the new Mock Meeting Simulator (t1-q8 Hands-On Lab) end-to-end. Backend pytest 27 passed / 1 skipped (skip is unrelated guide-review — no pending reviews for qa-guide). Added TestLabs suite covering: first POST /api/labs/t1-q8/complete returns already_completed:false, bonus:75, horizon_points=+75; second call is idempotent (already_completed:true, bonus:0, no double award); /api/auth/me reflects +75; GET /api/labs/completions returns ['t1-q8']; guide gets 403; unknown quest_id -> 404; unauthenticated /labs/completions -> 401. UI (Playwright, real preview URL, qa_exp_tok cookie): /quest/t1-q1 does NOT show launch-lab-btn (count=0); /quest/t1-q8 shows exactly one launch-lab-btn which navigates to /lab/mock-meeting?quest=t1-q8. On the simulator: option idx 0 is correct for every one of the 8 scenes (call_to_order, quorum, agenda, motion_make, motion_second, discuss_vote, vote_result, adjourn). Wrong-option flow verified on scene 1 — mm-next-btn stays hidden, wrong option becomes disabled, red feedback shown, retry allowed. Correct option reveals green feedback and mm-next-btn appears. After the final scene, the summary shows +75 Bonus Points, Accuracy %, and Missteps; /api/auth/me confirms horizon_points went 0 -> 75. Second full playthrough does NOT re-award (still 75). Summary buttons all route correctly: mm-restart-btn (returns to scene 1), mm-quest-btn -> /quest/t1-q8, mm-map-btn -> /map, mm-rankings-btn -> /leaderboard. Regression: normal trial on /quest/t1-q1 renders 4 MC (radio) questions, submit yields result dialog with result-next-quest-btn + result-map-btn, Continue navigates to /quest/t1-q2. Header shows updated HP (75) and Compass Marks (1). No console errors observed during the runs.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py complete_lab() correctly uses $inc for atomic +75 and does an existence check before insert — idempotent and race-safe enough for single-user calls (a compound unique index on {user_id, quest_id} for lab_completions would harden against races if concurrent posts became a concern).",
+    "MockMeeting.jsx: SCENES list matches spec (8 scenes, correct=true always at index 0, unique scene ids). mm-option-<sceneId>-<idx>, mm-next-btn, mm-restart-btn, mm-quest-btn, mm-map-btn, mm-rankings-btn all present with data-testid. Wrong-option disable + keep-trying behavior implemented via opt.disabled toggle. Nit: the completion POST fires inside the effect on `done` — if a user rapidly clicks mm-next-btn on the final scene before the fetch resolves, no double-award risk because the endpoint itself is idempotent, so this is safe.",
+    "QuestView.jsx: launch-lab-btn callout is gated by QUEST_LABS[quest.id] and only rendered when a lab is registered — correctly hidden for t1-q1 (verified in UI).",
+    "labs.js: QUEST_LABS map only wires t1-q8 -> mock-meeting; consistent with backend allowing any known quest_id but frontend surfacing it only for mapped quests. Consider validating quest_id server-side against a whitelist of lab-enabled quests if you don't want explorers to script-award themselves on any quest_id via curl (currently the endpoint would grant +75 for ANY valid quest_id — see /api/labs/{quest_id}/complete). Not exploited today because the UI only exposes t1-q8, but a curl POST /api/labs/t1-q1/complete would also award 75. Minor hardening suggestion, not blocking."
+  ],
+  "updated_files": ["/app/backend/tests/backend_test.py"],
+  "success_rate": {"backend": "100% (27/27 executed passed; 1 unrelated skip)", "frontend": "100% (all Mock Meeting + launch-btn + regression assertions passed)"},
+  "test_credentials": "Explorer bearer 'qa_exp_tok' (user_id qa-exp, role explorer, fleet North Star) and Guide bearer 'qa_guide_tok' (user_id qa-guide). Reseeded via mongosh at start; both accepted as httpOnly session_token cookie and Authorization: Bearer.",
+  "seed_data_creation": "Reseeded qa-exp and qa-guide users + user_sessions in test_database. Cleared qa-exp's lab_completions and reset horizon_points to 0 before running UI test so the +75 award assertion is deterministic.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "backend_test.py now includes TestLabs (idempotency, +75, guide 403, 404, 401). If the /api/labs/{quest_id}/complete endpoint gets a lab whitelist added, update test_lab_unknown_quest_404 to also assert non-lab quests like t1-q1 -> 400/404. Seeded creds: qa_exp_tok / qa_guide_tok. Mock Meeting correct-option index is always 0 for all 8 scenes; scene ids: call_to_order, quorum, agenda, motion_make, motion_second, discuss_vote, vote_result, adjourn.",
+  "rca of the issue": "No regressions or bugs found this iteration. Feature works as specified."
+}

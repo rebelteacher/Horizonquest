@@ -9,6 +9,7 @@ import JourneyMap from "@/pages/JourneyMap";
 import QuestView from "@/pages/QuestView";
 import Leaderboard from "@/pages/Leaderboard";
 import GuideConsole from "@/pages/GuideConsole";
+import MockMeeting from "@/pages/MockMeeting";
 import { Compass } from "lucide-react";
 
 function Loader() {
@@ -41,6 +42,7 @@ function AppRouter() {
       <Route path="/welcome" element={<RoleSelect />} />
       <Route path="/map" element={<Protected role="explorer"><JourneyMap /></Protected>} />
       <Route path="/quest/:questId" element={<Protected role="explorer"><QuestView /></Protected>} />
+      <Route path="/lab/mock-meeting" element={<Protected role="explorer"><MockMeeting /></Protected>} />
       <Route path="/leaderboard" element={<Protected><Leaderboard /></Protected>} />
       <Route path="/guide" element={<Protected role="guide"><GuideConsole /></Protected>} />
       <Route path="*" element={<Navigate to="/" replace />} />

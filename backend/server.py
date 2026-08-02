@@ -378,6 +378,39 @@ async def submit_trial(quest_id: str, payload: TrialSubmit, explorer=Depends(req
     }
 
 
+# ---------------- Hands-On Labs ----------------
+LAB_BONUS = 75
+
+
+@api_router.post("/labs/{quest_id}/complete")
+async def complete_lab(quest_id: str, explorer=Depends(require_explorer)):
+    quest = curriculum.QUEST_INDEX.get(quest_id)
+    if not quest:
+        raise HTTPException(status_code=404, detail="Quest not found")
+    existing = await db.lab_completions.find_one(
+        {"user_id": explorer["user_id"], "quest_id": quest_id}, {"_id": 0}
+    )
+    if existing:
+        u = await db.users.find_one({"user_id": explorer["user_id"]}, {"_id": 0})
+        return {"already_completed": True, "bonus": 0, "horizon_points": u.get("horizon_points", 0)}
+    await db.lab_completions.insert_one({
+        "user_id": explorer["user_id"],
+        "quest_id": quest_id,
+        "territory_id": quest["territory_id"],
+        "bonus": LAB_BONUS,
+        "created_at": now_utc().isoformat(),
+    })
+    await db.users.update_one({"user_id": explorer["user_id"]}, {"$inc": {"horizon_points": LAB_BONUS}})
+    u = await db.users.find_one({"user_id": explorer["user_id"]}, {"_id": 0})
+    return {"already_completed": False, "bonus": LAB_BONUS, "horizon_points": u.get("horizon_points", 0)}
+
+
+@api_router.get("/labs/completions")
+async def my_lab_completions(user=Depends(get_current_user)):
+    rows = await db.lab_completions.find({"user_id": user["user_id"]}, {"_id": 0}).to_list(200)
+    return [r["quest_id"] for r in rows]
+
+
 # ---------------- Leaderboard ----------------
 @api_router.get("/leaderboard")
 async def leaderboard(expedition_id: Optional[str] = None, user=Depends(get_current_user)):

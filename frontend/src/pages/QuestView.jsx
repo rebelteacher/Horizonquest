@@ -8,8 +8,9 @@ import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ArrowLeft, ScrollText, Swords, Gem, Anchor, Loader2, Trophy, Map, ArrowRight } from "lucide-react";
+import { ArrowLeft, ScrollText, Swords, Gem, Anchor, Loader2, Trophy, Map, ArrowRight, FlaskConical } from "lucide-react";
 import { toast } from "sonner";
+import { QUEST_LABS } from "@/lib/labs";
 
 function renderInline(text) {
   const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g);
@@ -119,6 +120,28 @@ export default function QuestView() {
           <h2 className="font-display text-2xl flex items-center gap-2 mb-4"><ScrollText className="w-5 h-5 text-primary" /> The Lesson</h2>
           <LessonContent blocks={quest.lesson} />
         </section>
+
+        {/* Hands-on lab callout */}
+        {QUEST_LABS[quest.id] && (
+          <section className="mt-6 rounded-2xl p-6 border border-[#22D3EE]/30 bg-[#22D3EE]/5 hq-fade-up" style={{ animationDelay: "0.15s" }}>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
+              <div className="flex items-start gap-3">
+                <div className="w-11 h-11 rounded-xl bg-[#22D3EE]/15 flex items-center justify-center shrink-0"><FlaskConical className="w-6 h-6 text-[#22D3EE]" /></div>
+                <div>
+                  <h2 className="font-display text-2xl">{QUEST_LABS[quest.id].title}</h2>
+                  <p className="text-sm text-muted-foreground mt-0.5">{QUEST_LABS[quest.id].desc}</p>
+                </div>
+              </div>
+              <Button
+                data-testid="launch-lab-btn"
+                onClick={() => navigate(`/lab/${QUEST_LABS[quest.id].tool}?quest=${quest.id}`)}
+                className="bg-[#22D3EE] text-[#04121f] hover:bg-[#67E8F9] shrink-0 hq-glow-teal"
+              >
+                Launch Hands-On Lab <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </div>
+          </section>
+        )}
 
         {/* Trial */}
         <section className="mt-6 hq-fade-up" style={{ animationDelay: "0.2s" }}>
