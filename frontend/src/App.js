@@ -1,56 +1,62 @@
-import { useEffect } from "react";
 import "@/App.css";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import axios from "axios";
-import { HOME } from "@/constants/testIds";
+import { BrowserRouter, Routes, Route, useLocation, Navigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { Toaster } from "@/components/ui/sonner";
+import AuthCallback from "@/components/AuthCallback";
+import Landing from "@/pages/Landing";
+import RoleSelect from "@/pages/RoleSelect";
+import JourneyMap from "@/pages/JourneyMap";
+import QuestView from "@/pages/QuestView";
+import Leaderboard from "@/pages/Leaderboard";
+import GuideConsole from "@/pages/GuideConsole";
+import { Compass } from "lucide-react";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
-
-const Home = () => {
-  const helloWorldApi = async () => {
-    try {
-      const response = await axios.get(`${API}/`);
-      console.log(response.data.message);
-    } catch (e) {
-      console.error(e, `errored out requesting / api`);
-    }
-  };
-
-  useEffect(() => {
-    helloWorldApi();
-  }, []);
-
+function Loader() {
   return (
-    <div>
-      <header className="App-header">
-        <a
-          data-testid={HOME.emergentLink}
-          className="App-link"
-          href="https://emergent.sh"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4" />
-        </a>
-        <p className="mt-5">Building something incredible ~!</p>
-      </header>
-    </div>
-  );
-};
-
-function App() {
-  return (
-    <div className="App">
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Home />}>
-            <Route index element={<Home />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-background">
+      <Compass className="w-10 h-10 text-primary animate-spin" style={{ animationDuration: "3s" }} />
     </div>
   );
 }
 
-export default App;
+function Protected({ children, role }) {
+  const { user, loading } = useAuth();
+  if (loading) return <Loader />;
+  if (!user) return <Navigate to="/" replace />;
+  if (!user.role) return <Navigate to="/welcome" replace />;
+  if (role && user.role !== role) {
+    return <Navigate to={user.role === "guide" ? "/guide" : "/map"} replace />;
+  }
+  return children;
+}
+
+function AppRouter() {
+  const location = useLocation();
+  if (location.hash?.includes("session_id=")) {
+    return <AuthCallback />;
+  }
+  return (
+    <Routes>
+      <Route path="/" element={<Landing />} />
+      <Route path="/welcome" element={<RoleSelect />} />
+      <Route path="/map" element={<Protected role="explorer"><JourneyMap /></Protected>} />
+      <Route path="/quest/:questId" element={<Protected role="explorer"><QuestView /></Protected>} />
+      <Route path="/leaderboard" element={<Protected><Leaderboard /></Protected>} />
+      <Route path="/guide" element={<Protected role="guide"><GuideConsole /></Protected>} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+}
+
+export default function App() {
+  return (
+    <div className="App hq-noise">
+      <BrowserRouter>
+        <AuthProvider>
+          <AppRouter />
+          <Toaster position="top-center" richColors />
+        </AuthProvider>
+      </BrowserRouter>
+    </div>
+  );
+}
