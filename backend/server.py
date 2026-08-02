@@ -380,6 +380,7 @@ async def submit_trial(quest_id: str, payload: TrialSubmit, explorer=Depends(req
 
 # ---------------- Hands-On Labs ----------------
 LAB_BONUS = 75
+LAB_QUESTS = {"t1-q8"}  # quests that have a hands-on lab
 
 
 @api_router.post("/labs/{quest_id}/complete")
@@ -387,6 +388,8 @@ async def complete_lab(quest_id: str, explorer=Depends(require_explorer)):
     quest = curriculum.QUEST_INDEX.get(quest_id)
     if not quest:
         raise HTTPException(status_code=404, detail="Quest not found")
+    if quest_id not in LAB_QUESTS:
+        raise HTTPException(status_code=400, detail="This quest has no hands-on lab")
     existing = await db.lab_completions.find_one(
         {"user_id": explorer["user_id"], "quest_id": quest_id}, {"_id": 0}
     )
