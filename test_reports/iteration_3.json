@@ -1,0 +1,19 @@
+{
+  "summary": "Targeted retest of lesson-content bug fix. Backend GET /api/curriculum returns all 33 quests with lesson arrays of 3+ real teaching blocks — 0 quests contain 'Welcome, Explorer' placeholder. Spot-checked trial grading with lesson-derived answers: t1-q1 {a:'Call the meeting to order', b:'Agenda', c:'The official written record'} → 100% mastery; t3-q6 Caesar {a:'Shifting each letter by a fixed amount', b:'B', c:'Each letter with another symbol/letter'} → 100%; t4-q3 ASCII/Binary {a:'0 and 1', b:'2', c:'Maps characters to numbers'} → 100%. Lessons genuinely teach the trial answers. UI: /quest/t1-q1 'The Lesson' section renders real content — H3 subheadings ('Why meeting structure matters', 'The order of business', 'Key roles & records'), 6 bulleted rows, bold terms styled (Call to order, Approve the agenda, Adjourn, chair (president), minutes). No placeholder text present. Full quest flow regression: trial radio options select, reflection input works, submit fires POST /api/trials/t1-q1/submit and shows Result dialog ('Territory Conquered!', 100%, 3/3), Copilot floating button visible. No console/page errors during flow.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": ["/app/backend/tests/backend_test.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "curriculum.py: LESSONS dict is well-structured with 33 keys matching quest ids; _lesson_for() gracefully falls back to [title, sdesc] if a key is missing (defensive).",
+    "QuestView.jsx: LessonContent + renderInline correctly parse '## ' → h3, '- ' → bulleted row, and inline **bold** / `code` / *em*. Clean, readable, and safe (uses string.startsWith/slice, no dangerouslySetInnerHTML)."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100% (33/33 quests have real lesson content; 3/3 spot-checked trials grade 100% with lesson-derived answers)", "frontend": "100% (lesson renders real content; full trial flow, dialog, copilot work)"},
+  "test_credentials": "Explorer bearer 'qa_exp_lesson_tok' → user 'qa-exp-lesson' (seeded via mongosh). Reuseable.",
+  "seed_data_creation": "Seeded 1 explorer session (qa-exp-lesson / qa_exp_lesson_tok). Submitted t1-q1, t3-q6, t4-q3 trials to mastery — 400 horizon_points, 3 compass_marks on that user.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Lesson-content bug is fully fixed. All 33 quests have LESSONS entries in /app/backend/curriculum.py; QuestView renders them via LessonContent (markdown-lite: ##, -, **, `code`). Existing pytest suite at /app/backend/tests/backend_test.py still valid — could add an assertion `all(len(q['lesson'])>=3 and not any('Welcome, Explorer' in b for b in q['lesson']) for q in quests)` to guard against regression.",
+  "rca of the issue": "Before fix, _lesson_for() returned generic placeholder text. Fix introduces a LESSONS dict keyed by quest id with 3+ instructional blocks per quest (headings, bullets, key terms) and QuestView's new LessonContent component to render the markdown-lite structure. Verified content teaches the trial answers (learn→pass loop closed)."
+}

@@ -255,11 +255,231 @@ _RAW = [
 ]
 
 
-def _lesson_for(title, sdesc):
-    return [
-        f"Welcome, Explorer. This quest sharpens one real skill: {title}. {sdesc}",
-        "Study the lesson, ask the Copilot for a hint if you get stuck, and score at least 80% to earn your Compass Mark and full Horizon Points.",
-    ]
+LESSONS = {
+    "t1-q1": [
+        "## Why meeting structure matters",
+        "A business meeting follows a predictable order so everyone knows what happens next and decisions are made fairly.",
+        "## The order of business",
+        "- **Call to order** — the chair officially starts the meeting (this is always first).",
+        "- **Approve the agenda** — the *agenda* is the written plan/list of topics the meeting will cover.",
+        "- **Old & new business** — the group discusses items and makes decisions.",
+        "- **Adjourn** — the meeting is officially ended.",
+        "## Key roles & records",
+        "- The **chair (president)** leads the meeting and keeps it on track.",
+        "- The **minutes** are the official written record of what happened and what was decided.",
+        "Remember: the *agenda* is the plan; the *minutes* are the record.",
+    ],
+    "t1-q2": [
+        "## Opening a meeting",
+        "The chair opens the meeting by calling it to order once a **quorum** is present — the *minimum number of members needed* to legally conduct business.",
+        "## Closing a meeting",
+        "To end a meeting, a member moves to **adjourn**. Once seconded and approved, the meeting is officially over.",
+        "- Opening flow: chair calls to order → welcome → approve agenda.",
+        "- Closing flow: finish business → move to adjourn → chair declares the meeting closed.",
+    ],
+    "t1-q3": [
+        "## Making decisions with motions",
+        "A **motion** is a formal proposal to take action.",
+        "- After a motion is made, another member must **second** it before it can be discussed.",
+        "- The group then votes; most motions pass with a **majority vote** (more than half).",
+        "- To **table a motion** means to set it aside to deal with later.",
+    ],
+    "t1-q4": [
+        "## Professional etiquette",
+        "Etiquette is the set of polite, professional behaviours expected in a workplace.",
+        "- Be **punctual and respectful**.",
+        "- Write emails with a **clear subject line and a polite tone** (greeting, message, sign-off).",
+        "- When someone else is speaking, **listen actively** — don't interrupt or check your phone.",
+    ],
+    "t1-q5": [
+        "## What makes a leader effective",
+        "- **Communication** — clear speaking *and* active listening.",
+        "- **Integrity** — doing the right thing even when it's hard.",
+        "- **Empathy** — understanding how others feel.",
+        "Great leaders serve the team, not just themselves.",
+    ],
+    "t1-q6": [
+        "## Three common leadership styles",
+        "- **Autocratic** — the leader makes decisions alone, with little input.",
+        "- **Democratic** — the leader involves the team in decisions.",
+        "- **Laissez-faire** — the leader gives the team lots of freedom to work independently.",
+        "Each style fits different situations and teams.",
+    ],
+    "t1-q7": [
+        "## Leading through tough moments",
+        "- When teammates argue, first **listen to both sides** before deciding.",
+        "- If a deadline is at risk, **communicate early and adjust the plan** — don't hide it.",
+        "- Encourage quiet members by **inviting and welcoming their input**.",
+    ],
+    "t1-q8": [
+        "## Running a full meeting (capstone)",
+        "Put every skill together in the correct order:",
+        "- **Call to order → approve agenda → handle motions → adjourn.**",
+        "- Use the **agenda and time limits** to keep the meeting on track.",
+        "- Close by **summarizing decisions and adjourning**.",
+        "Tip: launch the Mock Meeting Lab to practice this hands-on.",
+    ],
+    "t2-q1": [
+        "## Formatting a professional document",
+        "- A **header** repeats at the **top of every page**; a **footer** sits at the bottom (and often holds **page numbers**).",
+        "- Use **heading styles** to mark titles and sections consistently.",
+        "- Consistent formatting makes a document easy to read and look professional.",
+    ],
+    "t2-q2": [
+        "## Core spreadsheet formulas",
+        "- `=SUM(A1:A5)` **adds** all the values from A1 through A5.",
+        "- `=AVERAGE(range)` finds the **mean** (total ÷ count).",
+        "- `=COUNT(B1:B10)` counts how many cells contain **numbers**.",
+        "Ranges use a colon, e.g. `A1:A5`.",
+    ],
+    "t2-q3": [
+        "## Showing and ordering data",
+        "- A **bar chart** compares categories.",
+        "- A **pie chart** shows **parts of a whole**.",
+        "- Sorting **ascending** = smallest to largest; **descending** = largest to smallest.",
+    ],
+    "t2-q4": [
+        "## Designing clear slides",
+        "- The **5×5 rule**: about **5 lines per slide and 5 words per line** — keep it short.",
+        "- Use **few words and clear visuals**; slides support the speaker, they don't replace them.",
+        "- Highlight **key points** instead of pasting paragraphs.",
+    ],
+    "t2-q5": [
+        "## Using AI to assist your work",
+        "- AI **grammar** tools fix spelling and improve clarity.",
+        "- AI **data** helpers suggest summaries and spot patterns.",
+        "- Always **review and verify** AI output — it can be wrong or biased. AI assists your thinking; it doesn't replace it.",
+    ],
+    "t2-q6": [
+        "## Writing good prompts & building bots",
+        "- A strong prompt is **specific about the task and the goal**.",
+        "- If the answer is off, **refine the prompt** with more detail and try again (iterate).",
+        "- A chatbot's **system message / persona** defines how it should behave and respond.",
+    ],
+    "t2-q7": [
+        "## Using AI responsibly",
+        "- Passing AI work off as your own is **academic dishonesty**.",
+        "- A responsible user **gives credit and checks for bias**.",
+        "- AI outputs can be **wrong or biased**, so verify anything important.",
+    ],
+    "t2-q8": [
+        "## Productivity career pathways",
+        "- **Data analyst** — interprets data to inform decisions.",
+        "- **Digital marketer** — promotes products and brands online.",
+        "- **Administrative professional** — organizes and supports office operations.",
+    ],
+    "t3-q1": [
+        "## Why cybersecurity matters",
+        "- Cybersecurity **protects data, systems, and people**.",
+        "- A **data breach** can expose stolen personal information.",
+        "- Threats can affect **anyone**, not just big companies — so everyone should care.",
+    ],
+    "t3-q2": [
+        "## Common cyber threats",
+        "- **Malware** is short for **malicious software** designed to harm or steal.",
+        "- **Phishing** tricks you into **revealing information** (like passwords).",
+        "- **Ransomware** **locks your files and demands payment**.",
+    ],
+    "t3-q3": [
+        "## The CIA Triad",
+        "- **Confidentiality** — only authorized people can see the data.",
+        "- **Integrity** — data is **accurate and unaltered**.",
+        "- **Availability** — authorized users can **access the data when needed**.",
+    ],
+    "t3-q4": [
+        "## Staying safe online",
+        "- The strongest password is a **long mix of letters, numbers, and symbols**.",
+        "- **Two-factor authentication (2FA)** adds a **second verification step**.",
+        "- **Never** reuse the same password across accounts.",
+    ],
+    "t3-q5": [
+        "## Spotting phishing",
+        "- Red flags include **urgent threats and odd/mismatched links**.",
+        "- If asked for your password, **never send it — report the email**.",
+        "- **Hover over a link** to preview its real destination before clicking.",
+    ],
+    "t3-q6": [
+        "## Classic ciphers",
+        "- A **Caesar cipher** shifts each letter by a fixed amount. With a shift of **+1**: A→B, B→C, and so on.",
+        "- A **substitution cipher** replaces each letter with another symbol or letter using a key.",
+        "Example: `HI` shifted +1 becomes `IJ`.",
+        "Tip: launch the Cipher Playground Lab to encode and decode messages yourself.",
+    ],
+    "t3-q7": [
+        "## Encryption & AI detection",
+        "- **Symmetric** encryption uses the **same key** to encrypt and decrypt.",
+        "- **Asymmetric** encryption uses a **public key and a private key**.",
+        "- AI helps security by **detecting unusual (anomalous) activity**.",
+    ],
+    "t3-q8": [
+        "## Thinking like an attacker",
+        "- Finding weaknesses first helps you **fix vulnerabilities before attackers do**.",
+        "- A common weak point is **shared or simple passwords**.",
+        "- A strong defense is **training people to spot red flags** like phishing.",
+    ],
+    "t4-q1": [
+        "## The data problem-solving process",
+        "- Start by **defining a question**.",
+        "- Collect data, then **clean and organize it**.",
+        "- Analyze the data, then **communicate the findings**.",
+    ],
+    "t4-q2": [
+        "## Choosing the right representation",
+        "- **Line graph** — shows change over time.",
+        "- **Bar chart** — compares amounts across groups.",
+        "- **Table** — best when you need exact values.",
+    ],
+    "t4-q3": [
+        "## ASCII & binary",
+        "- **Binary** uses only the digits **0 and 1**.",
+        "- Binary `10` equals **2** in decimal (1×2 + 0×1).",
+        "- **ASCII** maps characters to numbers so computers can store text.",
+        "Tip: decimal 5 = binary `101`.",
+    ],
+    "t4-q4": [
+        "## Cleaning data",
+        "- Cleaning means **fixing typos and removing duplicates/errors**.",
+        "- **Irrelevant data** doesn't help answer your question.",
+        "- Dirty data can lead to **wrong conclusions**.",
+    ],
+    "t4-q5": [
+        "## Building & reading bar charts",
+        "- **Taller bars = larger values.**",
+        "- **Axis labels** explain what is being measured.",
+        "- Bar charts are best for **comparing categories**.",
+    ],
+    "t4-q6": [
+        "## Patterns and evidence",
+        "- A **trend** is a general pattern in the data.",
+        "- A strong claim is **backed by evidence** from the data.",
+        "- **Correlation** means two things move together — but that doesn't always mean one **causes** the other.",
+    ],
+    "t4-q7": [
+        "## Data-driven decisions",
+        "- A **decision algorithm** is a step-by-step rule for choosing.",
+        "- Example conditional rule: `IF temperature > 30 THEN suggest water`.",
+        "- Good algorithms use **data and clear rules** to decide.",
+    ],
+    "t4-q8": [
+        "## Machine learning & data mining",
+        "- **Machine learning** lets computers **learn patterns from data**.",
+        "- **Data mining** means **finding useful patterns in large data sets**.",
+        "- Models improve with **more quality training data**.",
+    ],
+    "t4-q9": [
+        "## Data career clusters",
+        "- **Cybersecurity analyst** — protects systems and data.",
+        "- **Genetics / bioinformatics** — uses data to study genes and biology.",
+        "- **Business data roles** — help a company make smarter decisions with data.",
+    ],
+}
+
+
+def _lesson_for(qid, title, sdesc):
+    blocks = LESSONS.get(qid)
+    if blocks:
+        return blocks
+    return [f"## {title}", sdesc]
 
 
 def _build():
@@ -273,7 +493,7 @@ def _build():
             "dok": dok,
             "points": _PTS[dok],
             "standard": {"code": code, "description": sdesc},
-            "lesson": _lesson_for(title, sdesc),
+            "lesson": _lesson_for(qid, title, sdesc),
             "trial": {"questions": questions, "pass_threshold": 80},
             "reflection": reflection,
         })

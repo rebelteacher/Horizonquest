@@ -12,6 +12,33 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { ArrowLeft, ScrollText, Swords, CheckCircle2, XCircle, Gem, Anchor, Loader2, Trophy } from "lucide-react";
 import { toast } from "sonner";
 
+function renderInline(text) {
+  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g);
+  return parts.map((p, i) => {
+    if (p.startsWith("**") && p.endsWith("**")) return <strong key={i} className="text-white font-semibold">{p.slice(2, -2)}</strong>;
+    if (p.startsWith("`") && p.endsWith("`")) return <code key={i} className="px-1.5 py-0.5 rounded bg-white/10 font-mono-data text-[#22D3EE] text-[0.85em]">{p.slice(1, -1)}</code>;
+    if (p.startsWith("*") && p.endsWith("*")) return <em key={i} className="text-slate-200">{p.slice(1, -1)}</em>;
+    return <span key={i}>{p}</span>;
+  });
+}
+
+function LessonContent({ blocks }) {
+  return (
+    <div className="space-y-2.5">
+      {blocks.map((b, i) => {
+        if (b.startsWith("## ")) return <h3 key={i} className="font-display text-xl text-primary mt-5 first:mt-0">{renderInline(b.slice(3))}</h3>;
+        if (b.startsWith("- ")) return (
+          <div key={i} className="flex gap-3 text-slate-300 leading-relaxed">
+            <span className="mt-2 w-1.5 h-1.5 rounded-full bg-[#22D3EE] shrink-0" />
+            <p className="flex-1">{renderInline(b.slice(2))}</p>
+          </div>
+        );
+        return <p key={i} className="text-slate-300 leading-relaxed">{renderInline(b)}</p>;
+      })}
+    </div>
+  );
+}
+
 export default function QuestView() {
   const { questId } = useParams();
   const navigate = useNavigate();
@@ -83,7 +110,7 @@ export default function QuestView() {
         {/* Lesson */}
         <section className="mt-8 hq-glass rounded-2xl p-6 border-t border-t-primary/30 hq-fade-up" style={{ animationDelay: "0.1s" }}>
           <h2 className="font-display text-2xl flex items-center gap-2 mb-4"><ScrollText className="w-5 h-5 text-primary" /> The Lesson</h2>
-          {quest.lesson.map((para, i) => (<p key={i} className="text-slate-300 leading-relaxed mb-3 last:mb-0">{para}</p>))}
+          <LessonContent blocks={quest.lesson} />
         </section>
 
         {/* Trial */}
