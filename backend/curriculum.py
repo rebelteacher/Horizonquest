@@ -515,7 +515,7 @@ EXTRA_QUESTIONS = {
     "t4-q6": [_q("d", "Correlation means two things:", ["Move together, but may not cause each other", "Always cause each other", "Are unrelated", "Are equal"], "Move together, but may not cause each other")],
     "t4-q7": [_q("d", "'IF temperature > 30 THEN suggest water' is an example of a:", ["Conditional rule", "Pie chart", "Cipher", "Footer"], "Conditional rule")],
     "t4-q8": [_q("d", "A machine learning model improves with:", ["More quality training data", "Less data", "No feedback", "Random noise"], "More quality training data")],
-    "t4-q9": [_q("e", "A cybersecurity analyst works to:", ["Protect systems and data", "Design clothing", "Cook food", "Teach music"], "Protect systems and data")],
+    "t4-q9": [_q("d", "A cybersecurity analyst works to:", ["Protect systems and data", "Design clothing", "Cook food", "Teach music"], "Protect systems and data")],
 }
 
 
