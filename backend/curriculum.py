@@ -482,9 +482,47 @@ def _lesson_for(qid, title, sdesc):
     return [f"## {title}", sdesc]
 
 
+EXTRA_QUESTIONS = {
+    "t1-q1": [_q("d", "The person who leads a business meeting is the:", ["Chair (president)", "Secretary", "Guest", "Timekeeper"], "Chair (president)")],
+    "t1-q2": [_q("d", "Once the meeting's business is finished, the group should:", ["Move to adjourn", "Start over", "Skip the agenda", "Ignore the chair"], "Move to adjourn")],
+    "t1-q3": [_q("d", "Before a motion can be discussed, it must first be:", ["Seconded", "Printed", "Emailed", "Ignored"], "Seconded")],
+    "t1-q4": [_q("d", "A professional email should end with:", ["A polite sign-off", "No name", "Only emojis", "A demand"], "A polite sign-off")],
+    "t1-q5": [_q("d", "Active listening is part of a leader's:", ["Communication skills", "Budget", "Uniform", "Schedule"], "Communication skills")],
+    "t1-q6": [_q("d", "A leader who gives the team lots of freedom uses which style?", ["Laissez-faire", "Autocratic", "Strict", "Silent"], "Laissez-faire")],
+    "t1-q7": [_q("d", "If the team might miss a deadline, a good leader will:", ["Communicate early and adjust the plan", "Hide it", "Blame one member", "Quit"], "Communicate early and adjust the plan")],
+    "t1-q8": [_q("d", "The chair keeps a meeting on track using:", ["The agenda and time limits", "Random topics", "No plan", "Only jokes"], "The agenda and time limits")],
+    "t2-q1": [_q("d", "Using heading styles helps a document:", ["Look consistent and organized", "Load faster", "Use less ink", "Hide text"], "Look consistent and organized")],
+    "t2-q2": [_q("d", "Which formula counts how many cells contain numbers?", ["=COUNT(range)", "=SUM(range)", "=AVERAGE(range)", "=MAX(range)"], "=COUNT(range)")],
+    "t2-q3": [_q("d", "Sorting data 'descending' means:", ["Largest to smallest", "Smallest to largest", "Alphabetical only", "Random order"], "Largest to smallest")],
+    "t2-q4": [_q("d", "Slides should mainly contain:", ["Key points and visuals", "Full paragraphs", "Tiny text", "Everything you'll say"], "Key points and visuals")],
+    "t2-q5": [_q("d", "Before trusting an AI answer you should always:", ["Review and verify it", "Accept it blindly", "Delete it", "Ignore it"], "Review and verify it")],
+    "t2-q6": [_q("d", "To improve a weak AI answer you should:", ["Refine the prompt with more detail", "Repeat the same prompt", "Give up", "Turn off wifi"], "Refine the prompt with more detail")],
+    "t2-q7": [_q("d", "Claiming AI-made work as fully your own is:", ["Academic dishonesty", "Encouraged", "Required", "Impossible"], "Academic dishonesty")],
+    "t2-q8": [_q("d", "Who promotes products and brands online?", ["A digital marketer", "A surgeon", "A pilot", "A chef"], "A digital marketer")],
+    "t3-q1": [_q("d", "Cybersecurity protects:", ["Data, systems, and people", "Only printers", "Only games", "Nothing"], "Data, systems, and people")],
+    "t3-q2": [_q("d", "'Malware' is short for:", ["Malicious software", "Mail hardware", "Manual warning", "Major wire"], "Malicious software")],
+    "t3-q3": [_q("d", "In the CIA triad, 'Availability' means:", ["Authorized users can access data when needed", "Data is deleted", "No one can log in", "Data is public"], "Authorized users can access data when needed")],
+    "t3-q4": [_q("d", "Two-factor authentication (2FA) adds:", ["A second verification step", "More spam", "A weaker password", "Nothing"], "A second verification step")],
+    "t3-q5": [_q("d", "Hovering over a link lets you:", ["See its real destination", "Download it instantly", "Delete your account", "Change grades"], "See its real destination")],
+    "t3-q6": [_q("d", "With a Caesar shift of +1, the letter 'H' becomes:", ["I", "G", "H", "A"], "I")],
+    "t3-q7": [_q("d", "Asymmetric encryption uses:", ["A public and a private key", "One shared key", "No keys", "A password hint"], "A public and a private key")],
+    "t3-q8": [_q("d", "A strong defense against phishing is:", ["Training people to spot red flags", "Sharing passwords", "Ignoring reports", "Turning off email forever"], "Training people to spot red flags")],
+    "t4-q1": [_q("d", "The data problem-solving process usually begins by:", ["Defining a question", "Making a chart", "Deleting data", "Guessing"], "Defining a question")],
+    "t4-q2": [_q("d", "To compare amounts across groups, the best choice is a:", ["Bar chart", "Line graph", "Single number", "Paragraph"], "Bar chart")],
+    "t4-q3": [_q("d", "The decimal number 5 written in binary is:", ["101", "110", "011", "100"], "101")],
+    "t4-q4": [_q("d", "Removing duplicates and fixing typos is part of:", ["Data cleaning", "Data hiding", "Guessing", "Charting"], "Data cleaning")],
+    "t4-q5": [_q("d", "Axis labels on a chart should:", ["Explain what is measured", "Be left blank", "Be random", "Be hidden"], "Explain what is measured")],
+    "t4-q6": [_q("d", "Correlation means two things:", ["Move together, but may not cause each other", "Always cause each other", "Are unrelated", "Are equal"], "Move together, but may not cause each other")],
+    "t4-q7": [_q("d", "'IF temperature > 30 THEN suggest water' is an example of a:", ["Conditional rule", "Pie chart", "Cipher", "Footer"], "Conditional rule")],
+    "t4-q8": [_q("d", "A machine learning model improves with:", ["More quality training data", "Less data", "No feedback", "Random noise"], "More quality training data")],
+    "t4-q9": [_q("e", "A cybersecurity analyst works to:", ["Protect systems and data", "Design clothing", "Cook food", "Teach music"], "Protect systems and data")],
+}
+
+
 def _build():
     quests = []
     for qid, tid, order, title, dok, code, sdesc, questions, reflection in _RAW:
+        questions = list(questions) + EXTRA_QUESTIONS.get(qid, [])
         quests.append({
             "id": qid,
             "territory_id": tid,
@@ -521,7 +559,6 @@ def public_curriculum():
             "points": q["points"],
             "standard": q["standard"],
             "lesson": q["lesson"],
-            "reflection": q["reflection"],
             "trial": {
                 "pass_threshold": q["trial"]["pass_threshold"],
                 "questions": [

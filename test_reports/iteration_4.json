@@ -1,0 +1,32 @@
+{
+  "summary": "Verified FIX 1 (post-trial navigation) and FIX 2 (reflection removed / 4 MC per quest) end-to-end. Backend: pytest 23 passed / 1 skipped. GET /api/curriculum returns exactly 4 MC trial questions per quest for all 33 quests, no 'reflection' key exposed publicly, and no 'answer' leak. Grading: t1-q1 all-4-correct -> score=100, mastery=true; 3/4 correct -> score=75, mastery=false (80% threshold enforced). UI on /quest/t1-q1: no reflection-input element, 4 option groups a/b/c/d rendered. After submitting 4/4 correct, Result dialog shows result-retry-btn (Review answers) + result-map-btn (Back to Map) + result-next-quest-btn (Continue to next quest); result-rankings-btn is absent. Clicking Continue navigates to /quest/t1-q2 with fresh state (no leftover dialog, no pre-selected radios). t1-q2 also has 4 MC (a,b,c,d) and no reflection textarea. When submitting non-mastery on t1-q2, dialog swaps in result-rankings-btn (no result-next-quest-btn), and result-map-btn still routes to /map. Copilot floating button still visible. AI copilot streaming endpoint still returns content.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/curriculum (quest t4-q9)", "issue": "The 4th trial question for t4-q9 uses id 'e' instead of 'd' (all other 32 quests use a,b,c,d). Cosmetic — grading still works because grade() iterates by qq['id'] — but is inconsistent with the spec 'ids a,b,c,d'. Fix: change EXTRA_QUESTIONS['t4-q9'] in /app/backend/curriculum.py from _q('e', ...) to _q('d', ...)."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/backend_test.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Optional/minor: rename question id 'e' -> 'd' in EXTRA_QUESTIONS['t4-q9'] for consistency with the a/b/c/d convention."
+  ],
+  "critical_code_review_comments": [
+    "QuestView.jsx: useEffect resets answers/result/submitting on questId change (good — no leftover state bleed between quests). nextQuestId computed only within same territory (correct scoping).",
+    "curriculum.py public_curriculum() correctly strips 'reflection' and 'answer' from the response — no leakage.",
+    "grade() computes score as round(correct/total*100). With total=4, possible scores are 0/25/50/75/100. 80% threshold means only 4/4 = mastery, which matches the request's expectation.",
+    "Minor: t4-q9 uses question id 'e' — spec/test convention expects 'd'. Non-blocking."
+  ],
+  "updated_files": ["/app/backend/tests/backend_test.py"],
+  "success_rate": {"backend": "100% (23/23 executed pass, 1 skipped due to no pending review)", "frontend": "100% (all fix-1 & fix-2 UI assertions pass)"},
+  "test_credentials": "Explorer bearer 'qa_exp_tok' (user_id qa-exp, role explorer, fleet North Star) and Guide bearer 'qa_guide_tok' (user_id qa-guide) — reseeded via mongosh at start of run.",
+  "seed_data_creation": "Reseeded qa-exp and qa-guide users + sessions in test_database. During UI testing, qa-exp submitted t1-q1 (mastery) and t1-q2 (failed attempt).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "backend_test.py now enforces: every quest has 4 MC questions, no reflection field, no answer leak. Includes explicit 4/4-correct=100/mastery and 3/4-correct=75/no-mastery cases for t1-q1. UI selectors verified: option-<qid>-<idx> (qid in a,b,c,d), submit-trial-btn, result-retry-btn, result-map-btn, result-next-quest-btn (mastery+next exists), result-rankings-btn (otherwise). Seeded creds: qa_exp_tok / qa_guide_tok.",
+  "rca of the issue": "Not a bug run — this iteration validated two intentional fixes. Both behave as specified. The only nit is t4-q9's 4th question uses id 'e' (author probably intended to keep sequence going after original 'a,b,c'); grading is unaffected."
+}

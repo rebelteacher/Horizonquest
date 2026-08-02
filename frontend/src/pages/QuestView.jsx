@@ -5,11 +5,10 @@ import { useAuth } from "@/context/AuthContext";
 import AppNav from "@/components/AppNav";
 import AICopilot from "@/components/AICopilot";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ArrowLeft, ScrollText, Swords, CheckCircle2, XCircle, Gem, Anchor, Loader2, Trophy } from "lucide-react";
+import { ArrowLeft, ScrollText, Swords, Gem, Anchor, Loader2, Trophy, Map, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 
 function renderInline(text) {
@@ -44,20 +43,28 @@ export default function QuestView() {
   const navigate = useNavigate();
   const { refresh } = useAuth();
   const [quest, setQuest] = useState(null);
+  const [nextQuestId, setNextQuestId] = useState(null);
   const [answers, setAnswers] = useState({});
-  const [reflection, setReflection] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    setAnswers({});
+    setResult(null);
+    setSubmitting(false);
+    setLoading(true);
     (async () => {
       const cur = await api.get("/curriculum");
       const q = cur.data.quests.find((x) => x.id === questId);
       setQuest(q || null);
-      const prog = await api.get("/me/progress");
-      const p = prog.data.progress.find((x) => x.quest_id === questId);
-      if (p?.reflection) setReflection(p.reflection);
+      if (q) {
+        const sameTerritory = cur.data.quests
+          .filter((x) => x.territory_id === q.territory_id)
+          .sort((a, b) => a.order - b.order);
+        const next = sameTerritory.find((x) => x.order === q.order + 1);
+        setNextQuestId(next ? next.id : null);
+      }
       setLoading(false);
     })();
   }, [questId]);
@@ -71,7 +78,7 @@ export default function QuestView() {
     }
     setSubmitting(true);
     try {
-      const res = await api.post(`/trials/${questId}/submit`, { answers, reflection });
+      const res = await api.post(`/trials/${questId}/submit`, { answers });
       setResult(res.data);
       await refresh();
       if (res.data.mastery) {
@@ -133,19 +140,6 @@ export default function QuestView() {
           </div>
         </section>
 
-        {/* Reflection */}
-        <section className="mt-6 hq-glass rounded-2xl p-6 hq-fade-up" style={{ animationDelay: "0.3s" }}>
-          <h2 className="font-display text-2xl mb-2">Reflection <span className="text-sm text-muted-foreground font-body">(sent to your Guide · +25 bonus if approved)</span></h2>
-          <p className="text-sm text-muted-foreground mb-4">{quest.reflection}</p>
-          <Textarea
-            data-testid="reflection-input"
-            value={reflection}
-            onChange={(e) => setReflection(e.target.value)}
-            placeholder="Share your thinking, Explorer…"
-            className="bg-white/5 border-white/10 min-h-[100px]"
-          />
-        </section>
-
         <Button
           data-testid="submit-trial-btn"
           onClick={submit}
@@ -180,11 +174,22 @@ export default function QuestView() {
 
                 {!result.mastery && <p className="text-sm text-muted-foreground mt-5">Reach 80% to earn full points and a Compass Mark. Retry anytime!</p>}
               </div>
-              <div className="flex gap-3">
-                <Button data-testid="result-retry-btn" variant="outline" className="flex-1 border-white/15" onClick={() => setResult(null)}>Review answers</Button>
-                <Button data-testid="result-map-btn" className="flex-1 bg-primary text-primary-foreground hover:bg-[#FDBA74]" onClick={() => navigate("/leaderboard")}>
-                  <Trophy className="w-4 h-4 mr-2" /> See rankings
-                </Button>
+              <div className="space-y-3">
+                <div className="flex gap-3">
+                  <Button data-testid="result-retry-btn" variant="outline" className="flex-1 border-white/15" onClick={() => setResult(null)}>Review answers</Button>
+                  <Button data-testid="result-map-btn" variant="outline" className="flex-1 border-white/15" onClick={() => navigate("/map")}>
+                    <Map className="w-4 h-4 mr-2" /> Back to Map
+                  </Button>
+                </div>
+                {result.mastery && nextQuestId ? (
+                  <Button data-testid="result-next-quest-btn" className="w-full bg-primary text-primary-foreground hover:bg-[#FDBA74]" onClick={() => navigate(`/quest/${nextQuestId}`)}>
+                    Continue to next quest <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                ) : (
+                  <Button data-testid="result-rankings-btn" className="w-full bg-primary text-primary-foreground hover:bg-[#FDBA74]" onClick={() => navigate("/leaderboard")}>
+                    <Trophy className="w-4 h-4 mr-2" /> See rankings
+                  </Button>
+                )}
               </div>
             </>
           )}

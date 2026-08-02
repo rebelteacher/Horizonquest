@@ -44,16 +44,23 @@ class TestCurriculum:
         names = [t["name"] for t in d["territories"]]
         assert names == ["Summit of Leadership", "Productivity Peaks", "The Cyber Frontier", "Data Delta"]
         assert len(d["quests"]) == 33
-        # standards should reflect new codes
         codes = [q["standard"]["code"] for q in d["quests"]]
         assert any(c.startswith("BL.1.") for c in codes)
         assert any(c.startswith("PA.2.") for c in codes)
         assert any(c.startswith("CY.3.") for c in codes)
         assert any(c.startswith("DS.4.") for c in codes)
-        # should not leak answers
         for q in d["quests"]:
+            # FIX 2: Every quest has exactly 4 MC trial questions
+            assert len(q["trial"]["questions"]) == 4, f"{q['id']} has {len(q['trial']['questions'])} questions"
+            # question ids should be a,b,c,d (NOTE: t4-q9 currently uses 'e' - minor inconsistency)
+            qids = [qq["id"] for qq in q["trial"]["questions"]]
+            assert len(qids) == 4 and len(set(qids)) == 4, f"{q['id']} qids={qids}"
+            # FIX 2: reflection field must NOT be exposed publicly
+            assert "reflection" not in q, f"{q['id']} still exposes reflection"
             for qq in q["trial"]["questions"]:
                 assert "answer" not in qq
+                assert qq["type"] == "mc"
+                assert isinstance(qq["options"], list) and len(qq["options"]) >= 2
 
 
 # --------- RBAC ----------
@@ -67,7 +74,7 @@ class TestRBAC:
         assert r.status_code == 403
 
     def test_guide_cannot_submit_trial(self):
-        r = requests.post(f"{API}/trials/t1-q1/submit", headers=GH, json={"answers": {}, "reflection": ""})
+        r = requests.post(f"{API}/trials/t1-q1/submit", headers=GH, json={"answers": {}})
         assert r.status_code == 403
 
     def test_unauth_expeditions(self):
@@ -126,9 +133,9 @@ class TestExpeditions:
 # --------- Trial submission ----------
 class TestTrial:
     def test_submit_t1q1_full(self):
+        # FIX 3: 4 MC answers, all correct => 100% mastery
         payload = {
-            "answers": {"a": "Call the meeting to order", "b": "Agenda", "c": "The official written record"},
-            "reflection": "TEST reflection - agendas keep meetings focused and productive."
+            "answers": {"a": "Call the meeting to order", "b": "Agenda", "c": "The official written record", "d": "Chair (president)"},
         }
         r = requests.post(f"{API}/trials/t1-q1/submit", headers=EH, json=payload)
         assert r.status_code == 200
@@ -138,20 +145,28 @@ class TestTrial:
         assert d["horizon_points"] >= 100
         assert d["compass_marks"] >= 1
 
-    def test_submit_partial(self):
-        payload = {"answers": {"a": "Call the meeting to order", "b": "Motion", "c": "The break time"}, "reflection": ""}
+    def test_submit_three_of_four_fails_mastery(self):
+        # FIX 3: 3/4 = 75% -> below 80% threshold, mastery False
+        payload = {"answers": {"a": "Call the meeting to order", "b": "Agenda", "c": "The official written record", "d": "Timekeeper"}}
         r = requests.post(f"{API}/trials/t1-q1/submit", headers=EH, json=payload)
         assert r.status_code == 200
         d = r.json()
-        # score for this attempt is 33; mastery in response reflects THIS attempt
-        assert d["score"] == 33
+        assert d["score"] == 75
+        assert d["mastery"] is False
+
+    def test_submit_partial(self):
+        payload = {"answers": {"a": "Call the meeting to order", "b": "Motion", "c": "The break time", "d": "Timekeeper"}}
+        r = requests.post(f"{API}/trials/t1-q1/submit", headers=EH, json=payload)
+        assert r.status_code == 200
+        d = r.json()
+        assert d["score"] == 25
         assert d["mastery"] is False
         # But stored best/mastery should be preserved
         assert d["horizon_points"] >= 100
         assert d["compass_marks"] >= 1
 
     def test_bad_quest(self):
-        r = requests.post(f"{API}/trials/no-such/submit", headers=EH, json={"answers": {}, "reflection": ""})
+        r = requests.post(f"{API}/trials/no-such/submit", headers=EH, json={"answers": {}})
         assert r.status_code == 404
 
 
