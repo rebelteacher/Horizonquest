@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ArrowLeft, ScrollText, Swords, CheckCircle2, XCircle, Gem, Anchor, Loader2, Trophy } from "lucide-react";
 import { toast } from "sonner";
 
@@ -47,8 +47,11 @@ export default function QuestView() {
       const res = await api.post(`/trials/${questId}/submit`, { answers, reflection });
       setResult(res.data);
       await refresh();
-      if (res.data.mastery) toast.success(`Mastery! +${res.data.points_awarded} Horizon Points`);
-      else toast.info(`Trial scored ${res.data.score}%. Keep pushing for mastery (80%+).`);
+      if (res.data.mastery) {
+        toast.success(res.data.points_awarded > 0 ? `Mastery! +${res.data.points_awarded} Horizon Points` : "Mastery preserved ⚓");
+      } else {
+        toast.info(`Trial scored ${res.data.score}%. Keep pushing for mastery (80%+).`);
+      }
     } catch (e) {
       toast.error("Could not submit the Trial. Try again.");
     } finally {
@@ -135,6 +138,7 @@ export default function QuestView() {
                 <DialogTitle className="font-display text-3xl text-center">
                   {result.mastery ? "Territory Conquered!" : "Trial Complete"}
                 </DialogTitle>
+                <DialogDescription className="text-center">Your Trial results are in, Explorer.</DialogDescription>
               </DialogHeader>
               <div className="text-center py-4">
                 <div className={`mx-auto w-24 h-24 rounded-full flex items-center justify-center mb-4 ${result.mastery ? "bg-primary/15 hq-glow-gold" : "bg-white/5"}`}>

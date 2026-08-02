@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Anchor, Plus, Copy, Users, ClipboardCheck, BarChart3, Trophy, Loader2, Check, Compass } from "lucide-react";
 import { toast } from "sonner";
@@ -123,7 +123,7 @@ function ExpeditionsTab({ expeditions, loading, reload }) {
 
       <Dialog open={!!members} onOpenChange={(o) => !o && setMembers(null)}>
         <DialogContent className="hq-glass border-white/10">
-          <DialogHeader><DialogTitle className="font-display text-2xl">{members?.name} · Crew</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="font-display text-2xl">{members?.name} · Crew</DialogTitle><DialogDescription>Explorers who have joined this Expedition.</DialogDescription></DialogHeader>
           <div className="space-y-2 max-h-96 overflow-y-auto hq-scrollbar">
             {members?.list.length === 0 && <p className="text-muted-foreground text-sm">No Explorers have joined yet.</p>}
             {members?.list.map((m) => (
