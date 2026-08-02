@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sparkles, Send, Bot } from "lucide-react";
@@ -72,6 +72,7 @@ export default function AICopilot({ questId, questTitle }) {
           <SheetTitle className="flex items-center gap-2 font-display text-2xl">
             <Bot className="w-6 h-6 text-[#22D3EE]" /> Copilot
           </SheetTitle>
+          <SheetDescription className="sr-only">AI learning copilot that gives hints, not answers.</SheetDescription>
           {questTitle && <p className="text-sm text-muted-foreground text-left">Guiding you through “{questTitle}”</p>}
         </SheetHeader>
 

@@ -25,7 +25,13 @@ Gamified education platform. Stack: React + FastAPI + MongoDB. Auth: Google sign
 - Gamification: Horizon Points, Compass Marks, Explorer Rankings + Fleet standings
 - AI Copilot (Claude Sonnet 4.6) giving hints, never answers (streaming)
 
-## Implemented (2026-08-02)
+## Implemented (2026-08-02) — Iteration 2: CTE realignment + rebrand
+- ✅ Curriculum swapped to real 4-module CTE content: Summit of Leadership (Business), Productivity Peaks (Productivity & AI), The Cyber Frontier (Cybersecurity), Data Delta (Data Science) — 33 quests, standards BL.1.*/PA.2.*/CY.3.*/DS.4.*, DOK 2–4, new answer keys
+- ✅ Futuristic-Viking theme: midnight blue + electric teal + sunrise orange; brand logo + themed world map assets wired into nav, landing hero, and Journey Map
+- ✅ Rank tiers (Navigator / Voyager / Conqueror) on the leaderboard
+- ✅ Re-tested: backend 100%, frontend 100%
+
+## Implemented (2026-08-02) — Iteration 1
 - ✅ Emergent Google Auth (session, /auth/me, role select, logout)
 - ✅ 4 Territories / 33 quests curriculum with DOK 2–4 + answer keys
 - ✅ Guide Console: expeditions + join codes, members, review queue (+25 bonus), mastery chart/table, leaderboard toggle
