@@ -1,0 +1,121 @@
+{
+  "theme": "dark",
+  "archetype": "Luxury Dark & Cartography (Epic Ocean Fantasy)",
+  "typography": {
+    "headings": {
+      "fontFamily": "Cormorant Garamond, serif",
+      "weights": ["400", "600", "700"],
+      "usage": "Use for all major section titles, territory names, and epic quest headings. Apply 'tracking-tight' for big sizes."
+    },
+    "body": {
+      "fontFamily": "Outfit, sans-serif",
+      "weights": ["300", "400", "500"],
+      "usage": "Main UI text, lesson content, and conversational AI text."
+    },
+    "data": {
+      "fontFamily": "JetBrains Mono, monospace",
+      "weights": ["400", "700"],
+      "usage": "Horizon Points, Compass Marks, leaderboards, and join codes."
+    }
+  },
+  "colors": {
+    "background": {
+      "default": "#060B19",
+      "paper": "#0A1128",
+      "surface": "#111827",
+      "glass": "rgba(10, 17, 40, 0.7)"
+    },
+    "text": {
+      "primary": "#F8FAFC",
+      "secondary": "#94A3B8",
+      "muted": "#64748B"
+    },
+    "brand": {
+      "gold": "#D4AF37",
+      "goldHover": "#FBBF24",
+      "teal": "#06B6D4",
+      "crimson": "#E11D48"
+    },
+    "borders": {
+      "default": "rgba(255, 255, 255, 0.1)",
+      "focus": "#D4AF37"
+    }
+  },
+  "visual_enhancers": {
+    "shadows": {
+      "glow": "0 0 20px rgba(212, 175, 55, 0.2)",
+      "tealGlow": "0 0 20px rgba(6, 182, 212, 0.3)"
+    },
+    "textures": [
+      "Subtle noise overlay (opacity-5) on main backgrounds to feel like textured map paper/canvas."
+    ],
+    "glassmorphism": "backdrop-blur-xl bg-slate-900/60 border border-white/10. Use for AI Copilot panels and floating navigation over the map.",
+    "borders": "1px solid borders using border-white/10. Use 'tracing beam' gradient borders for active quests or focused AI panels."
+  },
+  "grids": {
+    "explorer_dashboard": "Mode A: The Bento Grid (Tetris Mode). Asymmetrical, wide gaps (gap-8), high visual tension. Use col-span-full md:col-span-8 for the main quest map and smaller stats cards beside it.",
+    "guide_console": "Mode B: High Density Grid. gap-4 or gap-6. Clear tables, crisp 1px borders, data-focused layout utilizing the full screen width."
+  },
+  "layouts": {
+    "journey_map": "Full-screen relative container. Quests act as absolutely positioned nodes connected by SVG dashed lines. The background should be a rich dark ocean texture.",
+    "general": "Mobile-first, generous spacing (p-6 to p-12). Optical alignment over geometric."
+  },
+  "components": {
+    "buttons": "Pill-shaped or sharp rectangular with 1px border. Primary buttons use brand gold with dark text. Apply -translate-y-1 and glow shadow on hover.",
+    "cards": "Flat background (bg-slate-900/50), 1px subtle border (border-white/10). No thick shadows, prefer inner glow or crisp edges. Add a top highlight border (border-t-gold/50) to important cards.",
+    "navigation": "Crystal Glass sticky header. backdrop-blur-xl bg-[#060B19]/70 border-b border-white/10. Do not use fully transparent headers.",
+    "ai_chatbot_forge": "Floating side panel (Drawer or Sheet from Shadcn). Styled with teal accents (#06B6D4) to differentiate 'AI magic' from 'Quest' elements.",
+    "tables": "Shadcn Table for Guide Console. Minimalist borders, hover effect on rows (bg-white/5)."
+  },
+  "motion": {
+    "hover_states": "All interactable elements must have explicit hover text and background changes. transition-colors duration-200.",
+    "entrance": "Staggered fade-up for list items (Leaderboards, Guide review queue).",
+    "map_nodes": "Active quest nodes should have a continuous slow 'pulse' animation (scale 1.05 and shadow glow)."
+  },
+  "accessibility": {
+    "contrast": "Ensure text over images has a gradient overlay (e.g., bg-gradient-to-t from-[#060B19] to-transparent) for legibility. Minimum 4.5:1 ratio.",
+    "focus": "focus:ring-2 focus:ring-[#D4AF37] focus:outline-none.",
+    "data_testid": "All interactable elements MUST include a descriptive data-testid attribute in kebab-case."
+  },
+  "media": {
+    "icons": "lucide-react for UI icons (compass, map, ship, anchor, sword, shield).",
+    "charts": "recharts for Guide Console mastery tracking charts (styled with dark theme and gold/teal lines)."
+  },
+  "3d_libraries_and_steps": {
+    "framer-motion": "Use for 2.5D map node entry animations, SVG path drawing between territories, and micro-interactions.",
+    "react-three-fiber": "Not strictly required, but if used for a 3D compass on the map, use <Float> and <Environment> to make it feel cinematic. Stick to Framer Motion if building 2D maps for better timeline performance."
+  },
+  "image_urls": {
+    "hero_background": {
+      "url": "https://images.unsplash.com/photo-1608924066819-930edc42986a?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzB8MHwxfHNlYXJjaHwyfHxuYXV0aWNhbCUyMGNhcnRvZ3JhcGh5JTIwcGFyY2htZW50JTIwbWFwfGVufDB8fHx8MTc4NTcwMzE3MXww&ixlib=rb-4.1.0&q=85",
+      "description": "Lit vintage map with candle, perfect for landing page hero section. Add heavy dark overlay."
+    },
+    "map_texture": {
+      "url": "https://images.unsplash.com/photo-1538983478601-bcd0134c6919?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzNDR8MHwxfHNlYXJjaHwxfHxlcGljJTIwb2NlYW4lMjBmYW50YXN5JTIwY2FydG9ncmFwaHl8ZW58MHx8fHwxNzg1NzAzMTYyfDA&ixlib=rb-4.1.0&q=85",
+      "description": "Deep blue aerial ocean water texture. Use as the background for the Explorer Journey Map with low opacity."
+    },
+    "prop_compass": {
+      "url": "https://images.unsplash.com/photo-1570137493662-409569bb1c01?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NzR8MHwxfHNlYXJjaHwzfHx2aW50YWdlJTIwY29tcGFzcyUyMG1hcCUyMGFlc3RoZXRpY3xlbnwwfHx8fDE3ODU3MDMxNjJ8MA&ixlib=rb-4.1.0&q=85",
+      "description": "Vintage compass image. Can be used as a decorative element or logo substitute."
+    }
+  },
+  "instructions_to_main_agent": [
+    "Build standard React components using .jsx or .js extension. No .tsx.",
+    "Implement Google Auth on the landing page immediately with roles selection (Explorer vs Guide).",
+    "For the Explorer Journey Map, create a relative container with an ocean background image. Position 4 'Territory' nodes absolutely across it using percentages. Connect them with an absolute SVG containing <path> lines.",
+    "For the Guide Console, use Shadcn Tabs to separate 'Expeditions', 'Review Queue', and 'Leaderboard Controls'.",
+    "Integrate Shadcn UI extensively for standard components, but override styles to match the Luxury Dark & Cartography archetype.",
+    "Do not use simple 'Card' wrappers for everything. Let the UI breathe. Use large headings with Cormorant Garamond.",
+    "Ensure all testing sequences from the problem statement are functionally connected.",
+    "AI Chatbot Forge / Copilot hint panel should be built as an aside or floating panel."
+  ],
+  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
+    "Do not use universal transitions like 'transition: all'. Apply to specific properties.",
+    "Avoid centered generic layouts for text-heavy sections. Use left-aligned layouts to follow reading flow.",
+    "Never use placeholder image services. Use the exact Unsplash URLs provided.",
+    "Integrate 'sonner' for toast notifications on actions like 'Quest Completed' or 'Points Awarded'.",
+    "Enforce high spacing (p-6, p-8) and avoid cramped UI.",
+    "Use data-testid attributes on all interactive elements to support tests.",
+    "Ensure header nav never has fully transparent background; always use glassmorphism."
+  ]
+}
