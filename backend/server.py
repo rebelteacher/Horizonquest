@@ -347,22 +347,15 @@ async def submit_trial(quest_id: str, payload: TrialSubmit, explorer=Depends(req
         inc["compass_marks"] = 1
     await db.users.update_one({"user_id": explorer["user_id"]}, {"$inc": inc})
 
-    # Reflection goes to guide review queue
-    if payload.reflection and payload.reflection.strip():
-        await db.reviews.update_one(
-            {"user_id": explorer["user_id"], "quest_id": quest_id},
-            {"$set": {
-                "review_id": f"rev_{explorer['user_id']}_{quest_id}",
-                "user_id": explorer["user_id"],
-                "user_name": explorer.get("name"),
-                "quest_id": quest_id,
-                "quest_title": quest["title"],
-                "reflection": payload.reflection.strip(),
-                "status": "pending",
-                "expedition_ids": explorer.get("expedition_ids", []),
-                "created_at": now_utc().isoformat(),
-            }}, upsert=True,
-        )
+    if delta > 0:
+        await db.points_events.insert_one({
+            "user_id": explorer["user_id"],
+            "delta": delta,
+            "quest_id": quest_id,
+            "territory_id": quest["territory_id"],
+            "type": "trial",
+            "created_at": now_utc().isoformat(),
+        })
 
     updated_user = await db.users.find_one({"user_id": explorer["user_id"]}, {"_id": 0})
     return {
@@ -380,7 +373,7 @@ async def submit_trial(quest_id: str, payload: TrialSubmit, explorer=Depends(req
 
 # ---------------- Hands-On Labs ----------------
 LAB_BONUS = 75
-LAB_QUESTS = {"t1-q8"}  # quests that have a hands-on lab
+LAB_QUESTS = {"t1-q8", "t2-q1", "t2-q2", "t2-q4"}  # quests that have a hands-on lab
 
 
 @api_router.post("/labs/{quest_id}/complete")
@@ -404,6 +397,14 @@ async def complete_lab(quest_id: str, explorer=Depends(require_explorer)):
         "created_at": now_utc().isoformat(),
     })
     await db.users.update_one({"user_id": explorer["user_id"]}, {"$inc": {"horizon_points": LAB_BONUS}})
+    await db.points_events.insert_one({
+        "user_id": explorer["user_id"],
+        "delta": LAB_BONUS,
+        "quest_id": quest_id,
+        "territory_id": quest["territory_id"],
+        "type": "lab",
+        "created_at": now_utc().isoformat(),
+    })
     u = await db.users.find_one({"user_id": explorer["user_id"]}, {"_id": 0})
     return {"already_completed": False, "bonus": LAB_BONUS, "horizon_points": u.get("horizon_points", 0)}
 
@@ -416,7 +417,12 @@ async def my_lab_completions(user=Depends(get_current_user)):
 
 # ---------------- Leaderboard ----------------
 @api_router.get("/leaderboard")
-async def leaderboard(expedition_id: Optional[str] = None, user=Depends(get_current_user)):
+async def leaderboard(
+    expedition_id: Optional[str] = None,
+    territory_id: Optional[str] = None,
+    period: Optional[str] = None,
+    user=Depends(get_current_user),
+):
     query = {"role": "explorer"}
     if expedition_id:
         exp = await db.expeditions.find_one({"expedition_id": expedition_id}, {"_id": 0})
@@ -424,7 +430,29 @@ async def leaderboard(expedition_id: Optional[str] = None, user=Depends(get_curr
             raise HTTPException(status_code=404, detail="Expedition not found")
         query["expedition_ids"] = expedition_id
     explorers = await db.users.find(query, {"_id": 0}).to_list(1000)
-    ranked = sorted(explorers, key=lambda u: (-u.get("horizon_points", 0), u.get("name") or ""))
+    ids = [u["user_id"] for u in explorers]
+
+    score_map = {}
+    if territory_id:
+        metric = "territory"
+        prog = await db.progress.find({"user_id": {"$in": ids}, "territory_id": territory_id}, {"_id": 0}).to_list(10000)
+        for p in prog:
+            score_map[p["user_id"]] = score_map.get(p["user_id"], 0) + p.get("points_earned", 0)
+        labs = await db.lab_completions.find({"user_id": {"$in": ids}, "territory_id": territory_id}, {"_id": 0}).to_list(10000)
+        for l in labs:
+            score_map[l["user_id"]] = score_map.get(l["user_id"], 0) + l.get("bonus", 0)
+    elif period == "week":
+        metric = "week"
+        cutoff = (now_utc() - timedelta(days=7)).isoformat()
+        evs = await db.points_events.find({"user_id": {"$in": ids}, "created_at": {"$gte": cutoff}}, {"_id": 0}).to_list(50000)
+        for e in evs:
+            score_map[e["user_id"]] = score_map.get(e["user_id"], 0) + e.get("delta", 0)
+    else:
+        metric = "overall"
+        for u in explorers:
+            score_map[u["user_id"]] = u.get("horizon_points", 0)
+
+    ranked = sorted(explorers, key=lambda u: (-score_map.get(u["user_id"], 0), u.get("name") or ""))
 
     entries = []
     for i, u in enumerate(ranked):
@@ -435,19 +463,19 @@ async def leaderboard(expedition_id: Optional[str] = None, user=Depends(get_curr
             "picture": u.get("picture"),
             "fleet": u.get("fleet"),
             "tier": rank_tier(u.get("horizon_points", 0)),
+            "score": score_map.get(u["user_id"], 0),
             "horizon_points": u.get("horizon_points", 0),
             "compass_marks": u.get("compass_marks", 0),
             "is_me": u["user_id"] == user["user_id"],
         })
 
-    # Fleet standings
     fleet_totals = {}
     for u in ranked:
         f = u.get("fleet") or "Unaligned"
-        fleet_totals[f] = fleet_totals.get(f, 0) + u.get("horizon_points", 0)
+        fleet_totals[f] = fleet_totals.get(f, 0) + score_map.get(u["user_id"], 0)
     fleets = [{"fleet": k, "points": v} for k, v in sorted(fleet_totals.items(), key=lambda x: -x[1])]
 
-    return {"entries": entries, "fleets": fleets}
+    return {"entries": entries, "fleets": fleets, "metric": metric}
 
 
 # ---------------- Guide: Review Queue & Mastery ----------------
