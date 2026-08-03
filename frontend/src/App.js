@@ -13,6 +13,8 @@ import MockMeeting from "@/pages/MockMeeting";
 import DocEditor from "@/pages/DocEditor";
 import SpreadsheetEditor from "@/pages/SpreadsheetEditor";
 import SlideBuilder from "@/pages/SlideBuilder";
+import CipherPlayground from "@/pages/CipherPlayground";
+import PhishingSpotter from "@/pages/PhishingSpotter";
 import { Compass } from "lucide-react";
 
 function Loader() {
@@ -49,6 +51,8 @@ function AppRouter() {
       <Route path="/lab/doc-editor" element={<Protected role="explorer"><DocEditor /></Protected>} />
       <Route path="/lab/spreadsheet" element={<Protected role="explorer"><SpreadsheetEditor /></Protected>} />
       <Route path="/lab/slide-builder" element={<Protected role="explorer"><SlideBuilder /></Protected>} />
+      <Route path="/lab/cipher" element={<Protected role="explorer"><CipherPlayground /></Protected>} />
+      <Route path="/lab/phishing" element={<Protected role="explorer"><PhishingSpotter /></Protected>} />
       <Route path="/leaderboard" element={<Protected><Leaderboard /></Protected>} />
       <Route path="/guide" element={<Protected role="guide"><GuideConsole /></Protected>} />
       <Route path="*" element={<Navigate to="/" replace />} />

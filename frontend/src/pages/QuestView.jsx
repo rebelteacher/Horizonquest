@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ArrowLeft, ScrollText, Swords, Gem, Anchor, Loader2, Trophy, Map, ArrowRight, FlaskConical } from "lucide-react";
+import { ArrowLeft, ScrollText, Swords, Gem, Anchor, Loader2, Trophy, Map, ArrowRight, FlaskConical, Target } from "lucide-react";
 import { toast } from "sonner";
 import { QUEST_LABS } from "@/lib/labs";
 
@@ -113,6 +113,12 @@ export default function QuestView() {
           <p className="text-xs uppercase tracking-widest font-mono-data text-primary">DOK {quest.dok} · {quest.standard.code} · {quest.points} pts</p>
           <h1 className="font-display text-4xl sm:text-5xl mt-2 tracking-tight">{quest.title}</h1>
           <p className="text-sm text-muted-foreground mt-2">{quest.standard.description}</p>
+          {quest.learner_goal && (
+            <div data-testid="quest-learner-goal" className="mt-4 flex items-start gap-3 rounded-xl border border-[#22D3EE]/30 bg-[#22D3EE]/5 px-4 py-3">
+              <Target className="w-5 h-5 text-[#22D3EE] shrink-0 mt-0.5" />
+              <p className="text-slate-200"><span className="text-[11px] uppercase tracking-widest font-mono-data text-[#22D3EE] mr-2">Your Goal</span>{quest.learner_goal}</p>
+            </div>
+          )}
         </div>
 
         {/* Lesson */}

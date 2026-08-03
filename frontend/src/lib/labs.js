@@ -19,4 +19,14 @@ export const QUEST_LABS = {
     title: "Slide Builder",
     desc: "Design clean slides with the 5×5 rule and export your deck to PDF.",
   },
+  "t3-q5": {
+    tool: "phishing",
+    title: "Phishing Spotter",
+    desc: "Inspect real-looking emails and tap every phishing red flag you can find.",
+  },
+  "t3-q6": {
+    tool: "cipher",
+    title: "Cipher Playground",
+    desc: "Encode and decode secret messages with Caesar, Substitution, and a Pigpen bonus.",
+  },
 };

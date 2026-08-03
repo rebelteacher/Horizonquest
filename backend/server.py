@@ -373,7 +373,8 @@ async def submit_trial(quest_id: str, payload: TrialSubmit, explorer=Depends(req
 
 # ---------------- Hands-On Labs ----------------
 LAB_BONUS = 75
-LAB_QUESTS = {"t1-q8", "t2-q1", "t2-q2", "t2-q4"}  # quests that have a hands-on lab
+LAB_QUESTS = {"t1-q8", "t2-q1", "t2-q2", "t2-q4", "t3-q5", "t3-q6"}  # quests that have a hands-on lab
+CHALLENGE_BONUSES = {"cipher-pigpen": 50}  # optional extra-XP mini challenges
 
 
 @api_router.post("/labs/{quest_id}/complete")
@@ -413,6 +414,36 @@ async def complete_lab(quest_id: str, explorer=Depends(require_explorer)):
 async def my_lab_completions(user=Depends(get_current_user)):
     rows = await db.lab_completions.find({"user_id": user["user_id"]}, {"_id": 0}).to_list(200)
     return [r["quest_id"] for r in rows]
+
+
+@api_router.post("/challenges/{challenge_id}/complete")
+async def complete_challenge(challenge_id: str, explorer=Depends(require_explorer)):
+    bonus = CHALLENGE_BONUSES.get(challenge_id)
+    if bonus is None:
+        raise HTTPException(status_code=404, detail="Unknown challenge")
+    existing = await db.challenge_completions.find_one(
+        {"user_id": explorer["user_id"], "challenge_id": challenge_id}, {"_id": 0}
+    )
+    if existing:
+        u = await db.users.find_one({"user_id": explorer["user_id"]}, {"_id": 0})
+        return {"already_completed": True, "bonus": 0, "horizon_points": u.get("horizon_points", 0)}
+    await db.challenge_completions.insert_one({
+        "user_id": explorer["user_id"],
+        "challenge_id": challenge_id,
+        "bonus": bonus,
+        "created_at": now_utc().isoformat(),
+    })
+    await db.users.update_one({"user_id": explorer["user_id"]}, {"$inc": {"horizon_points": bonus}})
+    await db.points_events.insert_one({
+        "user_id": explorer["user_id"],
+        "delta": bonus,
+        "challenge_id": challenge_id,
+        "territory_id": "t3",
+        "type": "challenge",
+        "created_at": now_utc().isoformat(),
+    })
+    u = await db.users.find_one({"user_id": explorer["user_id"]}, {"_id": 0})
+    return {"already_completed": False, "bonus": bonus, "horizon_points": u.get("horizon_points", 0)}
 
 
 # ---------------- Leaderboard ----------------

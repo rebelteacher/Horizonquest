@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Anchor, Plus, Copy, Users, ClipboardCheck, BarChart3, Trophy, Loader2, Check, Compass } from "lucide-react";
+import { Anchor, Plus, Copy, Users, ClipboardCheck, BarChart3, Trophy, Loader2, Check, Compass, BookOpen, Target } from "lucide-react";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from "recharts";
 
@@ -42,6 +42,7 @@ export default function GuideConsole() {
             <TabsTrigger value="expeditions" data-testid="tab-expeditions"><Anchor className="w-4 h-4 mr-2" />Expeditions</TabsTrigger>
             <TabsTrigger value="reviews" data-testid="tab-reviews"><ClipboardCheck className="w-4 h-4 mr-2" />Review Queue</TabsTrigger>
             <TabsTrigger value="mastery" data-testid="tab-mastery"><BarChart3 className="w-4 h-4 mr-2" />Mastery</TabsTrigger>
+            <TabsTrigger value="curriculum" data-testid="tab-curriculum"><BookOpen className="w-4 h-4 mr-2" />Curriculum</TabsTrigger>
             <TabsTrigger value="leaderboard" data-testid="tab-leaderboard"><Trophy className="w-4 h-4 mr-2" />Rankings</TabsTrigger>
           </TabsList>
 
@@ -50,6 +51,7 @@ export default function GuideConsole() {
           </TabsContent>
           <TabsContent value="reviews" className="mt-6"><ReviewsTab /></TabsContent>
           <TabsContent value="mastery" className="mt-6"><MasteryTab expeditions={expeditions} /></TabsContent>
+          <TabsContent value="curriculum" className="mt-6"><CurriculumTab /></TabsContent>
           <TabsContent value="leaderboard" className="mt-6"><LeaderboardControlsTab expeditions={expeditions} reload={loadExpeditions} /></TabsContent>
         </Tabs>
       </div>
@@ -239,6 +241,50 @@ function MasteryTab({ expeditions }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function CurriculumTab() {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.get("/curriculum").then((r) => setData(r.data)).finally(() => setLoading(false));
+  }, []);
+
+  if (loading || !data) return <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
+
+  return (
+    <div className="space-y-8">
+      <p className="text-sm text-muted-foreground">Every quest with its teaching objective, learner goal, and mapped standard. Use these to plan lessons and align assessments.</p>
+      {data.territories.sort((a, b) => a.order - b.order).map((t) => {
+        const quests = data.quests.filter((q) => q.territory_id === t.id).sort((a, b) => a.order - b.order);
+        return (
+          <div key={t.id} data-testid={`curriculum-territory-${t.id}`}>
+            <div className="flex items-center gap-3 mb-3">
+              <span className="w-3 h-3 rounded-full" style={{ background: t.color }} />
+              <h3 className="font-display text-2xl">{t.name}</h3>
+              <span className="text-xs font-mono-data text-muted-foreground">{t.subtitle} · {quests.length} quests</span>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              {quests.map((q) => (
+                <div key={q.id} data-testid={`curriculum-quest-${q.id}`} className="hq-glass rounded-2xl p-5">
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <h4 className="font-display text-lg leading-tight">{q.title}</h4>
+                    <span className="font-mono-data text-[11px] text-primary shrink-0">DOK {q.dok}</span>
+                  </div>
+                  <div className="space-y-2 text-sm">
+                    <p className="text-slate-300"><span className="text-[11px] uppercase tracking-widest text-muted-foreground mr-1.5">Objective</span>{q.objective}</p>
+                    <p className="flex items-start gap-2 text-[#8be9f0]"><Target className="w-4 h-4 mt-0.5 shrink-0 text-[#22D3EE]" /><span>{q.learner_goal}</span></p>
+                    <p className="text-xs"><span className="font-mono-data text-primary">{q.standard.code}</span> <span className="text-muted-foreground">· {q.standard.description}</span></p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

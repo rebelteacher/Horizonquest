@@ -560,6 +560,7 @@ def _build():
     quests = []
     for qid, tid, order, title, dok, code, sdesc, questions, reflection in _RAW:
         questions = list(questions) + EXTRA_QUESTIONS.get(qid, [])
+        objective = "Students will be able to " + sdesc[0].lower() + sdesc[1:]
         quests.append({
             "id": qid,
             "territory_id": tid,
@@ -568,6 +569,8 @@ def _build():
             "dok": dok,
             "points": _PTS[dok],
             "standard": {"code": code, "description": sdesc},
+            "objective": objective,
+            "learner_goal": LEARNER_GOALS.get(qid, ""),
             "lesson": _lesson_for(qid, title, sdesc),
             "trial": {"questions": questions, "pass_threshold": 80},
             "reflection": reflection,
@@ -595,6 +598,8 @@ def public_curriculum():
             "dok": q["dok"],
             "points": q["points"],
             "standard": q["standard"],
+            "objective": q["objective"],
+            "learner_goal": q["learner_goal"],
             "lesson": q["lesson"],
             "trial": {
                 "pass_threshold": q["trial"]["pass_threshold"],
