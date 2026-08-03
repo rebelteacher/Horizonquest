@@ -126,7 +126,7 @@ async def create_session(request: Request, response: Response):
     if not session_id:
         raise HTTPException(status_code=400, detail="Missing session id")
 
-    async with httpx.AsyncClient() as hc:
+    async with httpx.AsyncClient(timeout=20.0) as hc:
         r = await hc.get(AUTH_SESSION_URL, headers={"X-Session-ID": session_id})
     if r.status_code != 200:
         raise HTTPException(status_code=401, detail="Invalid session id")
