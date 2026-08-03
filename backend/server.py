@@ -126,10 +126,14 @@ async def create_session(request: Request, response: Response):
     if not session_id:
         raise HTTPException(status_code=400, detail="Missing session id")
 
+    sid_dbg = f"len={len(session_id)} head={session_id[:6]} tail={session_id[-6:]}" if session_id else "none"
+    logger.info(f"[AUTH] /auth/session exchange start · session_id {sid_dbg}")
     async with httpx.AsyncClient(timeout=20.0) as hc:
         r = await hc.get(AUTH_SESSION_URL, headers={"X-Session-ID": session_id})
     if r.status_code != 200:
+        logger.error(f"[AUTH] session-data exchange FAILED · status={r.status_code} body={r.text[:300]}")
         raise HTTPException(status_code=401, detail="Invalid session id")
+    logger.info(f"[AUTH] session-data exchange OK · status=200")
     data = r.json()
 
     email = data["email"]
