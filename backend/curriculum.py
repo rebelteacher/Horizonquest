@@ -519,6 +519,43 @@ EXTRA_QUESTIONS = {
 }
 
 
+LEARNER_GOALS = {
+    "t1-q1": "I can identify the parts of a meeting and put the order of business in the correct sequence.",
+    "t1-q2": "I can open and close a meeting using proper procedures and explain what a quorum is.",
+    "t1-q3": "I can make, second, and vote on a motion using parliamentary procedure.",
+    "t1-q4": "I can demonstrate professional etiquette in meetings and email.",
+    "t1-q5": "I can describe the characteristics of an effective leader.",
+    "t1-q6": "I can compare autocratic, democratic, and laissez-faire leadership styles.",
+    "t1-q7": "I can make and justify sound leadership decisions in real scenarios.",
+    "t1-q8": "I can plan and lead a complete business meeting from call to order to adjournment.",
+    "t2-q1": "I can format a document using headers, footers, and heading styles.",
+    "t2-q2": "I can use SUM, AVERAGE, and COUNT formulas in a spreadsheet.",
+    "t2-q3": "I can create charts and sort data to communicate information.",
+    "t2-q4": "I can design clear slides using the 5x5 rule.",
+    "t2-q5": "I can use AI tools to improve writing, data, and design responsibly.",
+    "t2-q6": "I can build a simple chatbot and refine prompts to get better results.",
+    "t2-q7": "I can evaluate the ethical use of AI in productivity tasks.",
+    "t2-q8": "I can describe productivity-related career pathways.",
+    "t3-q1": "I can explain why cybersecurity matters for people and organizations.",
+    "t3-q2": "I can identify malware, phishing, and ransomware threats.",
+    "t3-q3": "I can apply the CIA triad (Confidentiality, Integrity, Availability).",
+    "t3-q4": "I can use safe practices and create strong passwords.",
+    "t3-q5": "I can spot the red flags of a phishing message.",
+    "t3-q6": "I can encode and decode messages using Caesar and substitution ciphers.",
+    "t3-q7": "I can compare symmetric and asymmetric encryption and AI's role in security.",
+    "t3-q8": "I can analyze a system for weaknesses and propose defenses.",
+    "t4-q1": "I can follow the data problem-solving process from question to conclusion.",
+    "t4-q2": "I can choose an appropriate representation for a set of data.",
+    "t4-q3": "I can encode and decode text and numbers using binary and ASCII.",
+    "t4-q4": "I can clean data by removing irrelevant or erroneous values.",
+    "t4-q5": "I can build and interpret bar charts.",
+    "t4-q6": "I can spot patterns and support a claim with data evidence.",
+    "t4-q7": "I can design a simple data-driven decision algorithm.",
+    "t4-q8": "I can explain machine learning and data mining concepts.",
+    "t4-q9": "I can explore data-related career clusters.",
+}
+
+
 def _build():
     quests = []
     for qid, tid, order, title, dok, code, sdesc, questions, reflection in _RAW:
