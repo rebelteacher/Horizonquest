@@ -35,7 +35,8 @@ function expandRange(a, b) {
 
 function evalCell(grid, raw) {
   if (typeof raw !== "string" || !raw.startsWith("=")) return raw;
-  const m = raw.match(/^=(SUM|AVERAGE|COUNT)\(([A-E]\d+):([A-E]\d+)\)$/i);
+  const f = raw.trim().toUpperCase().replace(/\s+/g, "");
+  const m = f.match(/^=(SUM|AVERAGE|COUNT)\(([A-E]\d+):([A-E]\d+)\)$/);
   if (!m) return "#ERR";
   const fn = m[1].toUpperCase();
   const cells = expandRange(m[2], m[3]);
