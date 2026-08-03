@@ -249,7 +249,7 @@ async def get_expedition(expedition_id: str, user=Depends(get_current_user)):
     exp = await db.expeditions.find_one({"expedition_id": expedition_id}, {"_id": 0})
     if not exp:
         raise HTTPException(status_code=404, detail="Expedition not found")
-    members = await db.users.find({"expedition_ids": expedition_id}, {"_id": 0}).to_list(500)
+    members = await db.users.find({"expedition_ids": expedition_id}, {"_id": 0, "user_id": 1, "email": 1, "name": 1, "picture": 1, "role": 1, "horizon_points": 1, "compass_marks": 1, "fleet": 1, "expedition_ids": 1}).to_list(500)
     return {"expedition": exp, "members": [_public_user(m) for m in members]}
 
 
@@ -429,22 +429,22 @@ async def leaderboard(
         if not exp:
             raise HTTPException(status_code=404, detail="Expedition not found")
         query["expedition_ids"] = expedition_id
-    explorers = await db.users.find(query, {"_id": 0}).to_list(1000)
+    explorers = await db.users.find(query, {"_id": 0, "user_id": 1, "name": 1, "picture": 1, "fleet": 1, "horizon_points": 1, "compass_marks": 1, "expedition_ids": 1}).to_list(1000)
     ids = [u["user_id"] for u in explorers]
 
     score_map = {}
     if territory_id:
         metric = "territory"
-        prog = await db.progress.find({"user_id": {"$in": ids}, "territory_id": territory_id}, {"_id": 0}).to_list(10000)
+        prog = await db.progress.find({"user_id": {"$in": ids}, "territory_id": territory_id}, {"_id": 0, "user_id": 1, "points_earned": 1}).to_list(10000)
         for p in prog:
             score_map[p["user_id"]] = score_map.get(p["user_id"], 0) + p.get("points_earned", 0)
-        labs = await db.lab_completions.find({"user_id": {"$in": ids}, "territory_id": territory_id}, {"_id": 0}).to_list(10000)
+        labs = await db.lab_completions.find({"user_id": {"$in": ids}, "territory_id": territory_id}, {"_id": 0, "user_id": 1, "bonus": 1}).to_list(10000)
         for l in labs:
             score_map[l["user_id"]] = score_map.get(l["user_id"], 0) + l.get("bonus", 0)
     elif period == "week":
         metric = "week"
         cutoff = (now_utc() - timedelta(days=7)).isoformat()
-        evs = await db.points_events.find({"user_id": {"$in": ids}, "created_at": {"$gte": cutoff}}, {"_id": 0}).to_list(50000)
+        evs = await db.points_events.find({"user_id": {"$in": ids}, "created_at": {"$gte": cutoff}}, {"_id": 0, "user_id": 1, "delta": 1}).to_list(50000)
         for e in evs:
             score_map[e["user_id"]] = score_map.get(e["user_id"], 0) + e.get("delta", 0)
     else:
@@ -505,7 +505,7 @@ async def guide_mastery(expedition_id: str, guide=Depends(require_guide)):
     exp = await db.expeditions.find_one({"expedition_id": expedition_id}, {"_id": 0})
     if not exp or exp["guide_id"] != guide["user_id"]:
         raise HTTPException(status_code=404, detail="Not found")
-    members = await db.users.find({"expedition_ids": expedition_id, "role": "explorer"}, {"_id": 0}).to_list(500)
+    members = await db.users.find({"expedition_ids": expedition_id, "role": "explorer"}, {"_id": 0, "user_id": 1}).to_list(500)
     member_ids = [m["user_id"] for m in members]
     total_members = len(member_ids) or 1
 
@@ -515,7 +515,7 @@ async def guide_mastery(expedition_id: str, guide=Depends(require_guide)):
         code = q["standard"]["code"]
         standards.setdefault(code, {"code": code, "description": q["standard"]["description"], "territory_id": q["territory_id"], "mastered": 0, "attempted": 0})
 
-    progress = await db.progress.find({"user_id": {"$in": member_ids}}, {"_id": 0}).to_list(5000)
+    progress = await db.progress.find({"user_id": {"$in": member_ids}}, {"_id": 0, "user_id": 1, "standard_code": 1, "mastery": 1}).to_list(5000)
     for p in progress:
         code = p.get("standard_code")
         if code in standards:
