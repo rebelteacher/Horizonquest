@@ -53,9 +53,11 @@ Gamified education platform. Stack: React + FastAPI + MongoDB. Auth: Google sign
 - Frontend: `StudioHub.jsx` (`/studio/:track`), `StudioMission.jsx` (`/studio/:track/:missionId`), `components/studio/DocEditorCore.jsx`, `lib/studioGrade.js` (client grading mirror).
 - Doc state model = `{header, footerPageNumber, blocks:[{id,type,text,fmt}]}`; table blocks `{type:'table',rows,cols,cells}`.
 
+- ✅ **Skill Studio — Phase 2: Spreadsheets (sheets track)**: 11 guided auto-graded missions (Grid → SUM → AVERAGE → COUNT → **MAX & MIN** → combined summary → Sorting → Bar charts → Pie charts → Multiple worksheets → Capstone+PDF). New `SheetEditorCore` grid editor with a live formula engine (SUM/AVERAGE/COUNT/MAX/MIN), formula bar, column sort (asc/desc), recharts bar/pie charts, multi-sheet tabs. Same server-authoritative grading (A–F + HP, best-attempt sticky). Hub has track pills (Word Processing ↔ Spreadsheets). Linked from quest t2-q2. Tested 100% (iteration_10, 50/50 backend tests).
+
 ## Skill Studio roadmap
-- P0 next: **Phase 2 — Spreadsheets track** (SUM/AVERAGE/COUNT, sorting, charts, multiple sheets) — needs a grid editor core + new check kinds (formula, chart, sort, sheet).
-- P0 after: **Phase 3 — Presentations track** (text/images/charts/animations, 5×5, delivery) — slide-canvas editor core.
+- P0 next: **Phase 3 — Presentations track** (slides): text/images/charts, 5×5 rule, layouts, delivery — needs a slide-canvas editor core + new check kinds.
+- Backend tests: `/app/backend/tests/test_skillstudio.py` (docs, 25) + `test_skillstudio_sheets.py` (sheets, 25).
 
 ## Backlog / Remaining (older)
 - P1: Repurpose Guide Review Queue to flag struggling Explorers (reflections removed).
