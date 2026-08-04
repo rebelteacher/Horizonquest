@@ -1,0 +1,65 @@
+{
+  "summary": "Skill Studio Phase 1 (Docs track) end-to-end testing. Backend 25/25 new tests + 50/51 regression pass (1 pre-existing flake in test_new_features.py, unrelated to Studio). Frontend: hub, mission runner live-ticking, submit/grade dialog, PDF export, capstone 150pts, nav-studio, quest launch-lab all working. THREE bugs found: (1) CRITICAL UI — color popover has 0-width columns causing all 6 swatches to overlap in a 36px stack (users cannot reliably pick blue/red/green/etc); (2) BACKEND — studio_progress.grade is overwritten unconditionally on any resubmit even if score is lower, so a mastered mission that a student later tinkers with shows F on the hub card while still counted as mastered; (3) CONTENT — docs-m3 tasks t2 (all lines 12pt) and t3 (title 24pt) are mutually exclusive; impossible to score above 67% D.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/studio/{track}/{mission}/submit", "issue": "server.py L493 stores 'grade': grade unconditionally on resubmit while 'score' uses max(). After a partial resubmit on a previously-A/mastered mission, the stored/persisted grade drops (e.g. A -> F) even though score, points_earned, and mastery correctly stick to best-attempt. Hub card renders the stale grade (see docs-m2 rendered 'F' with green mastery check in screenshot). Fix: 'grade': prev.get('grade', grade) if prev and prev.get('score', 0) >= score else grade — OR letter_grade(new_stored_score)."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "DocEditorCore color popover", "issue": "CRITICAL: the color-swatch popover container has no explicit width. It renders at width=36px, splitting into three ~0.67px-wide grid columns (grid-cols-3), which causes all 6 color buttons to stack visually on top of each other (only the bottom-most swatch — purple — is clickable via visible pixels). Users cannot reliably pick blue, red, green, orange, or black. Confirmed via getComputedStyle: gridTemplateColumns='0.65625px 0.671875px 0.671875px'. The symbol popover works because it has explicit w-48. Fix: add w-32 (or similar) to the color popover div in /app/frontend/src/components/studio/DocEditorCore.jsx L116.", "selector": "[data-testid=studio-color] popover div.absolute", "priority": "CRITICAL"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "StudioHub mission cards", "issues": ["docs-m2 card shows stored grade 'F' next to a green mastery check after any partial resubmit (backend grade overwrite bug surfaces here)"]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_skillstudio.py",
+    "/app/test_reports/pytest/test_skillstudio.xml"
+  ],
+  "action_items": [
+    "Fix CRITICAL: add explicit width (e.g. `w-32`) to color popover in /app/frontend/src/components/studio/DocEditorCore.jsx line 116. Without this, the text-color feature is essentially unusable — users can only click the last color rendered (purple). Verify by opening docs-m4 → click studio-color → all 6 swatches should render side-by-side in 2 rows of 3, each fully clickable.",
+    "Fix BACKEND: in /app/backend/server.py L493, do NOT unconditionally overwrite the stored 'grade' on resubmit. Either derive grade from the max stored score, or only write grade when score >= prev.score. Currently a mastered A can be visually demoted to F on the hub if the student resubmits a partial doc.",
+    "Fix CONTENT (docs-m3): the mission is impossible to complete perfectly. t2 (fmt_all fontSize=12) and t3 (b1 fontSize=24) contradict each other. Either drop t3, or change t2 to fmt_multi on body blocks only (b2, b3), or change the equals value. Currently every student who follows the instructions gets D (67%) as their best.",
+    "Optional: colocate reused popover width classes / verify the whole color palette is visible in a screenshot test to prevent regression."
+  ],
+  "critical_code_review_comments": [
+    "server.py L493: 'grade' persisted unconditionally on resubmit; should follow best-attempt like 'score' and 'points_earned' do (L493 already uses max()).",
+    "DocEditorCore.jsx L116: color popover has no explicit width class — relies on button intrinsic width but grid-cols-3 collapses columns to ~0.6px when parent is 36px. Compare to symbol popover L147 which correctly uses w-48.",
+    "skillstudio.py DOCS_MISSIONS[2] (docs-m3): tasks t2 fmt_all fontSize=12 and t3 fmt b1 fontSize=24 are logically contradictory; unwinnable mission.",
+    "server.py studio_submit (L471–515): endpoint returns response 'mastery' equal to CURRENT submit's mastery (not sticky). UI/dialog will show 'Reach 90% for mastery' after a partial resubmit of a previously-mastered mission, which is misleading. Consider returning sticky mastery in the response so the dialog matches persisted state.",
+    "DocEditorCore.jsx: the parent page div's onClick={()=>setMenu(null)} works, but does not close the popover on Escape key — minor a11y nit.",
+    "skillstudio.py: no per-mission bounds checks on submit doc payload — server trusts any doc shape. Non-security issue but worth adding a Pydantic schema for the doc structure to catch malformed submissions early."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_skillstudio.py (created — 25 tests, all pass)"
+  ],
+  "success_rate": {
+    "backend": "100% (25/25 new + 50/51 regression, with 1 pre-existing flake unrelated to Studio)",
+    "frontend": "Studio primary flows 100%; discovered 1 critical UI bug (color popover overlap) and 1 backend-surfaced design issue (grade-overwrite renders wrong badge on hub)"
+  },
+  "test_credentials": "Sessions used: studio_fresh_tok (user studio-fresh, clean explorer for point-increment assertions); qa_ui_guide_tok (guide qa-ui-guide, for 403 test). studio_exp_tok (user studio-exp) exists but has leftover progress from main-agent curl tests. All accessible via cookie session_token OR Authorization: Bearer.",
+  "seed_data_creation": "Created explorer 'studio-fresh' with session token 'studio_fresh_tok' in db.users + db.user_sessions (7-day expiry). Backend suite resets studio_progress/points_events for this user via a class-scoped autouse fixture. To rerun cleanly: mongosh --eval \"use('test_database'); db.studio_progress.deleteMany({user_id:'studio-fresh'}); db.points_events.deleteMany({user_id:'studio-fresh'}); db.users.updateOne({user_id:'studio-fresh'},{\\$set:{horizon_points:0,compass_marks:0}})\".",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "New backend suite /app/backend/tests/test_skillstudio.py covers every check kind in skillstudio.grade_mission plus best-attempt / RBAC / points events. It documents the docs-m3 impossibility (test_420) and the grade-overwrite behavior (test_310, test_910) — if the main agent fixes either, update the corresponding assertions. Frontend cookie injection works reliably on the preview host (SameSite=None, secure, httpOnly). For the color-popover fix verification, take a screenshot of the popover after clicking studio-color and assert all 6 swatches are visible side-by-side (no overlap). Playwright's coordinate-click hit the wrong swatch until the width bug is fixed — using page.evaluate + element.click() bypasses this. AI Copilot streaming and expedition flows are untouched by this iteration.",
+  "rca of the issue": {
+    "color_popover_overlap": {
+      "root_cause": "The color popover <div className='absolute z-30 top-11 left-0 ... grid grid-cols-3 gap-2 shadow-xl'> has no explicit width. Its intrinsic width comes from the parent .relative wrapper (about 36px wide, the width of the studio-color toolbar button). grid-cols-3 then divides those 36px into three ~0.67px columns, and each w-7 button (28px) overflows its cell — since they're all in the same visual stack, the last one (purple) covers the rest.",
+      "reproduction": "Load /studio/docs/docs-m4 → click studio-block-b1 → click studio-color. Popover appears width=36px. Inspect gridTemplateColumns via devtools: '0.65625px 0.671875px 0.671875px'. Click any specific-color swatch — the click always lands on purple (top of stack) despite the coordinate matching an underlying swatch's rect.",
+      "fix": "In /app/frontend/src/components/studio/DocEditorCore.jsx line 116, add an explicit width to the popover, e.g. change className to include 'w-32' (128px). Verified against symbol popover on line 147 which uses w-48 and renders correctly."
+    },
+    "grade_overwrite": {
+      "root_cause": "server.py studio_submit (line ~493) writes 'grade': grade — the current submit's grade — unconditionally, while 'score' uses max(score, prev['score']) and 'points_earned' uses max(). If a student earns A on m2, then reopens the mission and clicks around/resubmits with a partial doc, the stored grade is overwritten with the current lower grade even though score and mastery remain best-attempt.",
+      "reproduction": "POST /api/studio/docs/docs-m2/submit with a perfect doc -> stored grade=A, score=100, mastery=True. POST again with only 1/3 tasks -> stored grade=F, score=100, mastery=True (mismatch). Hub card renders the stale F.",
+      "fix": "Only overwrite grade when new score >= prev score, i.e. store letter_grade(max(score, prev['score'])). Or leave 'grade' out of the resubmit patch when score < prev['score']."
+    },
+    "docs_m3_impossible": {
+      "root_cause": "Task t2 (fmt_all fontSize=12) requires EVERY block including b1 to be 12pt. Task t3 (fmt b1 fontSize=24) requires b1 to be 24pt. These are mutually exclusive.",
+      "reproduction": "GET /api/studio/docs → docs-m3.tasks. Apply the instruction faithfully and submit — best achievable score is 67% (D).",
+      "fix": "Change t2 kind to 'fmt_multi' targeting body blocks only (['b2','b3']), or increase t3 to a non-conflicting attribute, or drop t3."
+    }
+  }
+}

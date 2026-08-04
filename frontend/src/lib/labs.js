@@ -5,9 +5,10 @@ export const QUEST_LABS = {
     desc: "Step into the Chair's seat and run a full meeting — call to order, motions, vote, and adjourn.",
   },
   "t2-q1": {
-    tool: "doc-editor",
-    title: "Document Builder",
-    desc: "Practice headers, footers, headings and formatting — then export your document to PDF.",
+    tool: "studio-docs",
+    path: "/studio/docs",
+    title: "Word Processing Skill Studio",
+    desc: "12 guided, auto-graded missions — format real documents chunk by chunk and export to PDF.",
   },
   "t2-q2": {
     tool: "spreadsheet",

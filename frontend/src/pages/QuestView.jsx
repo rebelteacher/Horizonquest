@@ -140,7 +140,7 @@ export default function QuestView() {
               </div>
               <Button
                 data-testid="launch-lab-btn"
-                onClick={() => navigate(`/lab/${QUEST_LABS[quest.id].tool}?quest=${quest.id}`)}
+                onClick={() => navigate(QUEST_LABS[quest.id].path ? QUEST_LABS[quest.id].path : `/lab/${QUEST_LABS[quest.id].tool}?quest=${quest.id}`)}
                 className="bg-[#22D3EE] text-[#04121f] hover:bg-[#67E8F9] shrink-0 hq-glow-teal"
               >
                 Launch Hands-On Lab <ArrowRight className="w-4 h-4 ml-2" />

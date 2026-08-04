@@ -15,6 +15,7 @@ import httpx
 from datetime import datetime, timezone, timedelta
 
 import curriculum
+import skillstudio
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -448,6 +449,70 @@ async def complete_challenge(challenge_id: str, explorer=Depends(require_explore
     })
     u = await db.users.find_one({"user_id": explorer["user_id"]}, {"_id": 0})
     return {"already_completed": False, "bonus": bonus, "horizon_points": u.get("horizon_points", 0)}
+
+
+class MissionSubmit(BaseModel):
+    doc: Dict
+
+
+# ---------------- Skill Studio (guided, auto-graded missions) ----------------
+@api_router.get("/studio/{track_id}")
+async def studio_track(track_id: str, user=Depends(get_current_user)):
+    data = skillstudio.public_track(track_id)
+    if not data:
+        raise HTTPException(status_code=404, detail="Track not found")
+    rows = await db.studio_progress.find(
+        {"user_id": user["user_id"], "track": track_id}, {"_id": 0}
+    ).to_list(200)
+    progress = {r["mission_id"]: {"score": r.get("score", 0), "grade": r.get("grade", "F"), "mastery": r.get("mastery", False)} for r in rows}
+    return {**data, "progress": progress}
+
+
+@api_router.post("/studio/{track_id}/{mission_id}/submit")
+async def studio_submit(track_id: str, mission_id: str, payload: MissionSubmit, explorer=Depends(require_explorer)):
+    mission = skillstudio.MISSION_INDEX.get(mission_id)
+    if not mission or mission.get("track") != track_id:
+        raise HTTPException(status_code=404, detail="Mission not found")
+
+    graded = skillstudio.grade_mission(mission_id, payload.doc)
+    score = graded["score"]
+    grade = skillstudio.letter_grade(score)
+    mastery = score >= 90
+    points_awarded = round(graded["points"] * score / 100)
+
+    prev = await db.studio_progress.find_one({"user_id": explorer["user_id"], "mission_id": mission_id}, {"_id": 0})
+    prev_points = prev["points_earned"] if prev else 0
+    prev_mastery = prev.get("mastery", False) if prev else False
+    final_points = max(points_awarded, prev_points)
+    delta = final_points - prev_points
+
+    await db.studio_progress.update_one(
+        {"user_id": explorer["user_id"], "mission_id": mission_id},
+        {"$set": {
+            "user_id": explorer["user_id"], "track": track_id, "mission_id": mission_id,
+            "score": max(score, prev["score"]) if prev else score, "last_score": score,
+            "grade": grade, "points_earned": final_points, "mastery": mastery or prev_mastery,
+            "updated_at": now_utc().isoformat(),
+        }}, upsert=True,
+    )
+
+    inc = {"horizon_points": delta}
+    if mastery and not prev_mastery:
+        inc["compass_marks"] = 1
+    await db.users.update_one({"user_id": explorer["user_id"]}, {"$inc": inc})
+    if delta > 0:
+        await db.points_events.insert_one({
+            "user_id": explorer["user_id"], "delta": delta, "mission_id": mission_id,
+            "territory_id": "t2", "type": "studio", "created_at": now_utc().isoformat(),
+        })
+
+    updated = await db.users.find_one({"user_id": explorer["user_id"]}, {"_id": 0})
+    return {
+        "results": graded["results"], "passed": graded["passed"], "total": graded["total"],
+        "score": score, "grade": grade, "mastery": mastery,
+        "points_awarded": max(delta, 0), "compass_mark_earned": mastery and not prev_mastery,
+        "horizon_points": updated.get("horizon_points", 0), "compass_marks": updated.get("compass_marks", 0),
+    }
 
 
 # ---------------- Leaderboard ----------------

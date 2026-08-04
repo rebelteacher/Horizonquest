@@ -15,6 +15,8 @@ import SpreadsheetEditor from "@/pages/SpreadsheetEditor";
 import SlideBuilder from "@/pages/SlideBuilder";
 import CipherPlayground from "@/pages/CipherPlayground";
 import PhishingSpotter from "@/pages/PhishingSpotter";
+import StudioHub from "@/pages/StudioHub";
+import StudioMission from "@/pages/StudioMission";
 import { Compass } from "lucide-react";
 
 function Loader() {
@@ -53,6 +55,8 @@ function AppRouter() {
       <Route path="/lab/slide-builder" element={<Protected role="explorer"><SlideBuilder /></Protected>} />
       <Route path="/lab/cipher" element={<Protected role="explorer"><CipherPlayground /></Protected>} />
       <Route path="/lab/phishing" element={<Protected role="explorer"><PhishingSpotter /></Protected>} />
+      <Route path="/studio/:track" element={<Protected role="explorer"><StudioHub /></Protected>} />
+      <Route path="/studio/:track/:missionId" element={<Protected role="explorer"><StudioMission /></Protected>} />
       <Route path="/leaderboard" element={<Protected><Leaderboard /></Protected>} />
       <Route path="/guide" element={<Protected role="guide"><GuideConsole /></Protected>} />
       <Route path="*" element={<Navigate to="/" replace />} />
