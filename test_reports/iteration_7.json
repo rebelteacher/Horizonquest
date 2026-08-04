@@ -1,0 +1,39 @@
+{
+  "summary": "Full backend + frontend testing of 3 new HorizonQuest features: (1) Curriculum objectives + learner_goals on /api/curriculum, (2) Cipher Playground lab at /lab/cipher (Caesar/Substitution/Pigpen) with lab bonus +75 and pigpen challenge bonus +50, (3) Phishing Spotter lab at /lab/phishing awarding +75. Backend: 16/16 new tests + 35/35 regression tests pass. Frontend: learner-goal banner, cipher playground core flow (Caesar live encode, 3 Caesar + 3 Substitution decode challenges, complete-btn +75 award, Pigpen +50 bonus), Phishing Spotter (3 emails, red-flag selection, check + next + Inbox Secured +75), and Guide Curriculum tab (4 territories, 33 quest cards each with objective + learner goal + standard code) all verified end-to-end. Existing routes /map, /quest/*, existing labs, and /leaderboard all still load.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_new_features.py",
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/test_new_features.xml",
+    "/app/test_reports/pytest/backend_test.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py L445: complete_challenge hard-codes territory_id='t3' when writing points_events. Fine for cipher-pigpen (T3) but if additional challenges are added to CHALLENGE_BONUSES for other territories, per-territory leaderboard math will be miscounted. Recommend deriving territory from a per-challenge mapping.",
+    "PhishingSpotter EMAILS constant lives inside the component file; consider moving to /lib/labs.js or a dedicated data file so grading answer keys (flag=true) are colocated with server if server-side validation is ever added. Right now correctness is purely client-side — the lab awards +75 regardless of accuracy (a curious player who never selects any red flag still gets full bonus). Consider gating the award on a minimum accuracy threshold.",
+    "CipherPlayground: lab awards +75 as soon as core 6 puzzles are marked solved client-side. Anyone typing the right plaintexts unlocks the button — but there's no server-side verification of the actual answers. Acceptable for a low-stakes lab, but note that a determined explorer could POST /api/labs/t3-q6/complete directly to earn +75 without touching the puzzles.",
+    "CipherPlayground.jsx L73: ChallengeRow renders three cipher-input-0..2 test IDs within the Caesar tab AND within the Substitution tab (both use index i=0..2). This means a naive Playwright selector without a tab context can match multiple elements. Not a bug (Playwright grabs the visible one when only one tab is mounted at a time via Radix Tabs), but consider prefixing test IDs with the tab, e.g. caesar-cipher-input-0.",
+    "curriculum.py L563: objective generation lower-cases the first character of standard.description (e.g. 'identify the parts...'). For descriptions that start with a proper noun this could produce awkward text; today all descriptions start with a verb so it renders correctly."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_new_features.py (created)"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "100%"
+  },
+  "test_credentials": "Injected sessions via mongosh: qa_ui_exp_tok (explorer qa-ui-exp), qa_ui_guide_tok (guide qa-ui-guide), qa_cipher_tok (isolated explorer for pytest). Existing qa_exp_tok/qa_guide_tok reused for regression suite.",
+  "seed_data_creation": "Seeded qa-ui-exp, qa-ui-guide, qa-cipher-exp in db.users + db.user_sessions with 7-day expiry. Reset horizon_points and completions between test runs.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "New test file /app/backend/tests/test_new_features.py runs cleanly in parallel with the existing backend_test.py. It uses the isolated qa-cipher-exp explorer to avoid clobbering other tests. To rerun backend suite end-to-end, seed sessions using the block below before pytest: qa-guide/qa_guide_tok (guide), qa-exp/qa_exp_tok (explorer), qa-cipher-exp/qa_cipher_tok (explorer). Frontend cookie injection works — httpOnly/secure/SameSite=None on the preview host.",
+  "rca of the issue": "N/A — all 3 features passed. Only minor observations recorded under critical_code_review_comments (no fix required for MVP)."
+}
