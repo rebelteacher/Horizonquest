@@ -17,9 +17,10 @@ export const QUEST_LABS = {
     desc: "11 guided, auto-graded missions — SUM, AVERAGE, COUNT, MAX, MIN, sorting, and charts.",
   },
   "t2-q4": {
-    tool: "slide-builder",
-    title: "Slide Builder",
-    desc: "Design clean slides with the 5×5 rule and export your deck to PDF.",
+    tool: "studio-slides",
+    path: "/studio/slides",
+    title: "Presentations Skill Studio",
+    desc: "12 guided, auto-graded missions — layouts, the 5×5 rule, images, charts, animations, and delivery.",
   },
   "t3-q5": {
     tool: "phishing",

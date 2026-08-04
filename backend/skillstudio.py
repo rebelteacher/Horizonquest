@@ -30,6 +30,42 @@ TRACK_CONFIG = {"docs": DOCS_CONFIG, "sheets": SHEETS_CONFIG}
 # Back-compat alias
 STUDIO_CONFIG = DOCS_CONFIG
 
+_GALLERY = [
+    {"id": "classroom", "label": "Classroom", "url": "https://images.unsplash.com/photo-1509062522246-3755977927d7?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NjZ8MHwxfHNlYXJjaHwxfHxjbGFzc3Jvb20lMjBzdHVkZW50cyUyMGxlYXJuaW5nfGVufDB8fHx8MTc4NTg0OTM2OHww&ixlib=rb-4.1.0&q=85"},
+    {"id": "planets", "label": "Planets", "url": "https://images.unsplash.com/photo-1701014159143-09482059f571?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2ODl8MHwxfHNlYXJjaHwyfHxzb2xhciUyMHN5c3RlbSUyMHBsYW5ldHMlMjBzcGFjZXxlbnwwfHx8fDE3ODU4NDkzNjh8MA&ixlib=rb-4.1.0&q=85"},
+    {"id": "forest", "label": "Forest", "url": "https://images.unsplash.com/photo-1674916251976-b64824a5f3de?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1MDZ8MHwxfHNlYXJjaHwyfHxncmVlbiUyMGZvcmVzdCUyMG5hdHVyZSUyMGxhbmRzY2FwZXxlbnwwfHx8fDE3ODU4NDkzNjd8MA&ixlib=rb-4.1.0&q=85"},
+    {"id": "food", "label": "Healthy food", "url": "https://images.unsplash.com/photo-1610832958506-aa56368176cf?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzV8MHwxfHNlYXJjaHwxfHxoZWFsdGh5JTIwZm9vZCUyMGZydWl0cyUyMHZlZ2V0YWJsZXN8ZW58MHx8fHwxNzg1ODQ5MzY4fDA&ixlib=rb-4.1.0&q=85"},
+    {"id": "laptop", "label": "Technology", "url": "https://images.unsplash.com/photo-1525547719571-a2d4ac8945e2?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2ODl8MHwxfHNlYXJjaHwxfHx0ZWNobm9sb2d5JTIwbGFwdG9wJTIwY29tcHV0ZXJ8ZW58MHx8fHwxNzg1ODQ5MzY4fDA&ixlib=rb-4.1.0&q=85"},
+    {"id": "mountain", "label": "Mountains", "url": "https://images.unsplash.com/photo-1691823234579-388866863711?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1MDZ8MHwxfHNlYXJjaHwxfHxncmVlbiUyMGZvcmVzdCUyMG5hdHVyZSUyMGxhbmRzY2FwZXxlbnwwfHx8fDE3ODU4NDkzNjd8MA&ixlib=rb-4.1.0&q=85"},
+]
+
+SLIDES_CONFIG = {
+    "layouts": [
+        {"id": "title", "name": "Title slide"},
+        {"id": "title-content", "name": "Title & content"},
+        {"id": "two-content", "name": "Two content"},
+        {"id": "blank", "name": "Blank"},
+    ],
+    "themes": [
+        {"id": "midnight", "name": "Midnight", "bg": "#0B1E3B", "fg": "#E8F4FF", "accent": "#22D3EE"},
+        {"id": "sunrise", "name": "Sunrise", "bg": "#FFF7ED", "fg": "#7C2D12", "accent": "#EA580C"},
+        {"id": "ocean", "name": "Ocean", "bg": "#04211E", "fg": "#D1FAF5", "accent": "#34D399"},
+        {"id": "paper", "name": "Paper", "bg": "#FFFFFF", "fg": "#0F172A", "accent": "#2563EB"},
+    ],
+    "gallery": _GALLERY,
+    "animations": [
+        {"id": "none", "name": "None"}, {"id": "fade", "name": "Fade in"},
+        {"id": "fly", "name": "Fly in"}, {"id": "zoom", "name": "Zoom in"},
+    ],
+    "transitions": [
+        {"id": "none", "name": "None"}, {"id": "fade", "name": "Fade"},
+        {"id": "slide", "name": "Slide"}, {"id": "push", "name": "Push"},
+    ],
+    "chartTypes": [{"id": "bar", "name": "Bar chart"}, {"id": "pie", "name": "Pie chart"}],
+}
+
+TRACK_CONFIG["slides"] = SLIDES_CONFIG
+
 TRACKS = {
     "docs": {"id": "docs", "name": "Word Processing", "subtitle": "Google Docs · Microsoft Word · Pages",
              "standard": "PA.2.A", "color": "#22D3EE",
@@ -37,6 +73,9 @@ TRACKS = {
     "sheets": {"id": "sheets", "name": "Spreadsheets", "subtitle": "Google Sheets · Microsoft Excel · Numbers",
                "standard": "PA.2.B", "color": "#34D399",
                "intro": "Enter data, build formulas (SUM, AVERAGE, COUNT, MAX, MIN), sort, and chart — one skill at a time."},
+    "slides": {"id": "slides", "name": "Presentations", "subtitle": "Google Slides · PowerPoint · Keynote",
+               "standard": "PA.2.C", "color": "#F59E0B",
+               "intro": "Build clean, engaging decks — layouts, the 5×5 rule, images, charts, animations, and delivery."},
 }
 
 
@@ -619,6 +658,235 @@ SHEETS_MISSIONS = [
 ]
 
 MISSIONS["sheets"] = SHEETS_MISSIONS
+
+
+# ------------------------------ SLIDES MISSIONS ------------------------------
+def _sl(sid, title="", bullets=None, layout="title-content", theme="midnight",
+        image=None, chart=None, animation="none", transition="none", notes=""):
+    return {"id": sid, "layout": layout, "theme": theme, "title": title,
+            "bullets": bullets or [], "image": image, "chart": chart,
+            "animation": animation, "transition": transition, "notes": notes}
+
+
+def _pdoc(slides):
+    return {"slides": slides, "activeSlide": 0}
+
+
+SLIDES_MISSIONS = [
+    {
+        "id": "slides-m1", "track": "slides", "order": 1,
+        "title": "Meet a Slide", "chunk": "Create & edit · the title slide",
+        "instruction": [
+            "## What is a slide?",
+            "A **presentation** is a stack of **slides**. The first slide is usually a **title slide** — it names your topic and, often, who made it.",
+            "- Click the big title and type your topic.",
+            "- Add a **subtitle** line underneath (your name or a tagline).",
+            "## Practice",
+            "Give this title slide a title and a subtitle.",
+        ],
+        "doc": _pdoc([_sl("s0", layout="title", theme="midnight")]),
+        "tasks": [
+            _t("t1", "Type a title on the slide", {"kind": "slide_title_nonempty", "slide": 0}),
+            _t("t2", "Add a subtitle line (1 bullet)", {"kind": "slide_bullets_min", "slide": 0, "min": 1}),
+        ],
+        "points": 100,
+    },
+    {
+        "id": "slides-m2", "track": "slides", "order": 2,
+        "title": "Building a Deck", "chunk": "Add slides · give each a title",
+        "instruction": [
+            "## Adding slides",
+            "Use the **+ New slide** button to add more slides. A good deck has one clear idea per slide, and **every slide has a title** so the audience can follow along.",
+            "## Practice",
+            "Build a 3-slide deck where each slide has a title (e.g., Intro, Main Idea, Conclusion).",
+        ],
+        "doc": _pdoc([_sl("s0", layout="title")]),
+        "tasks": [
+            _t("t1", "Have 3 slides in the deck", {"kind": "slide_count", "equals": 3}),
+            _t("t2", "Title on slide 1", {"kind": "slide_title_nonempty", "slide": 0}),
+            _t("t3", "Title on slide 2", {"kind": "slide_title_nonempty", "slide": 1}),
+            _t("t4", "Title on slide 3", {"kind": "slide_title_nonempty", "slide": 2}),
+        ],
+        "points": 100,
+    },
+    {
+        "id": "slides-m3", "track": "slides", "order": 3,
+        "title": "Bulleted Content", "chunk": "Content · body bullet points",
+        "instruction": [
+            "## Body content",
+            "Below the title, most slides use **bullet points** — short lines that list your key points. Click the content area and press Enter for each new bullet.",
+            "## Practice",
+            "Add at least **3 bullet points** about your favorite hobby.",
+        ],
+        "doc": _pdoc([_sl("s0", title="My Favorite Hobby", layout="title-content")]),
+        "tasks": [
+            _t("t1", "Add at least 3 bullet points", {"kind": "slide_bullets_min", "slide": 0, "min": 3}),
+        ],
+        "points": 100,
+    },
+    {
+        "id": "slides-m4", "track": "slides", "order": 4,
+        "title": "The 5×5 Rule", "chunk": "Design habits · 5×5 rule",
+        "instruction": [
+            "## Don't crowd your slides",
+            "The **5×5 rule**: use **no more than 5 bullets** per slide, and **no more than 5 words** per bullet. Slides are cue cards, not essays — you say the details out loud.",
+            "## Practice",
+            "This slide is way too wordy. Trim it so it follows the 5×5 rule (≤5 short bullets, ≤5 words each).",
+        ],
+        "doc": _pdoc([_sl("s0", title="Why Recycling Matters", layout="title-content", bullets=[
+            "Recycling helps reduce the amount of waste that ends up in landfills",
+            "It saves natural resources like trees water and precious minerals",
+            "Recycling saves a lot of energy compared to making new products",
+            "It reduces pollution in our air and in our local waterways",
+            "Recycling can create brand new green jobs in our community",
+            "Everyone in the whole school can help by sorting their trash",
+        ])]),
+        "tasks": [
+            _t("t1", "Make this slide follow the 5×5 rule (≤5 bullets, ≤5 words each)", {"kind": "five_by_five", "slide": 0}),
+        ],
+        "points": 100,
+    },
+    {
+        "id": "slides-m5", "track": "slides", "order": 5,
+        "title": "Choosing Layouts", "chunk": "Format · slide layouts",
+        "instruction": [
+            "## Layouts",
+            "A **layout** decides where things sit on a slide:",
+            "- **Title slide** — for the opening slide.",
+            "- **Title & content** — a title with bullets below.",
+            "- **Two content** — two columns side by side.",
+            "## Practice",
+            "Set the right layout for each slide.",
+        ],
+        "doc": _pdoc([_sl("s0", title="Our Trip", layout="blank"), _sl("s1", title="Highlights", layout="blank"), _sl("s2", title="Compare", layout="blank")]),
+        "tasks": [
+            _t("t1", "Slide 1 → Title slide layout", {"kind": "slide_layout", "slide": 0, "equals": "title"}),
+            _t("t2", "Slide 2 → Title & content layout", {"kind": "slide_layout", "slide": 1, "equals": "title-content"}),
+            _t("t3", "Slide 3 → Two content layout", {"kind": "slide_layout", "slide": 2, "equals": "two-content"}),
+        ],
+        "points": 100,
+    },
+    {
+        "id": "slides-m6", "track": "slides", "order": 6,
+        "title": "Themes & Formatting", "chunk": "Format · apply a theme",
+        "instruction": [
+            "## Themes",
+            "A **theme** sets the colors and style for your whole deck so it looks consistent and professional. Pick one that fits your topic.",
+            "## Practice",
+            "Apply the **Ocean** theme to this slide.",
+        ],
+        "doc": _pdoc([_sl("s0", title="Marine Life", layout="title-content", theme="paper", bullets=["Coral reefs", "Deep sea creatures"])]),
+        "tasks": [
+            _t("t1", "Apply the Ocean theme to the slide", {"kind": "slide_theme", "slide": 0, "equals": "ocean"}),
+        ],
+        "points": 100,
+    },
+    {
+        "id": "slides-m7", "track": "slides", "order": 7,
+        "title": "Adding Images", "chunk": "Insert · images",
+        "instruction": [
+            "## Pictures tell the story",
+            "A good **image** makes a slide memorable. Use the **Insert Image** button and pick one from the gallery. Choose an image that matches your point.",
+            "## Practice",
+            "Add an image to this slide.",
+        ],
+        "doc": _pdoc([_sl("s0", title="Explore Space", layout="title-content", theme="midnight", bullets=["The planets", "Our solar system"])]),
+        "tasks": [
+            _t("t1", "Insert an image on the slide", {"kind": "slide_has_image", "slide": 0}),
+        ],
+        "points": 100,
+    },
+    {
+        "id": "slides-m8", "track": "slides", "order": 8,
+        "title": "Charts on Slides", "chunk": "Insert · charts",
+        "instruction": [
+            "## Show the data",
+            "A **chart** turns numbers into a picture your audience understands instantly. Insert a **bar chart** to compare amounts.",
+            "## Practice",
+            "Add a bar chart to this slide.",
+        ],
+        "doc": _pdoc([_sl("s0", title="Our Reading Data", layout="title-content", theme="paper", bullets=["Books read this month"])]),
+        "tasks": [
+            _t("t1", "Insert a BAR chart on the slide", {"kind": "slide_has_chart", "slide": 0, "type": "bar"}),
+        ],
+        "points": 100,
+    },
+    {
+        "id": "slides-m9", "track": "slides", "order": 9,
+        "title": "Animations", "chunk": "Animate · build effects",
+        "instruction": [
+            "## Bring content in",
+            "An **animation** controls how content appears — like a **Fade in** or **Fly in**. Used lightly, it keeps the audience focused on one point at a time. Don't overdo it!",
+            "## Practice",
+            "Add a build animation (any except None) to this slide's content.",
+        ],
+        "doc": _pdoc([_sl("s0", title="Big Reveal", layout="title-content", theme="midnight", bullets=["Point one", "Point two"])]),
+        "tasks": [
+            _t("t1", "Apply an animation to the slide content", {"kind": "slide_animation", "slide": 0}),
+        ],
+        "points": 100,
+    },
+    {
+        "id": "slides-m10", "track": "slides", "order": 10,
+        "title": "Transitions", "chunk": "Deliver · slide transitions",
+        "instruction": [
+            "## Moving between slides",
+            "A **transition** is the effect when you move from one slide to the next (like **Fade** or **Slide**). It makes your delivery feel smooth and polished.",
+            "## Practice",
+            "Add a transition (any except None) to this slide.",
+        ],
+        "doc": _pdoc([_sl("s0", title="Smooth Moves", layout="title-content", theme="sunrise", bullets=["Transitions connect ideas"])]),
+        "tasks": [
+            _t("t1", "Apply a transition to the slide", {"kind": "slide_transition", "slide": 0}),
+        ],
+        "points": 100,
+    },
+    {
+        "id": "slides-m11", "track": "slides", "order": 11,
+        "title": "Speaker Notes", "chunk": "Deliver · speaker notes",
+        "instruction": [
+            "## What you'll say",
+            "**Speaker notes** are the words you plan to say for a slide — the audience doesn't see them. Great presenters put details in the notes and keep the slide itself clean (remember 5×5!).",
+            "## Practice",
+            "Write speaker notes (at least 8 words) for what you'd say on this slide.",
+        ],
+        "doc": _pdoc([_sl("s0", title="My Big Idea", layout="title-content", theme="ocean", bullets=["Keep the slide simple", "Say the rest out loud"])]),
+        "tasks": [
+            _t("t1", "Write speaker notes of at least 8 words", {"kind": "slide_notes_min_words", "slide": 0, "min": 8}),
+        ],
+        "points": 100,
+    },
+    {
+        "id": "slides-m12", "track": "slides", "order": 12,
+        "title": "Capstone: Build & Present a Deck", "chunk": "Everything · plus Export to PDF",
+        "instruction": [
+            "## Put it all together",
+            "Build a short, polished 3-slide deck that uses every skill: a themed title slide, a clean 5×5 content slide, an image, a chart, an animation, a transition, and speaker notes. Then **export it to PDF**.",
+            "## Your tasks",
+            "Work the checklist. When it's all green, export your PDF and submit.",
+        ],
+        "doc": _pdoc([
+            _sl("s0", layout="title", theme="paper"),
+            _sl("s1", title="Key Points", layout="title-content", theme="paper"),
+            _sl("s2", title="The Evidence", layout="title-content", theme="paper"),
+        ]),
+        "tasks": [
+            _t("t1", "Have 3 slides", {"kind": "slide_count", "equals": 3}),
+            _t("t2", "Give the title slide a title", {"kind": "slide_title_nonempty", "slide": 0}),
+            _t("t3", "Apply the Midnight theme to the title slide", {"kind": "slide_theme", "slide": 0, "equals": "midnight"}),
+            _t("t4", "Make slide 2 follow the 5×5 rule", {"kind": "five_by_five", "slide": 1}),
+            _t("t5", "Add an image to slide 3", {"kind": "slide_has_image", "slide": 2}),
+            _t("t6", "Add a bar chart to slide 3", {"kind": "slide_has_chart", "slide": 2, "type": "bar"}),
+            _t("t7", "Animate slide 2's content", {"kind": "slide_animation", "slide": 1}),
+            _t("t8", "Add a transition to the title slide", {"kind": "slide_transition", "slide": 0}),
+            _t("t9", "Write speaker notes (8+ words) on the title slide", {"kind": "slide_notes_min_words", "slide": 0, "min": 8}),
+            _t("t10", "Export the deck to PDF", {"kind": "exported"}),
+        ],
+        "points": 150,
+    },
+]
+
+MISSIONS["slides"] = SLIDES_MISSIONS
 MISSION_INDEX = {m["id"]: m for track in MISSIONS.values() for m in track}
 
 
@@ -726,6 +994,41 @@ def _check_one(check, doc):
             sheets = doc.get("sheets") or []
             i = check["index"]
             return i < len(sheets) and (sheets[i].get("name", "").strip().casefold() == check["name"].casefold())
+        # ---- slides kinds ----
+        if kind in ("slide_count", "slide_title_nonempty", "slide_title_contains", "slide_bullets_min",
+                    "five_by_five", "slide_layout", "slide_theme", "slide_has_image", "slide_has_chart",
+                    "slide_animation", "slide_transition", "slide_notes_min_words"):
+            slides = doc.get("slides") or []
+            if kind == "slide_count":
+                return len(slides) == check["equals"]
+            si = check.get("slide", 0)
+            if si >= len(slides):
+                return False
+            sl = slides[si]
+            bullets = [b for b in (sl.get("bullets") or []) if (b or "").strip()]
+            if kind == "slide_title_nonempty":
+                return bool((sl.get("title") or "").strip())
+            if kind == "slide_title_contains":
+                return check["value"].casefold() in (sl.get("title") or "").casefold()
+            if kind == "slide_bullets_min":
+                return len(bullets) >= check["min"]
+            if kind == "five_by_five":
+                return len(bullets) >= 1 and len(bullets) <= 5 and all(len(b.split()) <= 5 for b in bullets)
+            if kind == "slide_layout":
+                return sl.get("layout") == check["equals"]
+            if kind == "slide_theme":
+                return sl.get("theme") == check["equals"]
+            if kind == "slide_has_image":
+                return bool(sl.get("image"))
+            if kind == "slide_has_chart":
+                ch = sl.get("chart")
+                return bool(ch) and (("type" not in check) or ch.get("type") == check["type"])
+            if kind == "slide_animation":
+                return (sl.get("animation") or "none") != "none"
+            if kind == "slide_transition":
+                return (sl.get("transition") or "none") != "none"
+            if kind == "slide_notes_min_words":
+                return len((sl.get("notes") or "").split()) >= check["min"]
     except Exception:
         return False
     return False
