@@ -137,7 +137,9 @@ export default function StudioMission() {
           <div className="order-1 lg:order-2 space-y-6">
             <div className="hq-glass rounded-2xl p-5 border-t border-t-[#22D3EE]/30">
               <h2 className="font-display text-xl flex items-center gap-2 mb-3"><ScrollText className="w-4 h-4 text-[#22D3EE]" /> Instruction</h2>
-              <Instruction blocks={mission.instruction} />
+              <div className="max-h-64 overflow-y-auto hq-scrollbar pr-2 -mr-2">
+                <Instruction blocks={mission.instruction} />
+              </div>
             </div>
 
             <div className="hq-glass rounded-2xl p-5">
