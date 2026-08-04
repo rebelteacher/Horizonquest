@@ -1,11 +1,12 @@
 """HorizonQuest Skill Studio — guided, auto-graded productivity-software missions.
-Phase 1: Word Processing (docs track). Each mission teaches a "chunk" of the editor
-ribbon, loads a starter document, and lists tasks that are graded by inspecting the
+Phase 1: Word Processing (docs). Phase 2: Spreadsheets (sheets). Each mission teaches a
+"chunk" of the app, loads a starter document, and lists tasks graded by inspecting the
 student's document state. Grading logic is mirrored on the client for live ticking.
 """
+import re
 
-# Toolbar option sets shared with the client so tasks reference exact values.
-STUDIO_CONFIG = {
+# Per-track toolbar option sets shared with the client so tasks reference exact values.
+DOCS_CONFIG = {
     "fonts": ["Arial", "Times New Roman", "Verdana", "Garamond", "Helvetica", "Georgia", "Courier New", "Brush Script MT"],
     "sizes": [10, 11, 12, 14, 16, 18, 20, 24, 30, 36],
     "colors": [
@@ -20,10 +21,22 @@ STUDIO_CONFIG = {
     "symbols": ["®", "™", "©", "•", "→", "★", "°", "½", "é", "ñ"],
 }
 
+SHEETS_CONFIG = {
+    "functions": ["SUM", "AVERAGE", "COUNT", "MAX", "MIN"],
+    "chartTypes": [{"id": "bar", "name": "Bar chart"}, {"id": "pie", "name": "Pie chart"}],
+}
+
+TRACK_CONFIG = {"docs": DOCS_CONFIG, "sheets": SHEETS_CONFIG}
+# Back-compat alias
+STUDIO_CONFIG = DOCS_CONFIG
+
 TRACKS = {
     "docs": {"id": "docs", "name": "Word Processing", "subtitle": "Google Docs · Microsoft Word · Pages",
              "standard": "PA.2.A", "color": "#22D3EE",
              "intro": "Master the document editor one ribbon chunk at a time — then prove it on real editing tasks."},
+    "sheets": {"id": "sheets", "name": "Spreadsheets", "subtitle": "Google Sheets · Microsoft Excel · Numbers",
+               "standard": "PA.2.B", "color": "#34D399",
+               "intro": "Enter data, build formulas (SUM, AVERAGE, COUNT, MAX, MIN), sort, and chart — one skill at a time."},
 }
 
 
@@ -315,6 +328,297 @@ DOCS_MISSIONS = [
 ]
 
 MISSIONS = {"docs": DOCS_MISSIONS}
+
+
+# ------------------------------ SHEET FORMULA ENGINE ------------------------------
+def _col_to_idx(col):
+    idx = 0
+    for ch in col:
+        idx = idx * 26 + (ord(ch.upper()) - 64)
+    return idx - 1
+
+
+def _idx_to_col(i):
+    s = ""; i += 1
+    while i > 0:
+        i, r = divmod(i - 1, 26); s = chr(65 + r) + s
+    return s
+
+
+def _parse_ref(ref):
+    m = re.match(r"^([A-Za-z]+)(\d+)$", (ref or "").strip())
+    if not m:
+        return None
+    return (_col_to_idx(m.group(1)), int(m.group(2)) - 1)
+
+
+def _expand_range(rng):
+    rng = rng.strip()
+    if ":" in rng:
+        a, b = rng.split(":", 1)
+        pa, pb = _parse_ref(a), _parse_ref(b)
+        if not pa or not pb:
+            return []
+        refs = []
+        for r in range(min(pa[1], pb[1]), max(pa[1], pb[1]) + 1):
+            for c in range(min(pa[0], pb[0]), max(pa[0], pb[0]) + 1):
+                refs.append(f"{_idx_to_col(c)}{r + 1}")
+        return refs
+    return [rng]
+
+
+def _num(v):
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return None
+
+
+def eval_ref(cells, ref, seen=None):
+    seen = seen or set()
+    if ref in seen:
+        return None
+    raw = (cells.get(ref) or "").strip()
+    if raw == "":
+        return None
+    if raw.startswith("="):
+        return eval_formula(cells, raw, seen | {ref})
+    n = _num(raw)
+    return n if n is not None else raw
+
+
+def eval_formula(cells, raw, seen):
+    m = re.match(r"^=\s*([A-Za-z]+)\s*\((.*)\)\s*$", raw)
+    if not m:
+        return "#ERR"
+    fn = m.group(1).upper()
+    refs = []
+    for part in m.group(2).split(","):
+        part = part.strip()
+        if part:
+            refs.extend(_expand_range(part))
+    vals = []
+    for r in refs:
+        v = eval_ref(cells, r, seen)
+        n = v if isinstance(v, (int, float)) else _num(v) if v is not None else None
+        if isinstance(n, (int, float)):
+            vals.append(n)
+    if fn == "SUM":
+        return sum(vals)
+    if fn == "COUNT":
+        return len(vals)
+    if fn == "AVERAGE":
+        return round(sum(vals) / len(vals), 4) if vals else 0
+    if fn == "MAX":
+        return max(vals) if vals else 0
+    if fn == "MIN":
+        return min(vals) if vals else 0
+    return "#ERR"
+
+
+# ------------------------------ SHEETS MISSIONS ------------------------------
+def _sheet(name, rows, cols, cells):
+    return {"name": name, "rows": rows, "cols": cols, "cells": cells}
+
+
+def _sdoc(sheets, charts=None):
+    return {"sheets": sheets, "activeSheet": 0, "charts": charts or []}
+
+
+SHEETS_MISSIONS = [
+    {
+        "id": "sheets-m1", "track": "sheets", "order": 1,
+        "title": "Meet the Spreadsheet", "chunk": "Cells, rows & columns",
+        "instruction": [
+            "## The grid",
+            "A spreadsheet is a grid of **cells**. **Columns** are labeled with letters (A, B, C…) and **rows** with numbers (1, 2, 3…).",
+            "- Each cell has an **address** like `A1` (column A, row 1) or `B3`.",
+            "- Click a cell and type to enter a **label** (text) or a **value** (number).",
+            "## Practice",
+            "Type the headers and first data row for a simple score sheet.",
+        ],
+        "doc": _sdoc([_sheet("Sheet1", 6, 4, {})]),
+        "tasks": [
+            _t("t1", "Type 'Player' in cell A1", {"kind": "cell_text", "sheet": 0, "cell": "A1", "equals": "Player"}),
+            _t("t2", "Type 'Score' in cell B1", {"kind": "cell_text", "sheet": 0, "cell": "B1", "equals": "Score"}),
+            _t("t3", "Type a number (e.g. 20) in cell B2", {"kind": "cell_value", "sheet": 0, "cell": "B2", "equals": 20}),
+        ],
+        "points": 100,
+    },
+    {
+        "id": "sheets-m2", "track": "sheets", "order": 2,
+        "title": "The SUM Formula", "chunk": "Formulas · =SUM",
+        "instruction": [
+            "## Adding with =SUM",
+            "A **formula** always starts with `=`. `=SUM(B2:B5)` adds every value from B2 through B5.",
+            "- `B2:B5` is a **range** — a block of cells.",
+            "- Click the total cell, type the formula, and press Enter to see the answer.",
+            "## Practice",
+            "Total the sales below in cell B6.",
+        ],
+        "doc": _sdoc([_sheet("Sales", 7, 3, {"A1": "Day", "B1": "Sales", "A2": "Mon", "B2": "40", "A3": "Tue", "B3": "55", "A4": "Wed", "B4": "30", "A5": "Thu", "B5": "25", "A6": "Total"})]),
+        "tasks": [
+            _t("t1", "In B6, use =SUM(B2:B5) to total the sales", {"kind": "cell_formula", "sheet": 0, "cell": "B6", "fn": "SUM", "range": "B2:B5"}),
+            _t("t2", "The total in B6 should equal 150", {"kind": "cell_value", "sheet": 0, "cell": "B6", "equals": 150}),
+        ],
+        "points": 100,
+    },
+    {
+        "id": "sheets-m3", "track": "sheets", "order": 3,
+        "title": "The AVERAGE Formula", "chunk": "Formulas · =AVERAGE",
+        "instruction": [
+            "## Finding the mean with =AVERAGE",
+            "`=AVERAGE(B2:B5)` adds the values and divides by how many there are — the **mean**.",
+            "## Practice",
+            "Find the average quiz score in B6.",
+        ],
+        "doc": _sdoc([_sheet("Quiz", 7, 3, {"A1": "Student", "B1": "Quiz", "A2": "Ana", "B2": "80", "A3": "Ben", "B3": "90", "A4": "Cy", "B4": "70", "A5": "Di", "B5": "100", "A6": "Average"})]),
+        "tasks": [
+            _t("t1", "In B6, use =AVERAGE(B2:B5)", {"kind": "cell_formula", "sheet": 0, "cell": "B6", "fn": "AVERAGE", "range": "B2:B5"}),
+            _t("t2", "The average in B6 should equal 85", {"kind": "cell_value", "sheet": 0, "cell": "B6", "equals": 85}),
+        ],
+        "points": 100,
+    },
+    {
+        "id": "sheets-m4", "track": "sheets", "order": 4,
+        "title": "The COUNT Formula", "chunk": "Formulas · =COUNT",
+        "instruction": [
+            "## Counting numbers with =COUNT",
+            "`=COUNT(B2:B6)` tells you **how many cells contain numbers** in a range (it ignores empty cells and text).",
+            "## Practice",
+            "Count how many students turned in a score.",
+        ],
+        "doc": _sdoc([_sheet("Turnins", 8, 3, {"A1": "Student", "B1": "Score", "A2": "Ana", "B2": "88", "A3": "Ben", "B3": "", "A4": "Cy", "B4": "72", "A5": "Di", "B5": "95", "A6": "Ed", "B6": "", "A7": "Count"})]),
+        "tasks": [
+            _t("t1", "In B7, use =COUNT(B2:B6)", {"kind": "cell_formula", "sheet": 0, "cell": "B7", "fn": "COUNT", "range": "B2:B6"}),
+            _t("t2", "The count in B7 should equal 3", {"kind": "cell_value", "sheet": 0, "cell": "B7", "equals": 3}),
+        ],
+        "points": 100,
+    },
+    {
+        "id": "sheets-m5", "track": "sheets", "order": 5,
+        "title": "MAX and MIN", "chunk": "Formulas · =MAX and =MIN",
+        "instruction": [
+            "## Highest and lowest",
+            "- `=MAX(B2:B6)` returns the **largest** number in a range.",
+            "- `=MIN(B2:B6)` returns the **smallest** number in a range.",
+            "These are perfect for finding a top score or a lowest temperature.",
+            "## Practice",
+            "Find the highest and lowest game scores.",
+        ],
+        "doc": _sdoc([_sheet("Scores", 8, 3, {"A1": "Game", "B1": "Points", "A2": "G1", "B2": "12", "A3": "G2", "B3": "27", "A4": "G3", "B4": "8", "A5": "G4", "B5": "19", "A6": "Highest", "A7": "Lowest"})]),
+        "tasks": [
+            _t("t1", "In B6, use =MAX(B2:B5) for the highest score", {"kind": "cell_formula", "sheet": 0, "cell": "B6", "fn": "MAX", "range": "B2:B5"}),
+            _t("t2", "In B7, use =MIN(B2:B5) for the lowest score", {"kind": "cell_formula", "sheet": 0, "cell": "B7", "fn": "MIN", "range": "B2:B5"}),
+            _t("t3", "B6 (highest) should equal 27", {"kind": "cell_value", "sheet": 0, "cell": "B6", "equals": 27}),
+            _t("t4", "B7 (lowest) should equal 8", {"kind": "cell_value", "sheet": 0, "cell": "B7", "equals": 8}),
+        ],
+        "points": 100,
+    },
+    {
+        "id": "sheets-m6", "track": "sheets", "order": 6,
+        "title": "A Full Summary Row", "chunk": "Formulas · combine SUM, AVERAGE, MAX, MIN",
+        "instruction": [
+            "## Putting formulas together",
+            "Real analysis uses several formulas side by side. Build a summary for this month's reading minutes.",
+            "## Practice",
+            "Fill the summary cells using the right formulas over B2:B5.",
+        ],
+        "doc": _sdoc([_sheet("Reading", 9, 3, {"A1": "Week", "B1": "Minutes", "A2": "W1", "B2": "120", "A3": "W2", "B3": "90", "A4": "W3", "B4": "150", "A5": "W4", "B5": "60", "A6": "Total", "A7": "Average", "A8": "Most", "A9": "Least"})]),
+        "tasks": [
+            _t("t1", "B6 Total: =SUM(B2:B5)", {"kind": "cell_formula", "sheet": 0, "cell": "B6", "fn": "SUM", "range": "B2:B5"}),
+            _t("t2", "B7 Average: =AVERAGE(B2:B5)", {"kind": "cell_formula", "sheet": 0, "cell": "B7", "fn": "AVERAGE", "range": "B2:B5"}),
+            _t("t3", "B8 Most: =MAX(B2:B5)", {"kind": "cell_formula", "sheet": 0, "cell": "B8", "fn": "MAX", "range": "B2:B5"}),
+            _t("t4", "B9 Least: =MIN(B2:B5)", {"kind": "cell_formula", "sheet": 0, "cell": "B9", "fn": "MIN", "range": "B2:B5"}),
+        ],
+        "points": 100,
+    },
+    {
+        "id": "sheets-m7", "track": "sheets", "order": 7,
+        "title": "Sorting Data", "chunk": "Data · Sort a column",
+        "instruction": [
+            "## Ordering values",
+            "**Sorting** puts a column in order. **Ascending (A→Z)** goes smallest to largest; **descending (Z→A)** goes largest to smallest.",
+            "Click a cell in the column, then use the Sort A→Z / Z→A buttons.",
+            "## Practice",
+            "Sort the temperatures in column B from smallest to largest.",
+        ],
+        "doc": _sdoc([_sheet("Temps", 7, 2, {"B1": "Temp", "B2": "31", "B3": "12", "B4": "25", "B5": "8", "B6": "19"})]),
+        "tasks": [
+            _t("t1", "Sort column B (B2:B6) in ascending order (smallest → largest)", {"kind": "sorted", "sheet": 0, "col": "B", "from": 2, "to": 6, "order": "asc"}),
+        ],
+        "points": 100,
+    },
+    {
+        "id": "sheets-m8", "track": "sheets", "order": 8,
+        "title": "Bar Charts", "chunk": "Insert · Chart (bar)",
+        "instruction": [
+            "## Comparing categories",
+            "A **bar chart** compares amounts across categories. Insert a chart, choose **Bar**, and give it the data range (labels + values).",
+            "## Practice",
+            "Chart the fruit sales below as a bar chart of A1:B4.",
+        ],
+        "doc": _sdoc([_sheet("Fruit", 5, 3, {"A1": "Apples", "B1": "12", "A2": "Bananas", "B2": "9", "A3": "Cherries", "B3": "15", "A4": "Dates", "B4": "6"})]),
+        "tasks": [
+            _t("t1", "Insert a BAR chart of the range A1:B4", {"kind": "chart_range", "type": "bar", "range": "A1:B4"}),
+        ],
+        "points": 100,
+    },
+    {
+        "id": "sheets-m9", "track": "sheets", "order": 9,
+        "title": "Pie Charts", "chunk": "Insert · Chart (pie)",
+        "instruction": [
+            "## Parts of a whole",
+            "A **pie chart** shows how parts make up a whole (like percentages of a budget). Insert a chart and choose **Pie**.",
+            "## Practice",
+            "Show the class pet vote as a pie chart of A1:B4.",
+        ],
+        "doc": _sdoc([_sheet("Pets", 5, 3, {"A1": "Dogs", "B1": "10", "A2": "Cats", "B2": "8", "A3": "Fish", "B3": "5", "A4": "Birds", "B4": "3"})]),
+        "tasks": [
+            _t("t1", "Insert a PIE chart of the range A1:B4", {"kind": "chart_range", "type": "pie", "range": "A1:B4"}),
+        ],
+        "points": 100,
+    },
+    {
+        "id": "sheets-m10", "track": "sheets", "order": 10,
+        "title": "Multiple Worksheets", "chunk": "Sheets · Add & rename tabs",
+        "instruction": [
+            "## Organizing with worksheets",
+            "A spreadsheet file can hold many **worksheets** (tabs at the bottom). Use them to separate data — e.g., one sheet per month.",
+            "Use the **+** to add a sheet, and double-click a tab to **rename** it.",
+            "## Practice",
+            "Add a second worksheet and name it 'Summary'.",
+        ],
+        "doc": _sdoc([_sheet("Data", 5, 3, {"A1": "Item", "B1": "Amount"})]),
+        "tasks": [
+            _t("t1", "Add a second worksheet (2 sheets total)", {"kind": "sheet_count", "equals": 2}),
+            _t("t2", "Name the second worksheet 'Summary'", {"kind": "sheet_named", "index": 1, "name": "Summary"}),
+        ],
+        "points": 100,
+    },
+    {
+        "id": "sheets-m11", "track": "sheets", "order": 11,
+        "title": "Capstone: Build a Gradebook", "chunk": "Everything · plus Export to PDF",
+        "instruction": [
+            "## Put it all together",
+            "Build a mini gradebook: enter the data, compute a class summary with every formula, chart the scores, then **export to PDF**.",
+            "## Your tasks",
+            "Work the checklist top to bottom. When it's all green, download your PDF and submit.",
+        ],
+        "doc": _sdoc([_sheet("Gradebook", 9, 4, {"A1": "Student", "B1": "Score", "A2": "Ana", "B2": "88", "A3": "Ben", "B3": "76", "A4": "Cy", "B4": "94", "A5": "Di", "B5": "82", "A6": "Total", "A7": "Average", "A8": "Highest", "A9": "Lowest"})]),
+        "tasks": [
+            _t("t1", "B6 Total: =SUM(B2:B5)", {"kind": "cell_formula", "sheet": 0, "cell": "B6", "fn": "SUM", "range": "B2:B5"}),
+            _t("t2", "B7 Average: =AVERAGE(B2:B5)", {"kind": "cell_formula", "sheet": 0, "cell": "B7", "fn": "AVERAGE", "range": "B2:B5"}),
+            _t("t3", "B8 Highest: =MAX(B2:B5)", {"kind": "cell_formula", "sheet": 0, "cell": "B8", "fn": "MAX", "range": "B2:B5"}),
+            _t("t4", "B9 Lowest: =MIN(B2:B5)", {"kind": "cell_formula", "sheet": 0, "cell": "B9", "fn": "MIN", "range": "B2:B5"}),
+            _t("t5", "Insert a BAR chart of A1:B5", {"kind": "chart_range", "type": "bar", "range": "A1:B5"}),
+            _t("t6", "Export the gradebook to PDF", {"kind": "exported"}),
+        ],
+        "points": 150,
+    },
+]
+
+MISSIONS["sheets"] = SHEETS_MISSIONS
 MISSION_INDEX = {m["id"]: m for track in MISSIONS.values() for m in track}
 
 
@@ -383,6 +687,45 @@ def _check_one(check, doc):
             return r < len(cells) and c < len(cells[r]) and bool((cells[r][c] or "").strip())
         if kind == "exported":
             return bool(doc.get("exported"))
+        # ---- sheets kinds ----
+        if kind in ("cell_text", "cell_formula", "cell_value", "sorted"):
+            sheets = doc.get("sheets") or []
+            si = check.get("sheet", 0)
+            if si >= len(sheets):
+                return False
+            cells = sheets[si].get("cells") or {}
+            if kind == "cell_text":
+                return (cells.get(check["cell"]) or "").strip().casefold() == check["equals"].casefold()
+            if kind == "cell_formula":
+                raw = (cells.get(check["cell"]) or "").replace(" ", "").upper()
+                exp = f"={check['fn']}({check['range']})".replace(" ", "").upper()
+                return raw == exp
+            if kind == "cell_value":
+                v = eval_ref(cells, check["cell"])
+                return isinstance(v, (int, float)) and abs(v - check["equals"]) < 0.001
+            if kind == "sorted":
+                col = check["col"].upper()
+                nums = []
+                for r in range(check["from"], check["to"] + 1):
+                    n = _num((cells.get(f"{col}{r}") or "").strip())
+                    if n is not None:
+                        nums.append(n)
+                if len(nums) < 2:
+                    return False
+                if check["order"] == "asc":
+                    return all(nums[i] <= nums[i + 1] for i in range(len(nums) - 1))
+                return all(nums[i] >= nums[i + 1] for i in range(len(nums) - 1))
+        if kind == "chart":
+            return any(c.get("type") == check["type"] for c in (doc.get("charts") or []))
+        if kind == "chart_range":
+            want = check["range"].replace(" ", "").upper()
+            return any(c.get("type") == check["type"] and (c.get("range", "").replace(" ", "").upper() == want) for c in (doc.get("charts") or []))
+        if kind == "sheet_count":
+            return len(doc.get("sheets") or []) == check["equals"]
+        if kind == "sheet_named":
+            sheets = doc.get("sheets") or []
+            i = check["index"]
+            return i < len(sheets) and (sheets[i].get("name", "").strip().casefold() == check["name"].casefold())
     except Exception:
         return False
     return False
@@ -420,4 +763,4 @@ def public_track(track_id):
     track = TRACKS.get(track_id)
     if not track:
         return None
-    return {"track": track, "config": STUDIO_CONFIG, "missions": MISSIONS.get(track_id, [])}
+    return {"track": track, "config": TRACK_CONFIG.get(track_id, {}), "missions": MISSIONS.get(track_id, [])}

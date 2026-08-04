@@ -45,6 +45,21 @@ export default function StudioHub() {
           </div>
         </div>
 
+        <div className="flex flex-wrap gap-2 mt-6">
+          {[{ id: "docs", name: "Word Processing" }, { id: "sheets", name: "Spreadsheets" }].map((t) => (
+            <button
+              key={t.id}
+              data-testid={`studio-track-pill-${t.id}`}
+              onClick={() => navigate(`/studio/${t.id}`)}
+              className={`px-4 py-1.5 rounded-full text-sm transition-colors border ${
+                t.id === track ? "bg-[#22D3EE] text-[#04121f] border-[#22D3EE]" : "border-white/15 text-slate-300 hover:border-[#22D3EE]/50"
+              }`}
+            >
+              {t.name}
+            </button>
+          ))}
+        </div>
+
         <Button data-testid="studio-continue-btn" onClick={() => navigate(`/studio/${track}/${firstUndone.id}`)} className="mt-6 bg-[#22D3EE] text-[#04121f] hover:bg-[#67E8F9] hq-glow-teal">
           {mastered === 0 ? "Start Mission 1" : "Continue"} · {firstUndone.title} <ArrowRight className="w-4 h-4 ml-2" />
         </Button>

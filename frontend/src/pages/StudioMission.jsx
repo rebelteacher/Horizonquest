@@ -4,6 +4,7 @@ import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import AppNav from "@/components/AppNav";
 import DocEditorCore from "@/components/studio/DocEditorCore";
+import SheetEditorCore from "@/components/studio/SheetEditorCore";
 import { checkTask } from "@/lib/studioGrade";
 import { exportNodeToPDF } from "@/lib/pdf";
 import { Button } from "@/components/ui/button";
@@ -122,7 +123,9 @@ export default function StudioMission() {
         <div className="grid lg:grid-cols-3 gap-6 mt-6">
           {/* Editor */}
           <div className="lg:col-span-2 order-2 lg:order-1">
-            <DocEditorCore doc={doc} setDoc={setDoc} config={config} pageRef={pageRef} />
+            {track === "sheets"
+              ? <SheetEditorCore doc={doc} setDoc={setDoc} config={config} pageRef={pageRef} />
+              : <DocEditorCore doc={doc} setDoc={setDoc} config={config} pageRef={pageRef} />}
             <div className="flex flex-wrap gap-3 mt-4">
               <Button data-testid="studio-export-btn" variant="outline" className="border-white/15" onClick={doExport}>
                 <Download className="w-4 h-4 mr-2" /> Export PDF

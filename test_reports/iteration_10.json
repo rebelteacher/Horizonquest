@@ -1,0 +1,31 @@
+{
+  "summary": "HorizonQuest Skill Studio Phase 2 (Spreadsheets track) full end-to-end verified. Backend: 25/25 new pytest cases in test_skillstudio_sheets.py pass (payload shape, formula engine SUM/AVG/COUNT/MAX/MIN, sorted, chart_range, sheet_count, sheet_named, exported, best-attempt stickiness, guide 403, wrong-track 404, unauth 401, sticky score+grade+mastery, m11 capstone pays 150). Docs regression (test_skillstudio.py) still 25/25. Frontend: hub /studio/sheets renders 'Spreadsheets' + 11 mission cards + track pills (docs/sheets, sheets active); pill nav to /studio/docs and back works. SheetEditorCore: grid A/B/C headers + row numbers, sheet-formula-input reflects selected cell raw, entering =SUM(B2:B5) into B6 (via cell input, blur) shows 150 and auto-ticks t1+t2; refocus shows raw formula (green text) — behavior matches spec. m5 MAX/MIN => B6=27 B7=8, all 4 tasks tick, submit=A. m7 sort asc (8,12,19,25,31) and desc (31,25,19,12,8) both work; task ticks, submit=A. m8 bar chart via sheet-chart-btn + sheet-chart-type + sheet-chart-range 'A1:B4' + sheet-chart-add renders sheet-chart-bar; task ticks; submit=A; remove chart works. m9 pie chart same flow => A. m10 sheet-add-tab creates tab, dbl-click prompt renames to 'Summary' => both tasks tick, submit=A. m11 capstone: SUM/AVG/MAX/MIN in B6..B9 (340/85/94/76), bar chart A1:B5, studio-export-btn triggers actual PDF download (sheets-m11.pdf, 5.17MB), studio-submit-btn => studio-result-grade 'A', dialog shows +150 & +1 Mark; explorer HP 600→750, marks 6→7. Regression: docs-m1 UI bold/italic + submit=A; /quest/t2-q2 launch-lab-btn navigates to /studio/sheets; /map and /leaderboard load. Final: HP 850, 8 marks, hub shows A + green mastery check on every UI-submitted sheets mission.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_skillstudio_sheets.py",
+    "/app/backend/tests/test_skillstudio.py",
+    "/app/test_reports/pytest/test_skillstudio_sheets.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Non-blocking (carried from iter_9): DocEditorCore <option> children still emit the injected <span data-ve-dynamic> wrapper causing 'span cannot be a child of option' React hydration warning. Preview-instrumentation issue, doesn't affect functionality.",
+    "Non-blocking: SheetEditorCore chart panel closes on grid click via the outer div's onClick={setChartOpen(false)}, which is good; consider also closing on Escape for keyboard a11y (docs popovers had the same minor gap).",
+    "Non-blocking: SheetEditorCore.sortCol() re-writes only the numeric entries in the selected column (skipping formulas/text) — this is correct for the m7 task but could be surprising if the header cell were numeric. Not a bug for current curriculum.",
+    "Non-blocking observation: /studio/{track_id} generic route returns 404 for unknown tracks correctly; no route-ordering issue between sheets and docs.",
+    "Optional: consider a Pydantic schema for MissionSubmit doc payload (defense-in-depth); currently accepts any dict."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_skillstudio_sheets.py (new — 25 pytest cases for Sheets track)"
+  ],
+  "success_rate": {
+    "backend": "100% (25/25 sheets + 25/25 docs regression = 50/50 skillstudio)",
+    "frontend": "100% — every requested Sheets flow verified end-to-end via Playwright: hub, m2 SUM live display, m5 MAX/MIN, m7 sort asc+desc, m8 bar chart, m9 pie chart, m10 add+rename tab, m11 capstone (real 5.17MB PDF download + A/150), docs regression, quest launch, /map, /leaderboard"
+  },
+  "test_credentials": "sheets_fresh_tok (user_id sheets-fresh, explorer role) — created fresh in db.users + db.user_sessions; pre-reset db.studio_progress + db.points_events + HP/marks in a class-scoped fixture. Guide: qa_ui_guide_tok. Auth via cookie session_token (httpOnly, secure, sameSite None on host explorer-journey-4.preview.emergentagent.com) or Authorization: Bearer.",
+  "seed_data_creation": "Seeded fresh sheets explorer via mongosh: db.users upsert {user_id:'sheets-fresh', role:'explorer', horizon_points:0, compass_marks:0}; db.user_sessions upsert {session_token:'sheets_fresh_tok', user_id:'sheets-fresh', expires_at now+7d}. Fixture wipes studio_progress + points_events + resets HP before class run.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Skill Studio Docs (Phase 1) + Sheets (Phase 2) are both green. Backend suite: /app/backend/tests/test_skillstudio.py (docs, 25 cases) + /app/backend/tests/test_skillstudio_sheets.py (sheets, 25 cases). Both classes are loadscope-pinned via xdist for deterministic ordering. _perfect_doc() in the sheets test applies cell_value tasks BEFORE cell_formula so shared-cell tasks (e.g. m2 t1=formula & t2=value) don't overwrite each other — reuse this pattern for future sheets missions. If Slides track (Phase 3) lands, mirror the same TestSkillStudioSheets structure. Frontend cookie injection continues to work on the preview host. The React 'span in option' hydration warning is preview-tooling injected, not product code.",
+  "rca of the issue": "None — no bugs found. Phase 2 Sheets shipped clean. Initial pytest run showed 7 assertion failures caused by my _perfect_doc() applying cell_formula THEN cell_value, which overwrites the formula string with a plain number and fails the cell_formula check; fix was to reverse the order (values first, formulas last) since the formula evaluates to the same number, satisfying both check kinds simultaneously — this is a TEST-only fix, not a product fix."
+}

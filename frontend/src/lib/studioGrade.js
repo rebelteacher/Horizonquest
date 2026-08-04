@@ -1,4 +1,6 @@
 // Client mirror of backend skillstudio grading (for live task ticking).
+import { evalRef } from "@/lib/sheetEngine";
+
 const getBlock = (doc, bid) => (doc.blocks || []).find((b) => b.id === bid);
 const firstTable = (doc) => (doc.blocks || []).find((b) => b.type === "table");
 const LIST_TYPES = ["paragraph", "bullet", "number", "heading"];
@@ -20,6 +22,27 @@ export function checkTask(check, doc) {
     if (k === "table") { const t = firstTable(doc); return !!t && t.cols === check.cols && t.rows === check.rows; }
     if (k === "table_cell_filled") { const t = firstTable(doc); if (!t) return false; const cells = t.cells || []; const { row, col } = check; return row < cells.length && col < cells[row].length && !!(cells[row][col] || "").trim(); }
     if (k === "exported") { return !!doc.exported; }
+    // ---- sheets kinds ----
+    if (k === "cell_text" || k === "cell_formula" || k === "cell_value" || k === "sorted") {
+      const sheets = doc.sheets || [];
+      const si = check.sheet || 0;
+      if (si >= sheets.length) return false;
+      const cells = sheets[si].cells || {};
+      if (k === "cell_text") return (cells[check.cell] || "").trim().toLowerCase() === check.equals.toLowerCase();
+      if (k === "cell_formula") { const raw = (cells[check.cell] || "").replace(/\s/g, "").toUpperCase(); const exp = `=${check.fn}(${check.range})`.replace(/\s/g, "").toUpperCase(); return raw === exp; }
+      if (k === "cell_value") { const v = evalRef(cells, check.cell); return typeof v === "number" && Math.abs(v - check.equals) < 0.001; }
+      if (k === "sorted") {
+        const col = check.col.toUpperCase(); const nums = [];
+        for (let r = check.from; r <= check.to; r++) { const n = Number((cells[`${col}${r}`] || "").trim()); if (!Number.isNaN(n) && (cells[`${col}${r}`] || "").trim() !== "") nums.push(n); }
+        if (nums.length < 2) return false;
+        if (check.order === "asc") return nums.every((n, i) => i === 0 || nums[i - 1] <= n);
+        return nums.every((n, i) => i === 0 || nums[i - 1] >= n);
+      }
+    }
+    if (k === "chart") return (doc.charts || []).some((c) => c.type === check.type);
+    if (k === "chart_range") { const want = check.range.replace(/\s/g, "").toUpperCase(); return (doc.charts || []).some((c) => c.type === check.type && (c.range || "").replace(/\s/g, "").toUpperCase() === want); }
+    if (k === "sheet_count") return (doc.sheets || []).length === check.equals;
+    if (k === "sheet_named") { const s = doc.sheets || []; return check.index < s.length && (s[check.index].name || "").trim().toLowerCase() === check.name.toLowerCase(); }
   } catch (e) { return false; }
   return false;
 }

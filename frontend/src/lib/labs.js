@@ -11,9 +11,10 @@ export const QUEST_LABS = {
     desc: "12 guided, auto-graded missions — format real documents chunk by chunk and export to PDF.",
   },
   "t2-q2": {
-    tool: "spreadsheet",
-    title: "Spreadsheet Lab",
-    desc: "Enter data and use =SUM, =AVERAGE and =COUNT formulas, chart it, and export to PDF.",
+    tool: "studio-sheets",
+    path: "/studio/sheets",
+    title: "Spreadsheets Skill Studio",
+    desc: "11 guided, auto-graded missions — SUM, AVERAGE, COUNT, MAX, MIN, sorting, and charts.",
   },
   "t2-q4": {
     tool: "slide-builder",
