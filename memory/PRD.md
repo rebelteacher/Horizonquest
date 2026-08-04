@@ -55,9 +55,16 @@ Gamified education platform. Stack: React + FastAPI + MongoDB. Auth: Google sign
 
 - ✅ **Skill Studio — Phase 2: Spreadsheets (sheets track)**: 11 guided auto-graded missions (Grid → SUM → AVERAGE → COUNT → **MAX & MIN** → combined summary → Sorting → Bar charts → Pie charts → Multiple worksheets → Capstone+PDF). New `SheetEditorCore` grid editor with a live formula engine (SUM/AVERAGE/COUNT/MAX/MIN), formula bar, column sort (asc/desc), recharts bar/pie charts, multi-sheet tabs. Same server-authoritative grading (A–F + HP, best-attempt sticky). Hub has track pills (Word Processing ↔ Spreadsheets). Linked from quest t2-q2. Tested 100% (iteration_10, 50/50 backend tests).
 
-## Skill Studio roadmap
-- P0 next: **Phase 3 — Presentations track** (slides): text/images/charts, 5×5 rule, layouts, delivery — needs a slide-canvas editor core + new check kinds.
-- Backend tests: `/app/backend/tests/test_skillstudio.py` (docs, 25) + `test_skillstudio_sheets.py` (sheets, 25).
+- ✅ **Skill Studio — Phase 3: Presentations (slides track)**: 12 guided auto-graded missions (Meet a Slide → Building a Deck → Bulleted Content → 5×5 Rule → Layouts → Themes → Images → Charts → Animations → Transitions → Speaker Notes → Capstone+PDF). New `SlideEditorCore`: slide canvas with 4 layouts + 4 themes, thumbnail rail (add/delete/switch), editable title/bullets, image gallery (6 stock images), recharts bar/pie, framer-motion animations + transitions, speaker notes. Same A–F + HP grading. Hub pills now cover all 3 tracks. Linked from quest t2-q4. Tested 100% (iteration_11, 81/81 backend tests).
+
+## Skill Studio — COMPLETE (all 3 tracks)
+- Word Processing (12), Spreadsheets (11), Presentations (12) — 35 auto-graded missions total, covering the full CTE productivity-software standards.
+- Backend tests: `test_skillstudio.py` (docs 25) + `test_skillstudio_sheets.py` (25) + `test_skillstudio_slides.py` (31) = 81 passing.
+- Known non-blocking: slide gallery uses external Unsplash URLs (grading unaffected if an image fails to load); consider self-hosting for offline resilience.
+
+## Next backlog
+- P1: Class Grade Export (CSV of Studio grades for Guides); Guide Studio view (assign missions, see mastery per student).
+- P1: Repurpose Guide Review Queue to flag struggling Explorers.
 
 ## Backlog / Remaining (older)
 - P1: Repurpose Guide Review Queue to flag struggling Explorers (reflections removed).
