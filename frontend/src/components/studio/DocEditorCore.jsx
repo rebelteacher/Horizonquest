@@ -113,7 +113,7 @@ export default function DocEditorCore({ doc, setDoc, config, pageRef }) {
         <div className="relative">
           <TBtn testid="studio-color" title="Text color" active={menu === "color"} onClick={() => setMenu(menu === "color" ? null : "color")} disabled={!selected}><Palette className="w-4 h-4" /></TBtn>
           {menu === "color" && (
-            <div className="absolute z-30 top-11 left-0 bg-white border border-slate-300 rounded-lg p-2 grid grid-cols-3 gap-2 shadow-xl">
+            <div className="absolute z-30 top-11 left-0 bg-white border border-slate-300 rounded-lg p-2 grid grid-cols-3 gap-2 shadow-xl w-32">
               {config.colors.map((c) => (
                 <button key={c.hex} data-testid={`studio-color-${c.name.toLowerCase()}`} title={c.name}
                   onClick={() => { setFmt("color", c.hex); setMenu(null); }}

@@ -109,7 +109,7 @@ DOCS_MISSIONS = [
         ]),
         "tasks": [
             _t("t1", "Set every line to Times New Roman", {"kind": "fmt_all", "attr": "fontFamily", "equals": "Times New Roman"}),
-            _t("t2", "Set every line to 12pt", {"kind": "fmt_all", "attr": "fontSize", "equals": 12}),
+            _t("t2", "Set the two body lines to 12pt", {"kind": "fmt_multi", "blocks": ["b2", "b3"], "attr": "fontSize", "equals": 12}),
             _t("t3", "Make the title ('The Great Gatsby') 24pt", {"kind": "fmt", "block": "b1", "attr": "fontSize", "equals": 24}),
         ],
         "points": 100,

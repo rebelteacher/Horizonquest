@@ -1,0 +1,49 @@
+{
+  "summary": "RETEST of the 3 fixes from iteration_8 for HorizonQuest Skill Studio (Docs track). ALL THREE FIXES VERIFIED. Backend: 25/25 pytest tests pass in /app/backend/tests/test_skillstudio.py (updated test_201/202/310/420/910 to reflect the new sticky best-attempt response + m3 completability). Frontend: color popover now renders 128px wide with three real 31px columns and all 6 swatches visible in 2 rows x 3 cols (previously 36px stacked); clicking blue sets b1 to rgb(37,99,235), red sets b3 to rgb(220,38,38); docs-m4 both tasks tick. docs-m3 UI flow (Times New Roman on all, 12pt on b2+b3, 24pt on b1) ticks 3/3 and submit dialog shows grade A / 100% / 3/3. Hub /studio/docs shows all 12 cards with grade A + green mastery check including docs-m2 (previously stale F after partial resubmit) and docs-m3 (previously impossible).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_skillstudio.py",
+    "/app/test_reports/pytest/test_skillstudio.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Non-blocking: DocEditorCore.jsx <option> children currently include the injected <span data-ve-dynamic> wrapper from the preview instrumentation, which generates a React hydration warning ('span cannot be a child of option'). This appears to be preview-tooling injection rather than product code and does not affect functionality. If it is easy to opt this file out of source-map instrumentation, worth doing.",
+    "Non-blocking: response 'mastery' now correctly returns sticky best-attempt (matches persisted state) — the submit dialog message on a lower resubmit now reads 'Graded A · +0 Horizon Points' which is correct.",
+    "Non-blocking a11y: color/symbol/table popovers still don't close on Escape (only on outside click). Minor.",
+    "Optional: consider adding a Pydantic schema for the submitted doc shape in POST /api/studio/{track}/{mission}/submit for defense-in-depth."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_skillstudio.py (updated test_201, test_202, test_310, test_420, test_910 to reflect the 3 fixes: sticky best-attempt response, docs-m3 now completable, sticky grade persisted)"
+  ],
+  "success_rate": {
+    "backend": "100% (25/25 skillstudio tests pass)",
+    "frontend": "100% (all 3 fixes verified end-to-end via Playwright: popover geometry + swatch clickability + docs-m3 UI submit A + hub renders all 12 A cards)"
+  },
+  "test_credentials": "studio_fresh_tok (user_id studio-fresh) — reused with pre-run reset of studio_progress/points_events/hp. retest_tok (user_id retest-exp) — created fresh for docs-m4 color-popover geometry check. Both accessible via cookie session_token OR Authorization: Bearer.",
+  "seed_data_creation": "Created explorer 'retest-exp' with session token 'retest_tok' in db.users + db.user_sessions (7-day expiry). Backend suite pre-resets studio_progress/points_events/hp for 'studio-fresh'. To rerun cleanly: mongosh --eval \"use('test_database'); db.studio_progress.deleteMany({user_id:'studio-fresh'}); db.points_events.deleteMany({user_id:'studio-fresh'}); db.users.updateOne({user_id:'studio-fresh'},{\\$set:{horizon_points:0,compass_marks:0}})\".",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Studio Docs Phase 1 is fully green. Backend regression suite lives at /app/backend/tests/test_skillstudio.py (loadscope pinned for deterministic ordering). If main agent later adds Sheets/Slides tracks or a per-mission scoring policy change, extend TestSkillStudioDocs / add a new class. The submit response now returns sticky best-attempt score/grade/mastery; any grading-scale tests must probe via a fresh mission (or via passed/total on the response) rather than resubmitting the same mission with a smaller doc. Frontend cookie injection continues to work reliably on the preview host (SameSite=None, secure, httpOnly).",
+  "fix_verification_details": {
+    "fix_1_color_popover": {
+      "verified": true,
+      "evidence": "popover_width=128px, gridTemplateColumns='31.3281px 31.3281px 31.3438px', 6 swatches at distinct (x,y): rows [284,320] x cols [787,826,866]. Clicking studio-color-blue set b1 to rgb(37,99,235); studio-color-red set b3 to rgb(220,38,38). Both docs-m4 tasks ticked (2/2)."
+    },
+    "fix_2_backend_sticky_grade": {
+      "verified": true,
+      "evidence": "test_310 asserts response returns sticky A/100/mastery=True + DB row grade='A'/score=100/mastery=True after partial (1/3) resubmit; test_910 asserts all 12 missions (incl docs-m2 after partial resubmit) show grade A in progress; hub screenshot confirms docs-m2 card renders 'A' with green mastery check (no F)."
+    },
+    "fix_3_docs_m3": {
+      "verified": true,
+      "evidence": "test_420 asserts perfect submit → score 100, grade A, mastery True (previously 67 D). UI test: setting fontFamily=Times New Roman on b1/b2/b3 + fontSize=12 on b2/b3 + fontSize=24 on b1 ticks all 3 tasks; submit dialog shows grade A / 100% / 3/3 tasks. skillstudio.py line 112 confirmed: t2 kind='fmt_multi' blocks=['b2','b3']."
+    }
+  }
+}

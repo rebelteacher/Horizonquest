@@ -183,20 +183,28 @@ class TestSkillStudioDocs:
         assert d["score"] == 86 and d["grade"] == "B" and d["mastery"] is False
 
     def test_201_grade_scale_C_using_m12(self):
+        """Note: response returns sticky best-attempt score/grade after iter_9 fix.
+           So we assert passed/total (current submit), and score/grade remain best (B/86)."""
         m = _fetch_mission("docs-m12")
         doc = copy.deepcopy(m["doc"])
-        for t in m["tasks"][:5]:  # 5/7 = 71%
+        for t in m["tasks"][:5]:  # 5/7 = 71% this submit
             _apply_check(doc, t["check"])
         d = requests.post(f"{API}/studio/docs/docs-m12/submit", headers=EH, json={"doc": doc}).json()
-        assert d["score"] == 71 and d["grade"] == "C"
+        assert d["passed"] == 5 and d["total"] == 7
+        # response returns sticky best (from prior 6/7 B submit)
+        assert d["score"] == 86 and d["grade"] == "B"
+        assert d["points_awarded"] == 0  # no new points (best-attempt)
 
     def test_202_grade_scale_F_using_m12(self):
+        """4/7 = 57% raw. Response still returns sticky best 86/B (from test_200)."""
         m = _fetch_mission("docs-m12")
         doc = copy.deepcopy(m["doc"])
-        for t in m["tasks"][:4]:  # 4/7 = 57%
+        for t in m["tasks"][:4]:
             _apply_check(doc, t["check"])
         d = requests.post(f"{API}/studio/docs/docs-m12/submit", headers=EH, json={"doc": doc}).json()
-        assert d["score"] == 57 and d["grade"] == "F"
+        assert d["passed"] == 4 and d["total"] == 7
+        assert d["score"] == 86 and d["grade"] == "B"
+        assert d["points_awarded"] == 0
 
     # ---- docs-m2: perfect run + best-attempt semantics + user HP increments ----
     def test_300_docs_m2_perfect_A(self):
@@ -215,9 +223,9 @@ class TestSkillStudioDocs:
         assert me["horizon_points"] == base_pts + 100
         assert me["compass_marks"] == base_marks + 1
 
-    def test_310_docs_m2_partial_best_attempt_no_award(self):
-        """Resubmit with only 1/3 tasks → grade F, score 33, no reduction in points.
-           NOTE: response 'mastery' reflects THIS submit (not sticky). DB row keeps sticky mastery."""
+    def test_310_docs_m2_partial_best_attempt_sticky_grade(self):
+        """FIXED (iter_9): Resubmit partial (1/3) → response returns sticky best A/100/mastery,
+           points_awarded 0. DB row keeps grade A / score 100 / mastery True."""
         m = _fetch_mission("docs-m2")
         doc = copy.deepcopy(m["doc"])
         _apply_check(doc, m["tasks"][0]["check"])  # only t1
@@ -226,24 +234,22 @@ class TestSkillStudioDocs:
         assert r.status_code == 200
         d = r.json()
         assert d["passed"] == 1 and d["total"] == 3
-        assert d["score"] == 33 and d["grade"] == "F"
-        # Response mastery = current-submit mastery (not sticky). Documented behavior.
-        assert d["mastery"] is False
+        # Response returns STICKY best-attempt values
+        assert d["score"] == 100, f"expected sticky best score 100, got {d['score']}"
+        assert d["grade"] == "A", f"expected sticky best grade A, got {d['grade']}"
+        assert d["mastery"] is True, "expected sticky mastery True on partial resubmit"
         # No additional points awarded (best-attempt)
         assert d["points_awarded"] == 0
         me = requests.get(f"{API}/auth/me", headers=EH).json()["horizon_points"]
         assert me == pre  # no change to user total
 
-        # But DB row must keep sticky mastery=True and best score=100
+        # DB row must keep sticky mastery=True, grade=A, best score=100
         db = _mongo()
         row = db.studio_progress.find_one({"user_id": "studio-fresh", "mission_id": "docs-m2"})
         assert row["mastery"] is True, "sticky mastery lost after partial resubmit"
         assert row["score"] == 100, f"best-attempt score not preserved: {row['score']}"
         assert row["points_earned"] == 100, "best-attempt points_earned not preserved"
-        # BUG: stored grade is overwritten to current submit's grade even if worse
-        # This is server.py L493: "grade": grade (unconditional) vs "score": max(score, prev)
-        # If/when server fixes this, change assertion to == "A"
-        assert row["grade"] == "F", "grade field IS overwritten (documented bug)"
+        assert row["grade"] == "A", f"sticky grade lost after partial resubmit: {row['grade']}"
 
     # ---- Per-mission auto-grading coverage ----
     def test_400_docs_m1(self):
@@ -260,15 +266,14 @@ class TestSkillStudioDocs:
         assert d["grade"] == "A"
         assert d["mastery"] is True
 
-    def test_420_docs_m3_content_bug_impossible_to_score_A(self):
-        """docs-m3 has mutually exclusive tasks:
-              t2 (fmt_all fontSize=12)  AND  t3 (b1 fontSize=24).
-           Setting b1 to 24pt breaks t2. Max attainable is 2/3 = 67% (D).
-           This test documents the content bug — if design intent later fixes it,
-           update this test to expect A."""
+    def test_420_docs_m3_perfect_A(self):
+        """FIXED (iter_9): docs-m3 t2 now targets ['b2','b3'] via fmt_multi, no longer
+           conflicting with t3 (b1 fontSize=24). Perfect submit → 100 A mastery."""
         m = _fetch_mission("docs-m3")
         d = requests.post(f"{API}/studio/docs/docs-m3/submit", headers=EH, json={"doc": _perfect_doc(m)}).json()
-        assert d["score"] == 67 and d["grade"] == "D"
+        assert d["score"] == 100, f"docs-m3 not scoring 100: {d}"
+        assert d["grade"] == "A"
+        assert d["mastery"] is True
 
     # ---- Capstone docs-m12: verify total accumulated points reach 150 ----
     def test_500_docs_m12_perfect_reaches_150_total(self):
@@ -304,16 +309,11 @@ class TestSkillStudioDocs:
     def test_910_studio_progress_persisted(self):
         d = requests.get(f"{API}/studio/docs", headers=EH).json()
         prog = d["progress"]
-        # every mission we perfect-submitted (all except m2 which got a partial resubmit, m3) should show A
-        for mid in ("docs-m1", "docs-m4", "docs-m5", "docs-m6", "docs-m7",
+        # every mission we perfect-submitted (including m2 with partial resubmit — sticky A,
+        # and m3 now fixed) should show A
+        for mid in ("docs-m1", "docs-m2", "docs-m3", "docs-m4", "docs-m5", "docs-m6", "docs-m7",
                     "docs-m8", "docs-m9", "docs-m10", "docs-m11", "docs-m12"):
             assert mid in prog, f"missing progress for {mid}"
             assert prog[mid]["mastery"] is True, f"{mid} not mastered: {prog[mid]}"
             assert prog[mid]["grade"] == "A", f"{mid} grade {prog[mid]['grade']}"
             assert prog[mid]["score"] == 100
-        # m2 still shows mastery True (sticky) & score 100 (best) — but grade shows F (documented bug)
-        assert prog["docs-m2"]["mastery"] is True
-        assert prog["docs-m2"]["score"] == 100
-        # m3 stored, but not mastered (content bug)
-        assert "docs-m3" in prog
-        assert prog["docs-m3"]["mastery"] is False

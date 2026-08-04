@@ -476,13 +476,16 @@ async def studio_submit(track_id: str, mission_id: str, payload: MissionSubmit, 
 
     graded = skillstudio.grade_mission(mission_id, payload.doc)
     score = graded["score"]
-    grade = skillstudio.letter_grade(score)
-    mastery = score >= 90
     points_awarded = round(graded["points"] * score / 100)
 
     prev = await db.studio_progress.find_one({"user_id": explorer["user_id"], "mission_id": mission_id}, {"_id": 0})
     prev_points = prev["points_earned"] if prev else 0
+    prev_score = prev["score"] if prev else 0
     prev_mastery = prev.get("mastery", False) if prev else False
+
+    best_score = max(score, prev_score)
+    best_grade = skillstudio.letter_grade(best_score)
+    sticky_mastery = (score >= 90) or prev_mastery
     final_points = max(points_awarded, prev_points)
     delta = final_points - prev_points
 
@@ -490,14 +493,15 @@ async def studio_submit(track_id: str, mission_id: str, payload: MissionSubmit, 
         {"user_id": explorer["user_id"], "mission_id": mission_id},
         {"$set": {
             "user_id": explorer["user_id"], "track": track_id, "mission_id": mission_id,
-            "score": max(score, prev["score"]) if prev else score, "last_score": score,
-            "grade": grade, "points_earned": final_points, "mastery": mastery or prev_mastery,
+            "score": best_score, "last_score": score,
+            "grade": best_grade, "points_earned": final_points, "mastery": sticky_mastery,
             "updated_at": now_utc().isoformat(),
         }}, upsert=True,
     )
 
     inc = {"horizon_points": delta}
-    if mastery and not prev_mastery:
+    newly_mastered = (score >= 90) and not prev_mastery
+    if newly_mastered:
         inc["compass_marks"] = 1
     await db.users.update_one({"user_id": explorer["user_id"]}, {"$inc": inc})
     if delta > 0:
@@ -509,8 +513,8 @@ async def studio_submit(track_id: str, mission_id: str, payload: MissionSubmit, 
     updated = await db.users.find_one({"user_id": explorer["user_id"]}, {"_id": 0})
     return {
         "results": graded["results"], "passed": graded["passed"], "total": graded["total"],
-        "score": score, "grade": grade, "mastery": mastery,
-        "points_awarded": max(delta, 0), "compass_mark_earned": mastery and not prev_mastery,
+        "score": best_score, "grade": best_grade, "mastery": sticky_mastery,
+        "points_awarded": max(delta, 0), "compass_mark_earned": newly_mastered,
         "horizon_points": updated.get("horizon_points", 0), "compass_marks": updated.get("compass_marks", 0),
     }
 
