@@ -40,14 +40,25 @@ Gamified education platform. Stack: React + FastAPI + MongoDB. Auth: Google sign
 - ✅ AI Copilot streaming (claude-sonnet-4-6)
 - ✅ Tested: backend 23/23 pytest, frontend E2E 100% of tested flows
 
-## Backlog / Remaining
-- P1: Guide authoring of quests (create/edit curriculum) — noted as "later" in v1
-- P1: Rank-movement indicators (previous vs current rank arrows)
-- P2: Chatbot Forge / Prompt Lab as distinct AI surfaces
-- P2: Simulations ("sim" screens) interactive activities
-- P2: Concurrency-safe fleet balancing; richer per-quest text/short-answer grading
+## Implemented (2026-06) — Iteration 3: Cyber labs, Objectives, Auth cache fix, Skill Studio P1
+- ✅ **Objectives + Learner Goals**: curriculum exposes `objective` + `learner_goal` per quest; Explorers see an "I can…" goal banner on quests; Guides get a new **Curriculum tab** (all 33 quests: objective, learner goal, standard, DOK). Tested 100%.
+- ✅ **Cipher Playground** lab (`/lab/cipher`, quest t3-q6): Caesar wheel encoder + 3 decode puzzles, Substitution key + 3 puzzles, **Pigpen bonus** (SVG glyphs, +50). Lab +75. Tested 100%.
+- ✅ **Phishing Spotter** lab (`/lab/phishing`, quest t3-q5): 3 realistic emails, tap red flags, scored feedback, +75. Tested 100%.
+- ✅ **Auth stale-cache fix**: root cause was a stale cached JS bundle in the user's normal browser (worked in incognito). Added `no-cache/must-revalidate` meta to entry HTML + lightweight auth exchange logging in backend.
+- ✅ **Skill Studio — Phase 1: Word Processing (docs track)**: new guided, auto-graded editing system modeled on teacher's workbook/assignment PDFs. 12 missions (Ribbon → Font style → Font/size → Color → Alignment → Spacing → Lists → Insert/Links → Find&Replace → Tables → Headers/Footers → Capstone+PDF). Structured gradeable editor (`DocEditorCore`), live task ticking, server-authoritative grading with **letter grade A–F + Horizon Points**, best-attempt sticky. Replaces the old free-play Doc editor (linked from quest t2-q1 + `Studio` nav item). Tested 100% (iteration_9).
 
-## Next Tasks
-- Add rank movement (↑/↓) to leaderboard
-- Guide authoring UI for custom quests
-- Interactive simulations for select quests
+## Skill Studio architecture (for future phases)
+- Backend `/app/backend/skillstudio.py`: `TRACKS`, `STUDIO_CONFIG` (fonts/sizes/colors/spacings/symbols), `MISSIONS` (per track), `grade_mission()` (check kinds: fmt, fmt_all, fmt_multi, fmt_and, type, type_multi, text_contains, text_replaced, link, header_contains, footer_pagenum, table, table_cell_filled, exported), `letter_grade()`, `public_track()`.
+- Endpoints: `GET /api/studio/{track}` (missions+config+progress), `POST /api/studio/{track}/{mission_id}/submit` (grades, best-attempt, awards HP + compass mark @≥90%, points_events territory t2).
+- Frontend: `StudioHub.jsx` (`/studio/:track`), `StudioMission.jsx` (`/studio/:track/:missionId`), `components/studio/DocEditorCore.jsx`, `lib/studioGrade.js` (client grading mirror).
+- Doc state model = `{header, footerPageNumber, blocks:[{id,type,text,fmt}]}`; table blocks `{type:'table',rows,cols,cells}`.
+
+## Skill Studio roadmap
+- P0 next: **Phase 2 — Spreadsheets track** (SUM/AVERAGE/COUNT, sorting, charts, multiple sheets) — needs a grid editor core + new check kinds (formula, chart, sort, sheet).
+- P0 after: **Phase 3 — Presentations track** (text/images/charts/animations, 5×5, delivery) — slide-canvas editor core.
+
+## Backlog / Remaining (older)
+- P1: Repurpose Guide Review Queue to flag struggling Explorers (reflections removed).
+- P1: Guide authoring of quests. Rank-movement indicators.
+- P2: Chatbot Forge / Prompt Lab as distinct AI surfaces.
+
