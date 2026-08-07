@@ -268,9 +268,9 @@ DOCS_MISSIONS = [
         "instruction": [
             "## Inserting extras",
             "- **Special characters** are symbols not on the keyboard, like ® ™ © °. Use the Ω (Insert Symbol) button.",
-            "- A **hyperlink** turns text into a clickable link to a website. Select a line and use the link button to add a URL.",
+            "- A **hyperlink** turns text into a clickable link to a website. Select the line, click the link button, and type **any real web address** — for example `https://www.example.com`.",
             "## Practice",
-            "Finish the product blurb.",
+            "Finish the product blurb: add the ® symbol and turn the last line into a hyperlink (any web address works).",
         ],
         "doc": _doc([
             _b("b1", "SkyPad Tablet"),
@@ -279,7 +279,7 @@ DOCS_MISSIONS = [
         ]),
         "tasks": [
             _t("t1", "Insert the ® symbol somewhere in the product name line", {"kind": "text_contains", "block": "b1", "value": "®"}),
-            _t("t2", "Turn 'Learn more at our website' into a hyperlink", {"kind": "link", "block": "b3"}),
+            _t("t2", "Turn 'Learn more at our website' into a hyperlink (type any web address, e.g. https://www.skypad.com)", {"kind": "link", "block": "b3"}),
         ],
         "points": 100,
     },

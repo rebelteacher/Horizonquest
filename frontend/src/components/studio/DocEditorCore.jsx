@@ -57,7 +57,7 @@ export default function DocEditorCore({ doc, setDoc, config, pageRef }) {
   };
   const addLink = () => {
     if (!selected) return;
-    const url = window.prompt("Enter the full URL (https://…)", "https://");
+    const url = window.prompt("Enter the full web address (any real site works)", "https://www.example.com");
     if (url) patchBlock(selectedId, {}, { link: url });
   };
   const insertTable = (cols, rows) => {
