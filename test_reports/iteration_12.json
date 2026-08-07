@@ -1,0 +1,58 @@
+{
+  "summary": "Targeted UI-icon fix verification on /studio/docs/docs-m4 (Text Color mission). BUG FIX VERIFIED: the studio-color toolbar button no longer renders the lucide Palette <svg>; it now renders a literal bold letter 'A' plus a small colored underbar span (matching the mission instruction 'an A with a colored bar'). All follow-on functional and regression checks pass end-to-end: popover still opens on click, all 6 swatches (studio-color-black/red/orange/green/blue/purple) are visible and clickable, blue applies rgb(37,99,235) to b1 (t1 ticks), red applies rgb(220,38,38) to b3 (t2 ticks), submit yields grade A. Other docs missions (docs-m1) still render the full toolbar with the same corrected color button. Sheets and Slides hubs load unchanged (they use separate editor cores).",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/test_reports/iteration_12.json"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Non-blocking: minor mismatch with spec — the fallback color '#dc2626' inside studio-color underbar is unreachable in practice because DocEditorCore mounts with selectedId = doc.blocks[0]?.id, so `selected?.fmt.color` is always defined. The initial visible bar therefore reflects b1's fmt.color (dark slate rgb(15,23,42)) rather than red. Behaviour is still valid (bar reflects selected block color) and the button is unambiguously an 'A + bar', but the spec's '#dc2626 default' branch is effectively dead code.",
+    "Non-blocking (carried from iter_9): <option> hydration warning from preview-tool <span data-ve-dynamic> injection inside <select> children — cosmetic, preview instrumentation only, not product code.",
+    "Non-blocking (carried from iter_9): color/symbol/table popovers do not close on Escape (only outside click)."
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "n/a (skipped per review_request)",
+    "frontend": "100% (icon shape, popover, both swatch->color assertions, both task ticks, grade A, and docs-m1 toolbar regression all pass)"
+  },
+  "test_credentials": "session_token cookie 'studio_icontest_tok' (user_id 'studio-icontest', role 'explorer') injected into db.users + db.user_sessions with 7-day expiry. Cookie set httpOnly, secure, sameSite=None on host explorer-journey-4.preview.emergentagent.com.",
+  "seed_data_creation": "Created explorer user 'studio-icontest' + fresh session token 'studio_icontest_tok' in test_database (users, user_sessions). Cleared any prior studio_progress/points_events for that user_id. Reusable for any future icon/color regression retest.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Docs-m4 Text Color icon fix is verified. The color button is now <span>A</span> + colored underbar (background = selected block's fmt.color, fallback '#dc2626' when nothing selected — but nothing is ever unselected in current UI since b1 auto-selects on mount). Regression scope is limited to /components/studio/DocEditorCore.jsx line ~114-119; SheetEditorCore and SlideEditorCore are untouched. If future changes let user deselect all blocks, that would surface the red default underbar.",
+  "fix_verification_details": {
+    "icon_shape": {
+      "verified": true,
+      "evidence": "studio-color inner <svg> count = 0 (lucide Palette removed). Inner text = 'A'. Inner spans include one text='A' bold span and one empty span with backgroundColor style forming the underbar (14x3 px)."
+    },
+    "popover_opens_and_swatches_clickable": {
+      "verified": true,
+      "evidence": "After clicking studio-block-b1 then studio-color, all 6 data-testids studio-color-{black,red,orange,green,blue,purple} are visible; clicking blue closed the popover and applied color."
+    },
+    "functional_blue_on_b1": {
+      "verified": true,
+      "evidence": "computed b1 color = rgb(37, 99, 235) post-click; studio-task-t1-done rendered (count=1). Underbar of studio-color now shows rgb(37,99,235) reflecting selected block's color."
+    },
+    "functional_red_on_b3": {
+      "verified": true,
+      "evidence": "computed b3 color = rgb(220, 38, 38) post-click; studio-task-t2-done rendered (count=1)."
+    },
+    "submit_grade_A": {
+      "verified": true,
+      "evidence": "studio-result-grade inner text = 'A'; dialog shows 'Score 100% · 2/2 tasks · +100 · +1 Mark'."
+    },
+    "regression_docs_m1_toolbar": {
+      "verified": true,
+      "evidence": "All 17 toolbar data-testids present on /studio/docs/docs-m1; studio-color still shows literal 'A' with 0 svgs."
+    },
+    "regression_sheets_slides": {
+      "verified": true,
+      "evidence": "/studio/sheets and /studio/slides hub pages render normally (Presentations hub screenshot shows 12 mission cards). SheetEditorCore and SlideEditorCore are separate components — not touched by this fix."
+    }
+  }
+}

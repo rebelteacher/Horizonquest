@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState } from "react";
 import {
   Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, AlignJustify,
-  List, ListOrdered, Link2, Table2, Sigma, Palette, Hash,
+  List, ListOrdered, Link2, Table2, Sigma, Hash,
 } from "lucide-react";
 
 function AutoTextarea({ value, onChange, style, onFocus, testid, placeholder }) {
@@ -111,7 +111,12 @@ export default function DocEditorCore({ doc, setDoc, config, pageRef }) {
 
         {/* color */}
         <div className="relative">
-          <TBtn testid="studio-color" title="Text color" active={menu === "color"} onClick={() => setMenu(menu === "color" ? null : "color")} disabled={!selected}><Palette className="w-4 h-4" /></TBtn>
+          <TBtn testid="studio-color" title="Text color" active={menu === "color"} onClick={() => setMenu(menu === "color" ? null : "color")} disabled={!selected}>
+            <span className="flex flex-col items-center justify-center leading-none">
+              <span className="text-[13px] font-bold">A</span>
+              <span className="w-3.5 h-[3px] rounded-sm mt-0.5" style={{ background: selected?.fmt.color || "#dc2626" }} />
+            </span>
+          </TBtn>
           {menu === "color" && (
             <div className="absolute z-30 top-11 left-0 bg-white border border-slate-300 rounded-lg p-2 grid grid-cols-3 gap-2 shadow-xl w-32">
               {config.colors.map((c) => (
