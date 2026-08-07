@@ -134,7 +134,7 @@ export default function DocEditorCore({ doc, setDoc, config, pageRef }) {
         <TBtn testid="studio-align-right" title="Align right" active={selected?.fmt.align === "right"} onClick={() => setFmt("align", "right")} disabled={!selected}><AlignRight className="w-4 h-4" /></TBtn>
         <TBtn testid="studio-align-justify" title="Justify" active={selected?.fmt.align === "justify"} onClick={() => setFmt("align", "justify")} disabled={!selected}><AlignJustify className="w-4 h-4" /></TBtn>
 
-        <select data-testid="studio-spacing" value={selected?.fmt.lineSpacing || 1} disabled={!selected}
+        <select data-testid="studio-spacing" title="Line spacing" value={selected?.fmt.lineSpacing || 1} disabled={!selected}
           onChange={(e) => setFmt("lineSpacing", Number(e.target.value))}
           className="h-9 rounded-md border border-slate-300 bg-white text-slate-700 text-sm px-2 ml-1 disabled:opacity-30">
           {config.spacings.map((s) => <option key={s} value={s}>{s.toFixed(2).replace(/0$/, "")}×</option>)}

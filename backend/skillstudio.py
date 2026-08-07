@@ -218,8 +218,12 @@ DOCS_MISSIONS = [
         "instruction": [
             "## Spacing",
             "**Line spacing** controls the gap between lines. **1.0** is single-spaced; **1.5** and **2.0** (double) add breathing room and are common for school papers.",
+            "## How to change it",
+            "- Click a line to **select** it.",
+            "- In the toolbar, open the **line-spacing menu** — the small box that reads **1.0×** (just right of the alignment buttons) — and choose **1.5×**.",
+            "- Do this for **each** body line you want to open up.",
             "## Practice",
-            "Open up the essay paragraph so it's easier to read.",
+            "Set both body lines to 1.5× spacing and bold the essay title.",
         ],
         "doc": _doc([
             _b("b1", "Essay: Why Reading Matters"),
