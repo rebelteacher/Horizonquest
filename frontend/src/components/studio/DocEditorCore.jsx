@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState } from "react";
 import {
   Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, AlignJustify,
-  List, ListOrdered, Link2, Table2, Hash,
+  List, ListOrdered, Link2, Table2, Hash, Search,
 } from "lucide-react";
 
 function AutoTextarea({ value, onChange, style, onFocus, testid, placeholder }) {
@@ -33,7 +33,9 @@ const TBtn = ({ active, onClick, title, testid, children, disabled }) => (
 
 export default function DocEditorCore({ doc, setDoc, config, pageRef }) {
   const [selectedId, setSelectedId] = useState(doc.blocks[0]?.id || null);
-  const [menu, setMenu] = useState(null); // 'color' | 'symbol' | 'table'
+  const [menu, setMenu] = useState(null); // 'color' | 'symbol' | 'table' | 'find'
+  const [findText, setFindText] = useState("");
+  const [replaceText, setReplaceText] = useState("");
   const selected = doc.blocks.find((b) => b.id === selectedId);
 
   const patchBlock = (id, patch, fmtPatch) =>
@@ -59,6 +61,20 @@ export default function DocEditorCore({ doc, setDoc, config, pageRef }) {
     if (!selected) return;
     const url = window.prompt("Enter the full web address (any real site works)", "https://www.example.com");
     if (url) patchBlock(selectedId, {}, { link: url });
+  };
+  const replaceAll = () => {
+    if (!findText) return;
+    const re = new RegExp(findText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi");
+    const blocks = doc.blocks.map((b) => {
+      if (b.type === "table") {
+        const cells = (b.cells || []).map((row) => row.map((c) => (c || "").replace(re, replaceText)));
+        return { ...b, cells };
+      }
+      return { ...b, text: (b.text || "").replace(re, replaceText) };
+    });
+    const header = (doc.header || "").replace(re, replaceText);
+    setDoc({ ...doc, blocks, header });
+    setMenu(null);
   };
   const insertTable = (cols, rows) => {
     const cells = Array.from({ length: rows }, () => Array.from({ length: cols }, () => ""));
@@ -177,6 +193,19 @@ export default function DocEditorCore({ doc, setDoc, config, pageRef }) {
         </div>
 
         <TBtn testid="studio-footer-toggle" title="Page numbers (footer)" active={doc.footerPageNumber} onClick={() => setDoc({ ...doc, footerPageNumber: !doc.footerPageNumber })}><Hash className="w-4 h-4" /></TBtn>
+
+        {/* find & replace */}
+        <div className="relative">
+          <TBtn testid="studio-findreplace" title="Find & replace" active={menu === "find"} onClick={() => setMenu(menu === "find" ? null : "find")}><Search className="w-4 h-4" /></TBtn>
+          {menu === "find" && (
+            <div className="absolute z-30 top-11 right-0 bg-white border border-slate-300 rounded-lg p-3 shadow-xl w-60" onClick={(e) => e.stopPropagation()}>
+              <p className="text-xs text-slate-600 mb-2 font-medium">Find &amp; replace</p>
+              <input data-testid="studio-find-input" value={findText} onChange={(e) => setFindText(e.target.value)} placeholder="Find…" className="w-full h-9 rounded-md border border-slate-300 px-2 text-sm text-slate-800 outline-none mb-2 focus:border-[#22D3EE]" />
+              <input data-testid="studio-replace-input" value={replaceText} onChange={(e) => setReplaceText(e.target.value)} placeholder="Replace with…" className="w-full h-9 rounded-md border border-slate-300 px-2 text-sm text-slate-800 outline-none mb-2 focus:border-[#22D3EE]" />
+              <button data-testid="studio-replace-all" onClick={replaceAll} className="w-full h-9 rounded-md bg-[#22D3EE] text-[#04121f] text-sm font-medium hover:bg-[#67E8F9]">Replace all</button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* The page */}

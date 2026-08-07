@@ -1,0 +1,25 @@
+{
+  "summary": "Frontend-only verification of Mission 9 'Find & Replace' fix on /studio/docs/docs-m9. ALL CHECKS PASS: (1) FIX VERIFY — toolbar contains data-testid 'studio-findreplace' (magnifier icon, title 'Find & replace'); clicking opens a panel with 'studio-find-input', 'studio-replace-input', and 'studio-replace-all' visible. (2) FUNCTIONAL — Initial blocks confirmed as b1='Community Book Drive', b2='Every donation helps a student.', b3='Drop your donation in the front office.'. After Find='donation' / Replace='gift' / Replace all: b1 unchanged, b2='Every gift helps a student.', b3='Drop your gift in the front office.'. Both tasks tick (studio-task-t1-done, studio-task-t2-done). Submit → studio-result-grade='A', modal shows 'Score 100% · 2/2 tasks · +100 · +1 Mark'. (3) CASE-INSENSITIVE — With b1='Community Book Donation Drive - donation counts too' and b2='Every donation matters. DONATION helps a student. donation.' (mixed casings), replacing 'donation'→'gift' correctly transformed all occurrences regardless of case in every block. (4) REGRESSION — All existing toolbar controls still present on m9 (bold/italic/underline/font/size/color/align×4/spacing/bullet/number/link/symbol/table/footer-toggle) plus the new findreplace. Other docs missions (docs-m1, docs-m2) load with the same intact toolbar. Sheets (sheets-m1 'Meet the Spreadsheet') and Slides (slides-m1 'Meet a Slide') load correctly and do NOT show the docs-only findreplace button — confirming no cross-track contamination.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/test_reports/iteration_15.json"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Non-blocking (repeat from iter_9/12/13/14): Preview instrumentation hydration warning 'In HTML, <span> cannot be a child of <option>' still spams the console on any page that mounts DocEditorCore (originates from preview tool wrapping <option> text, not product code). Safe to ignore.",
+    "Minor observation: replaceAll() does not stack multiple find/replace pairs and does not offer per-match preview or count feedback. Not required by the mission (task grading only checks final block text), but a small toast like '3 replacements made' would improve UX. Non-blocking."
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "n/a (frontend-only per review_request)",
+    "frontend": "100% (fix-verify + m9 functional + case-insensitive + regression on docs-m1/m2 + sheets/slides unaffected)"
+  },
+  "test_credentials": "Fresh explorer sessions injected into MongoDB test_database: (a) session_token 'studio_m9_tok_1786062729392' user_id 'studio-m9-test-1786062729392' used for the functional-grade run — this user now has +100 horizon_points and +1 compass_mark for docs-m9. (b) session_token 'studio_m9_ci_tok_1786062764228' user_id 'studio-m9-ci-1786062764228' used for the case-insensitive + regression pass (did not submit; still at 0/0). Cookie set httpOnly/secure/sameSite=None on host explorer-journey-4.preview.emergentagent.com, 7-day expiry. Bearer works via Authorization header too.",
+  "seed_data_creation": "Two explorer users created in test_database with fresh session tokens as listed above. Recreate a new user if the next agent needs a zero-progress state for docs-m9.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "docs-m9 Find & Replace is fully verified end-to-end. Key selectors: studio-findreplace (toolbar button), studio-find-input, studio-replace-input, studio-replace-all (panel). replaceAll() in /app/frontend/src/components/studio/DocEditorCore.jsx L65-78 escapes regex metachars, builds a case-insensitive global RegExp, and applies it to every block.text, table cell, and doc.header. Grading in /app/backend/skillstudio.py docs-m9 uses text_replaced kind on b2/b3 checking absence of 'donation' + presence of 'gift'. If any change is made to DocEditorCore, re-check the full toolbar list on any docs mission (m1-m11). Sheets/Slides tracks use different editor components and are unaffected."
+}

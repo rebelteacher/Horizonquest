@@ -289,6 +289,10 @@ DOCS_MISSIONS = [
         "instruction": [
             "## Find & Replace",
             "**Find and replace** swaps every copy of one word for another across the whole document in one step — perfect for fixing a name or wording everywhere at once.",
+            "## How to use it",
+            "- Click the **Find & replace** button (the magnifier 🔍) in the toolbar.",
+            "- Type the word to **find** (`donation`) and the word to **replace** it with (`gift`).",
+            "- Click **Replace all** — every match changes at once.",
             "## Practice",
             "The flyer uses the word 'donation' but the club decided to say 'gift'. Replace it everywhere.",
         ],
