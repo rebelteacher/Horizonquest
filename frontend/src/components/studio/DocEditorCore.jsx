@@ -216,7 +216,7 @@ export default function DocEditorCore({ doc, setDoc, config, pageRef }) {
             data-testid="studio-header-input" value={doc.header}
             onChange={(e) => setDoc({ ...doc, header: e.target.value })}
             placeholder="Header (optional)…"
-            className="w-full text-xs text-slate-400 border-b border-dashed border-slate-200 pb-2 mb-4 outline-none placeholder:text-slate-300"
+            className="w-full text-xs text-slate-500 bg-transparent border-b border-dashed border-slate-200 pb-2 mb-4 outline-none placeholder:text-slate-300"
           />
 
           {doc.blocks.map((b) => {
@@ -228,10 +228,10 @@ export default function DocEditorCore({ doc, setDoc, config, pageRef }) {
                       {b.cells.map((row, ri) => (
                         <tr key={ri}>
                           {row.map((cell, ci) => (
-                            <td key={ci} className="border border-slate-400 p-0">
+                            <td key={ci} className="border border-slate-400 p-0 bg-white">
                               <input data-testid={`studio-cell-${ri}-${ci}`} value={cell}
                                 onChange={(e) => setCell(b.id, ri, ci, e.target.value)}
-                                className="w-full px-2 py-1.5 text-sm outline-none text-slate-800" />
+                                className="w-full px-2 py-1.5 text-sm outline-none bg-transparent text-slate-900" />
                             </td>
                           ))}
                         </tr>

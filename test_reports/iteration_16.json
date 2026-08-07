@@ -1,0 +1,25 @@
+{
+  "summary": "Frontend-only verification of the docs-m10 table-cell + header CSS readability fix. ALL CHECKS PASS. (1) FIX VERIFY (tables): On /studio/docs/docs-m10, opened the studio-table popover and clicked studio-table-3x2. Typed 'Item Name' into studio-cell-0-0. Computed styles: input color = rgb(15,23,42) (slate-900, DARK) and its <td>.backgroundColor = rgb(255,255,255) (WHITE); the input's own bg is transparent (rgba(0,0,0,0)) so effective cell background is white. Text is clearly visible = dark-on-white, no dark-on-dark. (2) FUNCTIONAL docs-m10: t1 (Insert 3x2 table) and t2 (heading in cell 0-0) both tick after typing. Submit -> studio-result-grade = 'A', modal shows Score 100% · 2/2 tasks · +100 · +1 Mark. (3) HEADER FIELD readable: studio-header-input color = rgb(100,116,139) (slate-500) on parent rgb(255,255,255) white -> readable. (4) REGRESSION on docs-m9 Find & Replace: studio-find-input and studio-replace-input both keep color=rgb(255,255,255) on bg=rgb(30,41,59) (slate-800) -- unchanged. Replace all still works and grades A. Sheets (sheets-m1) and Slides (slides-m1) tracks load normally, unaffected.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/test_reports/iteration_16.json"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Non-blocking (repeat from iter_9/12-15): Preview instrumentation hydration warning 'In HTML, <span> cannot be a child of <option>' still logs on any page with DocEditorCore. Originates from preview tool wrapping <option> text -- safe to ignore.",
+    "Optional polish: In DocEditorCore, other bare <input>s (e.g., studio-header-input) rely on parent white background + explicit text color for readability. Because the root sets 'color-scheme: dark' in index.css, any future bare <input> without an explicit bg risks reintroducing dark-on-dark. Consider a base CSS rule like input{background-color:transparent;color:inherit} scoped inside DocEditorCore, or removing color-scheme:dark on non-dark surfaces."
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "n/a (frontend-only per review_request)",
+    "frontend": "100% (fix-verify color/bg + m10 functional grade A + header readable + m9 F&R regression A + sheets/slides unaffected)"
+  },
+  "test_credentials": "Fresh explorer session injected into MongoDB test_database: session_token 'studio_m10_tok_1786063370517', user_id 'studio-m10-test-1786063370517'. Cookie httpOnly/secure/sameSite=None on host explorer-journey-4.preview.emergentagent.com, 7-day expiry. Bearer works too. This user now has +200 horizon_points and +2 compass_marks (docs-m10 A and docs-m9 A submitted during regression).",
+  "seed_data_creation": "One explorer user created as above. If next agent needs a zero-progress state, create a fresh session per /app/auth_testing.md.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "docs-m10 table-cell readability fix verified end-to-end. Key selectors: studio-table (toolbar button opens size popover), studio-table-3x2 (inserts 3-col x 2-row table), studio-cell-<row>-<col> (0-indexed cell inputs), studio-header-input. In DocEditorCore.jsx: <td> uses 'bg-white', cell input uses 'bg-transparent text-slate-900', header input uses 'bg-transparent text-slate-500'. Find/Replace inputs still explicitly bg-slate-800 text-white and untouched. If future edits change color-scheme in index.css or the DocEditorCore input classes, re-run this same flow (assert getComputedStyle(cell-0-0).color has small rgb sum ~80 and its <td>.backgroundColor = rgb(255,255,255))."
+}
