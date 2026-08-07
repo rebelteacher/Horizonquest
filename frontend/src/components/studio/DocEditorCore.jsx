@@ -200,8 +200,8 @@ export default function DocEditorCore({ doc, setDoc, config, pageRef }) {
           {menu === "find" && (
             <div className="absolute z-30 top-11 right-0 bg-white border border-slate-300 rounded-lg p-3 shadow-xl w-60" onClick={(e) => e.stopPropagation()}>
               <p className="text-xs text-slate-600 mb-2 font-medium">Find &amp; replace</p>
-              <input data-testid="studio-find-input" value={findText} onChange={(e) => setFindText(e.target.value)} placeholder="Find…" className="w-full h-9 rounded-md border border-slate-300 px-2 text-sm text-slate-800 outline-none mb-2 focus:border-[#22D3EE]" />
-              <input data-testid="studio-replace-input" value={replaceText} onChange={(e) => setReplaceText(e.target.value)} placeholder="Replace with…" className="w-full h-9 rounded-md border border-slate-300 px-2 text-sm text-slate-800 outline-none mb-2 focus:border-[#22D3EE]" />
+              <input data-testid="studio-find-input" value={findText} onChange={(e) => setFindText(e.target.value)} placeholder="Find…" className="w-full h-9 rounded-md border border-slate-500 bg-slate-800 px-2 text-sm text-white placeholder:text-slate-400 outline-none mb-2 focus:border-[#22D3EE]" />
+              <input data-testid="studio-replace-input" value={replaceText} onChange={(e) => setReplaceText(e.target.value)} placeholder="Replace with…" className="w-full h-9 rounded-md border border-slate-500 bg-slate-800 px-2 text-sm text-white placeholder:text-slate-400 outline-none mb-2 focus:border-[#22D3EE]" />
               <button data-testid="studio-replace-all" onClick={replaceAll} className="w-full h-9 rounded-md bg-[#22D3EE] text-[#04121f] text-sm font-medium hover:bg-[#67E8F9]">Replace all</button>
             </div>
           )}
