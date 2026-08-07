@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState } from "react";
 import {
   Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, AlignJustify,
-  List, ListOrdered, Link2, Table2, Sigma, Hash,
+  List, ListOrdered, Link2, Table2, Hash,
 } from "lucide-react";
 
 function AutoTextarea({ value, onChange, style, onFocus, testid, placeholder }) {
@@ -147,7 +147,7 @@ export default function DocEditorCore({ doc, setDoc, config, pageRef }) {
 
         {/* symbol */}
         <div className="relative">
-          <TBtn testid="studio-symbol" title="Special character" active={menu === "symbol"} onClick={() => setMenu(menu === "symbol" ? null : "symbol")} disabled={!selected}><Sigma className="w-4 h-4" /></TBtn>
+          <TBtn testid="studio-symbol" title="Insert special character (Ω)" active={menu === "symbol"} onClick={() => setMenu(menu === "symbol" ? null : "symbol")} disabled={!selected}><span className="text-[15px] font-semibold leading-none">Ω</span></TBtn>
           {menu === "symbol" && (
             <div className="absolute z-30 top-11 left-0 bg-white border border-slate-300 rounded-lg p-2 grid grid-cols-5 gap-1 shadow-xl w-48">
               {config.symbols.map((s) => (
