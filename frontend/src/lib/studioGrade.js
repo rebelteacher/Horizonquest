@@ -64,6 +64,7 @@ export function checkTask(check, doc) {
       if (k === "slide_notes_min_words") return (sl.notes || "").trim().split(/\s+/).filter(Boolean).length >= check.min;
     }
     // ---- email kinds ----
+    if (k === "picked") return (doc.picked || []).includes(check.field);
     if (k === "email_opened") return (doc.messages || []).some((m) => m.id === check.id && m.read);
     if (k === "searched") return !!doc.searched;
     if (["sent_exists", "subject_prefix", "subject_nonempty", "subject_and_to", "to_includes", "cc_includes", "bcc_includes", "cc_min", "has_greeting", "has_signoff", "has_greeting_signoff", "has_attachment", "body_min_words", "formatting"].includes(k)) {

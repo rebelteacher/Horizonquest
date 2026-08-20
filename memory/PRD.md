@@ -65,8 +65,19 @@ Gamified education platform. Stack: React + FastAPI + MongoDB. Auth: Google sign
 - Known non-blocking: email attach menu is hover-only (add click for touch/a11y); AI grade fail-opens on Claude error (consider logging); backend/skillstudio.py large (consider splitting per track).
 
 ## Next backlog
-- P1: Class Grade Export (CSV of Studio grades for Guides); Guide Studio view (assign missions, see mastery per student).
+- P1: Drafts That Save (save an unfinished email in Email Studio, return later).
+- P1: Mission Assigning (Guides assign specific Studio missions to a class, track who finished).
 - P1: Repurpose Guide Review Queue to flag struggling Explorers.
+- P2: Guide authoring of custom lessons/quizzes.
+
+## Implemented (2026-06) — Iteration 4: Email classroom-feedback batch
+- ✅ **Two foundational email missions** placed FIRST in the Email track (now 14 missions, orders 1–14): #1 "Whose Email Is It?" (email-b1 — locate the right human sender vs. automated notices) and #2 "Reading the Address Lines" (email-b2 — identify From/To/Cc). Existing 12 missions renumbered #3–#14.
+- ✅ **New 'picked' interaction + grading**: EmailClientCore reading pane renders clickable To/Cc address chips (`email-addr-to-{i}` / `email-addr-cc-{i}`) that record `doc.picked`. Graded on backend (`_check_one` kind `picked`) and mirrored in `studioGrade.js` for live ticking.
+- ✅ **CSV Grade Export** for Guides: Reports tab has an "Export CSV" button (`reports-export-csv-btn`) downloading per-Explorer Skill Studio scores (avg %, mastered, total per track).
+- ✅ **Touch-friendly Attach menu**: email compose Attach menu now opens on click/tap (state-driven), not hover-only — works on Chromebooks/tablets.
+- ✅ Tested 100% (iteration_18): backend 23/23 (ordering, email_opened, picked full/partial/empty, RBAC, reports); frontend email-b2 click flow, tap-attach (desktop+mobile), CSV download.
+- Known non-blocking: email client has horizontal overflow at ≤430px phone widths (targets ≥768px are fine).
+
 
 ## Backlog / Remaining (older)
 - P1: Repurpose Guide Review Queue to flag struggling Explorers (reflections removed).

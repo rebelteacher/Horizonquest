@@ -939,7 +939,31 @@ def _ai(tid, label, dim):
 
 EMAIL_MISSIONS = [
     {
-        "id": "email-m1", "track": "email", "order": 1, "title": "Meet Your Inbox", "chunk": "Locate & open · parts of an email",
+        "id": "email-b1", "track": "email", "order": 1, "title": "Whose Email Is It?", "chunk": "Locate · find the right sender",
+        "instruction": ["## Not every message is from a person", "Your inbox mixes real people with **automatic notices** (like **Google Classroom** or the school store). Read the **sender name** and **email address** to find who really wrote to you.",
+                        "## Practice", "Open the email your teacher **Mr. Diaz** sent you — not the Google Classroom notice."],
+        "doc": _edoc([
+            _msg("gc", "inbox", "Google Classroom", "no-reply@classroom.google.com", "New assignment posted", "An assignment was posted in your class. Do not reply to this message."),
+            _msg("store", "inbox", "School Store", "store@horizonmiddle.edu", "Spirit wear sale!", "Hoodies are 20% off this week."),
+            _msg("teacher", "inbox", "Mr. Diaz", "mr.diaz@horizonmiddle.edu", "Reading homework for tonight", "Please read chapter 4 tonight and answer question 2. — Mr. Diaz"),
+        ]),
+        "tasks": [{"id": "t1", "label": "Open the email your teacher Mr. Diaz sent (not Google Classroom)", "check": {"kind": "email_opened", "id": "teacher"}}],
+        "points": 100,
+    },
+    {
+        "id": "email-b2", "track": "email", "order": 2, "title": "Reading the Address Lines", "chunk": "Identify · From, To & Cc",
+        "instruction": ["## Who's on an email?", "- **From** — who sent it.", "- **To** — the main person it's for.", "- **Cc** — others who got a copy.",
+                        "In the reading pane you can **click an address** to identify it.", "## Practice", "Open the email, then click the address on the **Cc** line and the address on the **To** line."],
+        "doc": _edoc([_msg("e1", "inbox", "Ms. Lee", "ms.lee@horizonmiddle.edu", "Group project update", "Here is the update for our group project.", to=[STUDENT_EMAIL], cc=["alex@horizonmiddle.edu", "jamie@horizonmiddle.edu"])]),
+        "tasks": [
+            {"id": "t1", "label": "Open the email from Ms. Lee", "check": {"kind": "email_opened", "id": "e1"}},
+            {"id": "t2", "label": "Click an address on the Cc line", "check": {"kind": "picked", "field": "cc"}},
+            {"id": "t3", "label": "Click the address on the To line", "check": {"kind": "picked", "field": "to"}},
+        ],
+        "points": 100,
+    },
+    {
+        "id": "email-m1", "track": "email", "order": 3, "title": "Meet Your Inbox", "chunk": "Locate & open · parts of an email",
         "instruction": ["## Your inbox", "The **Inbox** holds emails you receive. Each row shows the **sender**, the **subject**, and a preview. A dot means **unread**.",
                         "- Click an email to **open** and read it.", "## Practice", "Open the two emails in your inbox."],
         "doc": _edoc([
@@ -952,7 +976,7 @@ EMAIL_MISSIONS = [
         ], "points": 100,
     },
     {
-        "id": "email-m2", "track": "email", "order": 2, "title": "Searching Your Inbox", "chunk": "Locate · search",
+        "id": "email-m2", "track": "email", "order": 4, "title": "Searching Your Inbox", "chunk": "Locate · search",
         "instruction": ["## Finding an email fast", "When your inbox is full, use the **Search** bar to find an email by sender or keyword instead of scrolling.",
                         "## Practice", "Use search to find the email about the field trip, then open it."],
         "doc": _edoc([
@@ -966,7 +990,7 @@ EMAIL_MISSIONS = [
         ], "points": 100,
     },
     {
-        "id": "email-m3", "track": "email", "order": 3, "title": "Replying to an Email", "chunk": "Reply · Re: subject, greeting & sign-off",
+        "id": "email-m3", "track": "email", "order": 5, "title": "Replying to an Email", "chunk": "Reply · Re: subject, greeting & sign-off",
         "instruction": ["## Replying", "**Reply** answers the sender. The subject keeps a **Re:** so they know it's a response.",
                         "- Start with a **greeting** (Dear/Hi + name).", "- End with a **sign-off** (Thanks/Sincerely + your name).",
                         "## Practice", "Reply to Ms. Lee. Keep the Re: subject, and include a greeting and a sign-off."],
@@ -979,7 +1003,7 @@ EMAIL_MISSIONS = [
         ], "points": 100,
     },
     {
-        "id": "email-m4", "track": "email", "order": 4, "title": "Reply vs Reply All", "chunk": "Reply-All · keep everyone in the loop",
+        "id": "email-m4", "track": "email", "order": 6, "title": "Reply vs Reply All", "chunk": "Reply-All · keep everyone in the loop",
         "instruction": ["## Reply All", "**Reply All** answers the sender **and** everyone who was on the email (the CC list). Use it when the whole group needs your answer — but don't overuse it!",
                         "## Practice", "This group email needs everyone to see your answer. Use **Reply All** so the CC'd teammates stay in the loop."],
         "doc": _edoc([_msg("e1", "inbox", "Sam (Group Lead)", "sam@horizonmiddle.edu", "Project meeting time?", "Team, what time works for our project meeting?",
@@ -991,7 +1015,7 @@ EMAIL_MISSIONS = [
         ], "points": 100,
     },
     {
-        "id": "email-m5", "track": "email", "order": 5, "title": "Forwarding an Email", "chunk": "Forward · Fwd: to a new person",
+        "id": "email-m5", "track": "email", "order": 7, "title": "Forwarding an Email", "chunk": "Forward · Fwd: to a new person",
         "instruction": ["## Forwarding", "**Forward** sends an email you received to **someone new**. The subject gets a **Fwd:**. Add a short note explaining why you're forwarding it.",
                         "## Practice", "Forward Coach's schedule to your teammate at alex@horizonmiddle.edu with a short note."],
         "doc": _edoc([_msg("e1", "inbox", "Coach Rivera", "coach.rivera@horizonmiddle.edu", "Game schedule", "Here is the game schedule for this month. Games are Tuesdays and Thursdays.", read=True)]),
@@ -1003,7 +1027,7 @@ EMAIL_MISSIONS = [
         ], "points": 100,
     },
     {
-        "id": "email-m6", "track": "email", "order": 6, "title": "Composing a New Email", "chunk": "Compose · To, subject, greeting & body",
+        "id": "email-m6", "track": "email", "order": 8, "title": "Composing a New Email", "chunk": "Compose · To, subject, greeting & body",
         "instruction": ["## Writing a new email", "Click **Compose** to start fresh. Fill the **To** field, write a clear **Subject**, then a greeting, your message, and a sign-off.",
                         "## Practice", "Write a new email to ms.lee@horizonmiddle.edu asking about the homework you missed."],
         "doc": _edoc([]),
@@ -1015,7 +1039,7 @@ EMAIL_MISSIONS = [
         ], "points": 100,
     },
     {
-        "id": "email-m7", "track": "email", "order": 7, "title": "To, CC, and BCC", "chunk": "Recipients · the right field for each person",
+        "id": "email-m7", "track": "email", "order": 9, "title": "To, CC, and BCC", "chunk": "Recipients · the right field for each person",
         "instruction": ["## To, CC, BCC", "- **To**: the main person who must act.", "- **CC** (carbon copy): people who should **see** it, for their info.",
                         "- **BCC**: hidden copy — others can't see this address.", "## Practice", "Email your teacher (ms.lee@…) in **To**, CC the principal (principal@horizonmiddle.edu), and BCC yourself (you@horizonmiddle.edu)."],
         "doc": _edoc([]),
@@ -1026,7 +1050,7 @@ EMAIL_MISSIONS = [
         ], "points": 100,
     },
     {
-        "id": "email-m8", "track": "email", "order": 8, "title": "Attachments", "chunk": "Attach · send a file",
+        "id": "email-m8", "track": "email", "order": 10, "title": "Attachments", "chunk": "Attach · send a file",
         "instruction": ["## Attaching a file", "An **attachment** is a file you send with your email (a form, report, or photo). Use the **Attach** button and pick a file, then say in the body what you attached.",
                         "## Practice", "Reply to Mr. Diaz and attach the 'Field Trip Form.pdf'."],
         "doc": _edoc([_msg("e1", "inbox", "Mr. Diaz", "mr.diaz@horizonmiddle.edu", "Field trip form needed", "Please send back your signed field trip form.", read=True)]),
@@ -1037,7 +1061,7 @@ EMAIL_MISSIONS = [
         ], "points": 100,
     },
     {
-        "id": "email-m9", "track": "email", "order": 9, "title": "Formatting Emails", "chunk": "Format · bold, bullets & signature",
+        "id": "email-m9", "track": "email", "order": 11, "title": "Formatting Emails", "chunk": "Format · bold, bullets & signature",
         "instruction": ["## Making emails easy to read", "- **Bold** important details (dates, times).", "- Use **bullets** for lists.", "- Add a **signature** with your name at the end.",
                         "## Practice", "Compose an email to your team (team@horizonmiddle.edu) with a bold detail, a bulleted list, and a signature."],
         "doc": _edoc([]),
@@ -1049,7 +1073,7 @@ EMAIL_MISSIONS = [
         ], "points": 100,
     },
     {
-        "id": "email-m10", "track": "email", "order": 10, "title": "Etiquette & Tone", "chunk": "Etiquette · polite, professional writing (AI-graded)",
+        "id": "email-m10", "track": "email", "order": 12, "title": "Etiquette & Tone", "chunk": "Etiquette · polite, professional writing (AI-graded)",
         "instruction": ["## Email etiquette", "Good emails are **polite, clear, and match the reader**. Use a proper greeting, no slang or ALL CAPS, be respectful, and proofread for **grammar & spelling**.",
                         "## Practice", "Write a **professional** email to your internship mentor (mentor@company.com) thanking them and asking one good question about your project.",
                         "Your **tone, etiquette, and grammar** will be graded by the AI Coach."],
@@ -1062,7 +1086,7 @@ EMAIL_MISSIONS = [
         ], "points": 120,
     },
     {
-        "id": "email-m11", "track": "email", "order": 11, "title": "Email Types & Registers", "chunk": "Formal · Professional · Semi-formal · Informal (AI-graded)",
+        "id": "email-m11", "track": "email", "order": 13, "title": "Email Types & Registers", "chunk": "Formal · Professional · Semi-formal · Informal (AI-graded)",
         "instruction": ["## Match your tone to the reader", "- **Formal** — principal, employer: full greeting/closing, no slang.", "- **Professional** — manager, client: clear and polite.",
                         "- **Semi-formal** — a teacher you know: polite but warmer.", "- **Informal** — a friend: casual.",
                         "## Practice", "Write a **formal** email to the principal (principal@horizonmiddle.edu) requesting permission to start a new club. The AI Coach grades tone, etiquette, and grammar."],
@@ -1076,7 +1100,7 @@ EMAIL_MISSIONS = [
         ], "points": 120,
     },
     {
-        "id": "email-m12", "track": "email", "order": 12, "title": "Capstone: Manage Your Morning Inbox", "chunk": "Everything · locate, reply, forward, compose (AI-graded)",
+        "id": "email-m12", "track": "email", "order": 14, "title": "Capstone: Manage Your Morning Inbox", "chunk": "Everything · locate, reply, forward, compose (AI-graded)",
         "instruction": ["## Clear your inbox like a pro", "Handle three real situations: reply to your manager professionally, forward an update to a coworker, and compose a new email with an attachment.",
                         "## Your tasks", "Work the checklist. The reply's tone, etiquette, and grammar are graded by the AI Coach."],
         "doc": _edoc([
@@ -1241,6 +1265,8 @@ def _check_one(check, doc):
             if kind == "slide_notes_min_words":
                 return len((sl.get("notes") or "").split()) >= check["min"]
         # ---- email kinds ----
+        if kind == "picked":
+            return check["field"] in (doc.get("picked") or [])
         if kind in ("email_opened", "searched", "sent_exists", "subject_prefix", "subject_nonempty",
                     "subject_and_to", "to_includes", "cc_includes", "bcc_includes", "cc_min",
                     "has_greeting", "has_signoff", "has_greeting_signoff", "has_attachment",

@@ -1,0 +1,31 @@
+{
+  "summary": "Tested the Email track 'classroom feedback' batch end-to-end. Backend: new pytest file (23 tests, 100% pass) covering GET /api/studio/email ordering (14 missions, email-b1 #1, email-b2 #2, email-m1..m12 #3..#14, no duplicate orders), email-b1 email_opened grading, email-b2 NEW 'picked' grading (full pass / missing / empty / partial), sticky best-score persistence, regression on email-m1 & email-m8, AI sanity on email-m10 (rating 'Good/Excellent', feedback returned in ~50s), RBAC (guide 403 submit, explorer 403 reports, unauth 401, unknown mission 404, wrong track 404), and /api/studio/reports/all. Frontend: Explorer flow on /studio/email verified 14 ordered cards; email-b2 open -> click To + Cc addresses ticks t1/t2/t3 live green and Submit returns grade A (100%, 3/3). Attach menu opens on CLICK (not hover), file pick attaches + closes menu, on desktop 1920 and mobile 390. Guide CSV export verified: Reports tab -> Export CSV downloads skill-studio-grades-2026-08-20.csv with correct header incl. 'Email Avg %/Mastered/Total' (Email Total = 14). No functional defects found.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Studio mission page (/studio/email/*) at 390px mobile", "issues": ["Horizontal overflow: document.scrollWidth 473 vs clientWidth 390 — the email client pane has a min-width that forces horizontal page scrolling; reading pane and To/Cc addresses render partly off-screen (bounding box x=429) until the user scrolls sideways. Functionality still works but is awkward on phones/tablets given the touch-friendly goal."]},
+      {"screen": "Compose modal Attach menu on mobile 390px", "issues": ["File library popover opens upward and overlaps the body textarea/subject field; usable but visually cramped. Consider a bottom-sheet on small screens."]},
+      {"screen": "Instruction card (max-h-64 scroll area)", "issues": ["Minor nit: instruction text is clipped mid-sentence with no scroll affordance/fade cue, so it looks truncated (e.g. email-b2 'line and the address on the To line.')."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_email_basics.py", "/app/test_reports/pytest/test_email_basics.xml"],
+  "action_items": [
+    "Optional (not blocking): make the Skill Studio email client responsive at <=430px to remove horizontal page overflow.",
+    "Optional: add a fade/scroll indicator to the Instruction max-h-64 container so text does not look truncated."
+  ],
+  "critical_code_review_comments": [
+    "server.py studio_submit returns the STICKY best score, not the score of the current attempt — correct product behavior, but any future test/UI must not assume the response reflects only the submitted doc (this caused false failures until per-test fresh users were used).",
+    "skillstudio.py is 1361 lines (mission content + grading engine); consider splitting mission content per track into separate modules for maintainability.",
+    "GuideConsole ReportsTab exportCSV duplicates the TRACKS/aggregation shape already used by the table — fine now, but keep the TRACKS list single-sourced to avoid CSV/table drift when a new track is added."
+  ],
+  "updated_files": ["/app/backend/tests/test_email_basics.py"],
+  "success_rate": {"backend": "100% (23/23)", "frontend": "100% of tested flows (ordering, email-b2 picked, attach menu desktop+mobile, CSV export)"},
+  "seed_data_creation": "Grading tests create ephemeral explorers (user_id prefix TEST_eb_*) + sessions via pymongo and delete users/sessions/studio_progress/points_events in fixture teardown. Existing em-exp/em-guide/em-fresh sessions reused for read-only checks.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "Cookie/Bearer session tokens: explorer em_exp_tok (em-exp), guide em_guide_tok (em-guide), fresh explorer em_fresh_tok (em-fresh) — DB test_database.user_sessions",
+  "context_for_next_testing_agent": "Use /app/backend/tests/test_email_basics.py for the email-b1/b2 + ordering + reports regression suite. IMPORTANT: submit responses return the sticky best score, so always create a fresh explorer (see fresh_explorer fixture) for score assertions. Email track progress in GET /api/studio/{track} is a DICT keyed by mission_id, and submit 'results' is a LIST of {id, passed}. Playwright: inject cookie session_token on domain explorer-journey-4.preview.emergentagent.com; page.tap() is unavailable (no hasTouch context) — use click() to simulate taps.",
+  "rca_of_the_issue": "No product defects. Two initial test failures were test-code assumptions (results list vs dict; email-m10 ai_target.sentKind is 'new' not 'reply', which returns rating 'Not yet' when no matching sent message exists) and one was the sticky best-score behavior; all fixed in the test file."
+}

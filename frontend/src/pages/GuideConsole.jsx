@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Anchor, Plus, Copy, Users, ClipboardCheck, BarChart3, Trophy, Loader2, Check, Compass, BookOpen, Target } from "lucide-react";
+import { Anchor, Plus, Copy, Users, ClipboardCheck, BarChart3, Trophy, Loader2, Check, Compass, BookOpen, Target, Download } from "lucide-react";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from "recharts";
 
@@ -261,9 +261,36 @@ function ReportsTab() {
 
   const gradeColor = (s) => (s >= 90 ? "#34D399" : s >= 80 ? "#22D3EE" : s >= 70 ? "#FB923C" : s >= 60 ? "#F59E0B" : "#E11D48");
 
+  const exportCSV = () => {
+    const esc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const header = ["Explorer", "Email"];
+    TRACKS.forEach((t) => { header.push(`${t.name} Avg %`, `${t.name} Mastered`, `${t.name} Total`); });
+    const rows = [header.map(esc).join(",")];
+    data.students.forEach((s) => {
+      const row = [s.name || s.email, s.email];
+      TRACKS.forEach((t) => {
+        const tr = s.tracks[t.id];
+        row.push(tr ? tr.avg : "", tr ? tr.mastered : "", data.totals[t.id] ?? "");
+      });
+      rows.push(row.map(esc).join(","));
+    });
+    const blob = new Blob([rows.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `skill-studio-grades-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div>
-      <p className="text-sm text-muted-foreground mb-4">Skill Studio scores per Explorer. Each cell shows missions mastered / total and the average score.</p>
+      <div className="flex items-start justify-between gap-4 mb-4 flex-wrap">
+        <p className="text-sm text-muted-foreground">Skill Studio scores per Explorer. Each cell shows missions mastered / total and the average score.</p>
+        <button data-testid="reports-export-csv-btn" onClick={exportCSV} className="inline-flex items-center gap-2 shrink-0 px-3 h-9 rounded-md bg-[#22D3EE] text-[#04121f] text-sm font-medium hover:bg-[#22D3EE]/90 transition-colors">
+          <Download className="w-4 h-4" /> Export CSV
+        </button>
+      </div>
       <div className="overflow-x-auto hq-scrollbar">
         <table className="w-full text-sm border-collapse" data-testid="reports-table">
           <thead>

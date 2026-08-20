@@ -15,9 +15,12 @@ export default function EmailClientCore({ doc, setDoc, config }) {
   const [openId, setOpenId] = useState(null);
   const [query, setQuery] = useState("");
   const [compose, setCompose] = useState(null);
+  const [attachOpen, setAttachOpen] = useState(false);
   const bodyRef = useRef(null);
 
   const open = messages.find((m) => m.id === openId);
+  const picked = doc.picked || [];
+  const pick = (field) => { if (!(doc.picked || []).includes(field)) setDoc({ ...doc, picked: [...(doc.picked || []), field] }); };
   let list = messages.filter((m) => m.folder === folder);
   if (folder === "inbox" && query) {
     const q = query.toLowerCase();
@@ -32,6 +35,7 @@ export default function EmailClientCore({ doc, setDoc, config }) {
 
   const startCompose = (mode) => {
     const s = open;
+    setAttachOpen(false);
     if (mode === "new") setCompose({ mode: "new", kind: "new", to: "", cc: "", bcc: "", subject: "", body: "", attachments: [], showCc: false });
     else if (mode === "reply") setCompose({ mode, kind: "reply", to: s.fromEmail, cc: "", bcc: "", subject: s.subject.startsWith("Re:") ? s.subject : `Re: ${s.subject}`, body: `\n\n---\n${s.fromName} wrote:\n${s.body}`, attachments: [], showCc: false });
     else if (mode === "replyall") setCompose({ mode, kind: "replyall", to: s.fromEmail, cc: (s.cc || []).join(", "), bcc: "", subject: s.subject.startsWith("Re:") ? s.subject : `Re: ${s.subject}`, body: `\n\n---\n${s.fromName} wrote:\n${s.body}`, attachments: [], showCc: true });
@@ -57,7 +61,7 @@ export default function EmailClientCore({ doc, setDoc, config }) {
       hasBold: body.includes("**"), hasBullets: /(^|\n)\s*(•|-)\s+/.test(body), hasSignature: body.includes("—"),
     };
     setDoc({ ...doc, messages: [...messages, msg] });
-    setCompose(null); setFolder("sent"); setOpenId(msg.id);
+    setCompose(null); setAttachOpen(false); setFolder("sent"); setOpenId(msg.id);
   };
 
   const Btn = ({ onClick, icon: Icon, label, testid, primary }) => (
@@ -115,7 +119,22 @@ export default function EmailClientCore({ doc, setDoc, config }) {
             <div data-testid="email-reading-pane">
               <h3 className="font-display text-xl text-white">{open.subject}</h3>
               <p className="text-sm text-slate-300 mt-1"><b>{open.fromName}</b> <span className="text-slate-500">&lt;{open.fromEmail}&gt;</span></p>
-              <p className="text-xs text-slate-500">To: {(open.to || []).join(", ")}{open.cc?.length ? ` · Cc: ${open.cc.join(", ")}` : ""}</p>
+              <div className="text-xs mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1">
+                <span className="text-slate-500">To:</span>
+                {(open.to || []).map((a, i) => (
+                  <button key={`to${i}`} data-testid={`email-addr-to-${i}`} onClick={() => pick("to")} title="Click to identify this address"
+                    className={`underline decoration-dotted underline-offset-2 transition-colors ${picked.includes("to") ? "text-[#34D399]" : "text-slate-400 hover:text-[#a5b4fc]"}`}>{a}</button>
+                ))}
+                {open.cc?.length ? (
+                  <>
+                    <span className="text-slate-500 ml-2">Cc:</span>
+                    {open.cc.map((a, i) => (
+                      <button key={`cc${i}`} data-testid={`email-addr-cc-${i}`} onClick={() => pick("cc")} title="Click to identify this address"
+                        className={`underline decoration-dotted underline-offset-2 transition-colors ${picked.includes("cc") ? "text-[#34D399]" : "text-slate-400 hover:text-[#a5b4fc]"}`}>{a}</button>
+                    ))}
+                  </>
+                ) : null}
+              </div>
               {open.attachments?.length ? <div className="mt-2 flex flex-wrap gap-2">{open.attachments.map((a, i) => <span key={i} className="inline-flex items-center gap-1 text-xs bg-white/5 rounded px-2 py-1 text-slate-300"><Paperclip className="w-3 h-3" />{a.name}</span>)}</div> : null}
               <div className="mt-3 text-slate-200 text-sm whitespace-pre-wrap leading-relaxed">{open.body}</div>
               {open.folder === "inbox" && (
@@ -160,13 +179,15 @@ export default function EmailClientCore({ doc, setDoc, config }) {
                 </div>
               )}
               <div className="flex items-center gap-2 flex-wrap">
-                <div className="relative group">
-                  <button data-testid="email-attach-btn" className="inline-flex items-center gap-1.5 px-3 h-9 rounded-md border border-white/15 text-sm text-slate-200 hover:bg-white/5"><Paperclip className="w-4 h-4" /> Attach</button>
-                  <div className="absolute z-50 bottom-11 left-0 hidden group-hover:block bg-[#0d1b30] border border-white/15 rounded-lg p-1 w-52 shadow-xl">
-                    {config.fileLibrary.map((f) => (
-                      <button key={f} data-testid={`email-file-${f}`} onClick={() => { if (!compose.attachments.some((a) => a.name === f)) setC({ attachments: [...compose.attachments, { name: f }] }); }} className="w-full text-left px-2 py-1.5 text-sm text-slate-200 hover:bg-white/10 rounded truncate">{f}</button>
-                    ))}
-                  </div>
+                <div className="relative">
+                  <button data-testid="email-attach-btn" onClick={() => setAttachOpen((o) => !o)} className="inline-flex items-center gap-1.5 px-3 h-9 rounded-md border border-white/15 text-sm text-slate-200 hover:bg-white/5"><Paperclip className="w-4 h-4" /> Attach</button>
+                  {attachOpen && (
+                    <div className="absolute z-50 bottom-11 left-0 block bg-[#0d1b30] border border-white/15 rounded-lg p-1 w-52 shadow-xl">
+                      {config.fileLibrary.map((f) => (
+                        <button key={f} data-testid={`email-file-${f}`} onClick={() => { if (!compose.attachments.some((a) => a.name === f)) setC({ attachments: [...compose.attachments, { name: f }] }); setAttachOpen(false); }} className="w-full text-left px-2 py-1.5 text-sm text-slate-200 hover:bg-white/10 rounded truncate">{f}</button>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <button data-testid="email-send-btn" onClick={send} className="inline-flex items-center gap-1.5 px-4 h-9 rounded-md bg-[#818CF8] text-white text-sm font-medium hover:bg-[#6366F1] ml-auto"><Send className="w-4 h-4" /> Send</button>
               </div>
