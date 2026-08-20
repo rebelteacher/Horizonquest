@@ -78,6 +78,13 @@ Gamified education platform. Stack: React + FastAPI + MongoDB. Auth: Google sign
 - ✅ Tested 100% (iteration_18): backend 23/23 (ordering, email_opened, picked full/partial/empty, RBAC, reports); frontend email-b2 click flow, tap-attach (desktop+mobile), CSV download.
 - Known non-blocking: email client has horizontal overflow at ≤430px phone widths (targets ≥768px are fine).
 
+## Implemented (2026-06) — Iteration 5: Guides can open Skill Studio (teaching preview)
+- ✅ **Guide access to Skill Studio**: the top-nav "Studio" link now shows for Guides too, and `/studio/:track` + `/studio/:track/:missionId` routes are no longer explorer-gated. Guides land back on the Console via the hub back button.
+- ✅ **Teaching-preview grading**: `POST /api/studio/{track}/{mission}/submit` now accepts any authenticated user. For non-explorers it grades (including Claude AI on email) and returns the result with `preview: true`, **awarding 0 points and persisting nothing** — so a Guide can try/demo any track (incl. Email) without polluting the student gradebook. Reports/leaderboard already filter to `role=="explorer"`.
+- ✅ **UX**: StudioHub shows a "Teaching preview — not graded or saved" banner for Guides; StudioMission result modal hides points/marks and shows a preview note for Guides.
+- ✅ Self-tested: Guide fetch 200, Guide submit returns preview A/100% with 0 pts and 0 DB writes; frontend screenshot confirms nav link + banner + 14 ordered email missions. ⚠️ Requires **redeploy** to reach production.
+
+
 
 ## Backlog / Remaining (older)
 - P1: Repurpose Guide Review Queue to flag struggling Explorers (reflections removed).

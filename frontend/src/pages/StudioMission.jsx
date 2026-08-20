@@ -46,7 +46,8 @@ const GRADE_COLOR = { A: "#34D399", B: "#22D3EE", C: "#FB923C", D: "#F59E0B", F:
 export default function StudioMission() {
   const { track, missionId } = useParams();
   const navigate = useNavigate();
-  const { refresh } = useAuth();
+  const { refresh, user } = useAuth();
+  const isGuide = user?.role === "guide";
   const pageRef = useRef(null);
 
   const [config, setConfig] = useState(null);
@@ -98,8 +99,9 @@ export default function StudioMission() {
     try {
       const res = await api.post(`/studio/${track}/${missionId}/submit`, { doc });
       setResult(res.data);
-      await refresh();
-      if (res.data.mastery) toast.success(`Graded ${res.data.grade} · +${res.data.points_awarded} Horizon Points`);
+      if (!res.data.preview) await refresh();
+      if (res.data.preview) toast.info(`Preview graded ${res.data.grade} (${res.data.score}%). Not saved.`);
+      else if (res.data.mastery) toast.success(`Graded ${res.data.grade} · +${res.data.points_awarded} Horizon Points`);
       else toast.info(`Graded ${res.data.grade} (${res.data.score}%). Reach 90% for mastery.`);
     } catch (e) {
       toast.error("Could not submit for grading.");
@@ -188,11 +190,17 @@ export default function StudioMission() {
                   <span className="font-display text-5xl" style={{ color: GRADE_COLOR[result.grade] }} data-testid="studio-result-grade">{result.grade}</span>
                 </div>
                 <p className="text-slate-300">Score <b>{result.score}%</b> · {result.passed}/{result.total} tasks</p>
-                <div className="flex justify-center gap-6 mt-5">
-                  <div className="flex items-center gap-2 text-primary"><Gem className="w-5 h-5" /><span className="font-mono-data text-xl">+{result.points_awarded}</span></div>
-                  {result.compass_mark_earned && <div className="flex items-center gap-2 text-[#22D3EE]"><Anchor className="w-5 h-5" /><span className="font-mono-data text-xl">+1 Mark</span></div>}
-                </div>
-                {!result.mastery && <p className="text-sm text-muted-foreground mt-4">Fix any red tasks and resubmit to raise your grade (90%+ earns mastery).</p>}
+                {result.preview ? (
+                  <p data-testid="studio-result-preview-note" className="text-sm text-[#22D3EE] mt-4">Teaching preview — this attempt was not graded or saved to any gradebook.</p>
+                ) : (
+                  <>
+                    <div className="flex justify-center gap-6 mt-5">
+                      <div className="flex items-center gap-2 text-primary"><Gem className="w-5 h-5" /><span className="font-mono-data text-xl">+{result.points_awarded}</span></div>
+                      {result.compass_mark_earned && <div className="flex items-center gap-2 text-[#22D3EE]"><Anchor className="w-5 h-5" /><span className="font-mono-data text-xl">+1 Mark</span></div>}
+                    </div>
+                    {!result.mastery && <p className="text-sm text-muted-foreground mt-4">Fix any red tasks and resubmit to raise your grade (90%+ earns mastery).</p>}
+                  </>
+                )}
               </div>
               {result.ai_feedback && (
                 <div data-testid="studio-ai-feedback" className="rounded-xl border border-[#818CF8]/40 bg-[#818CF8]/10 p-4 mb-4 text-left">

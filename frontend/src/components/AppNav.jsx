@@ -52,7 +52,7 @@ export default function AppNav() {
 
         <nav className="flex items-center gap-1 sm:gap-2">
           {isExplorer && navItem("/map", "Map", Map)}
-          {isExplorer && navItem("/studio/docs", "Studio", GraduationCap)}
+          {navItem("/studio/docs", "Studio", GraduationCap)}
           {isExplorer && (
             <div className="hidden sm:flex items-center gap-4 px-4 mr-1 border-l border-white/10">
               <span className="flex items-center gap-1.5 text-sm" data-testid="nav-points">

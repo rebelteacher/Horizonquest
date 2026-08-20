@@ -1,15 +1,18 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 import AppNav from "@/components/AppNav";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, FileText, CheckCircle2, Loader2, ArrowRight, Award, Sparkles } from "lucide-react";
+import { ArrowLeft, FileText, CheckCircle2, Loader2, ArrowRight, Award, Sparkles, GraduationCap } from "lucide-react";
 
 const GRADE_COLOR = { A: "#34D399", B: "#22D3EE", C: "#FB923C", D: "#F59E0B", F: "#E11D48" };
 
 export default function StudioHub() {
   const { track } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isGuide = user?.role === "guide";
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -29,9 +32,16 @@ export default function StudioHub() {
     <div className="min-h-screen">
       <AppNav />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
-        <button data-testid="studio-hub-back-btn" onClick={() => navigate("/map")} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6">
-          <ArrowLeft className="w-4 h-4" /> Back to the map
+        <button data-testid="studio-hub-back-btn" onClick={() => navigate(isGuide ? "/guide" : "/map")} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6">
+          <ArrowLeft className="w-4 h-4" /> {isGuide ? "Back to the console" : "Back to the map"}
         </button>
+
+        {isGuide && (
+          <div data-testid="studio-guide-preview-banner" className="hq-glass rounded-xl px-4 py-3 mb-5 flex items-center gap-3 border border-[#22D3EE]/30">
+            <GraduationCap className="w-5 h-5 text-[#22D3EE] shrink-0" />
+            <p className="text-sm text-slate-200">Teaching preview — try any mission just like your Explorers do. Your attempts here are <span className="text-[#22D3EE]">not graded or saved</span> to any gradebook.</p>
+          </div>
+        )}
 
         <div className="hq-fade-up flex flex-col sm:flex-row sm:items-end justify-between gap-4">
           <div>

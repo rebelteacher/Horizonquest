@@ -537,7 +537,7 @@ async def studio_reports(guide=Depends(get_current_user)):
 
 
 @api_router.post("/studio/{track_id}/{mission_id}/submit")
-async def studio_submit(track_id: str, mission_id: str, payload: MissionSubmit, explorer=Depends(require_explorer)):
+async def studio_submit(track_id: str, mission_id: str, payload: MissionSubmit, user=Depends(get_current_user)):
     mission = skillstudio.MISSION_INDEX.get(mission_id)
     if not mission or mission.get("track") != track_id:
         raise HTTPException(status_code=404, detail="Mission not found")
@@ -554,7 +554,18 @@ async def studio_submit(track_id: str, mission_id: str, payload: MissionSubmit, 
     score = graded["score"]
     points_awarded = round(graded["points"] * score / 100)
 
-    prev = await db.studio_progress.find_one({"user_id": explorer["user_id"], "mission_id": mission_id}, {"_id": 0})
+    # Guides (and any non-explorer) can grade-preview missions as a teaching tool.
+    # Nothing is persisted and no points are awarded.
+    if user.get("role") != "explorer":
+        return {
+            "results": graded["results"], "passed": graded["passed"], "total": graded["total"],
+            "score": score, "grade": skillstudio.letter_grade(score), "mastery": score >= 90,
+            "points_awarded": 0, "compass_mark_earned": False,
+            "horizon_points": user.get("horizon_points", 0), "compass_marks": user.get("compass_marks", 0),
+            "ai_feedback": ai_feedback, "ai_rating": ai_rating, "preview": True,
+        }
+
+    prev = await db.studio_progress.find_one({"user_id": user["user_id"], "mission_id": mission_id}, {"_id": 0})
     prev_points = prev["points_earned"] if prev else 0
     prev_score = prev["score"] if prev else 0
     prev_mastery = prev.get("mastery", False) if prev else False
@@ -566,9 +577,9 @@ async def studio_submit(track_id: str, mission_id: str, payload: MissionSubmit, 
     delta = final_points - prev_points
 
     await db.studio_progress.update_one(
-        {"user_id": explorer["user_id"], "mission_id": mission_id},
+        {"user_id": user["user_id"], "mission_id": mission_id},
         {"$set": {
-            "user_id": explorer["user_id"], "track": track_id, "mission_id": mission_id,
+            "user_id": user["user_id"], "track": track_id, "mission_id": mission_id,
             "score": best_score, "last_score": score,
             "grade": best_grade, "points_earned": final_points, "mastery": sticky_mastery,
             "updated_at": now_utc().isoformat(),
@@ -579,14 +590,14 @@ async def studio_submit(track_id: str, mission_id: str, payload: MissionSubmit, 
     newly_mastered = (score >= 90) and not prev_mastery
     if newly_mastered:
         inc["compass_marks"] = 1
-    await db.users.update_one({"user_id": explorer["user_id"]}, {"$inc": inc})
+    await db.users.update_one({"user_id": user["user_id"]}, {"$inc": inc})
     if delta > 0:
         await db.points_events.insert_one({
-            "user_id": explorer["user_id"], "delta": delta, "mission_id": mission_id,
+            "user_id": user["user_id"], "delta": delta, "mission_id": mission_id,
             "territory_id": "t2", "type": "studio", "created_at": now_utc().isoformat(),
         })
 
-    updated = await db.users.find_one({"user_id": explorer["user_id"]}, {"_id": 0})
+    updated = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
     return {
         "results": graded["results"], "passed": graded["passed"], "total": graded["total"],
         "score": best_score, "grade": best_grade, "mastery": sticky_mastery,
