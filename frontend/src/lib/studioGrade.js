@@ -63,6 +63,32 @@ export function checkTask(check, doc) {
       if (k === "slide_transition") return (sl.transition || "none") !== "none";
       if (k === "slide_notes_min_words") return (sl.notes || "").trim().split(/\s+/).filter(Boolean).length >= check.min;
     }
+    // ---- email kinds ----
+    if (k === "email_opened") return (doc.messages || []).some((m) => m.id === check.id && m.read);
+    if (k === "searched") return !!doc.searched;
+    if (["sent_exists", "subject_prefix", "subject_nonempty", "subject_and_to", "to_includes", "cc_includes", "bcc_includes", "cc_min", "has_greeting", "has_signoff", "has_greeting_signoff", "has_attachment", "body_min_words", "formatting"].includes(k)) {
+      const sent = (doc.messages || []).filter((m) => m.folder === "sent" && m.kind === check.sentKind);
+      const m = sent[sent.length - 1];
+      if (k === "sent_exists") return !!m;
+      if (!m) return false;
+      const body = m.body || "", bl = body.toLowerCase(), subj = (m.subject || "").trim();
+      const inList = (arr, e) => (arr || []).map((x) => x.toLowerCase()).includes(e.toLowerCase());
+      const GRE = ["dear ", "hi ", "hi,", "hello", "good morning", "good afternoon", "hey ", "greetings"];
+      const SIG = ["thanks", "thank you", "sincerely", "best,", "best regards", "regards", "cheers", "respectfully", "yours"];
+      if (k === "subject_prefix") return subj.toLowerCase().startsWith(check.prefix.toLowerCase());
+      if (k === "subject_nonempty") return !!subj;
+      if (k === "subject_and_to") return !!subj && inList(m.to, check.email);
+      if (k === "to_includes") return inList(m.to, check.email);
+      if (k === "cc_includes") return inList(m.cc, check.email);
+      if (k === "bcc_includes") return inList(m.bcc, check.email);
+      if (k === "cc_min") return (m.cc || []).length >= check.min;
+      if (k === "has_greeting") return GRE.some((g) => bl.includes(g));
+      if (k === "has_signoff") return SIG.some((s) => bl.includes(s));
+      if (k === "has_greeting_signoff") return GRE.some((g) => bl.includes(g)) && SIG.some((s) => bl.includes(s));
+      if (k === "has_attachment") return (m.attachments || []).length > 0 && (!check.name || (m.attachments || []).some((a) => a.name === check.name));
+      if (k === "body_min_words") return body.split(/\s+/).filter(Boolean).length >= check.min;
+      if (k === "formatting") return { bold: m.hasBold, bullets: m.hasBullets, signature: m.hasSignature }[check.feature] || false;
+    }
   } catch (e) { return false; }
   return false;
 }

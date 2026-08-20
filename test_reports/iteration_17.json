@@ -1,0 +1,34 @@
+{
+  "summary": "HorizonQuest Skill Studio Phase 4 (Email & Communication) — full backend + frontend + real Claude AI verification. ALL FLOWS PASS. Loaded ai-testing-core + ai-testing-llm skills for the AI grading feature (primary AI feature for this iteration). Backend: 25/25 pytest passes in /app/backend/tests/test_skillstudio_email.py (17.31s) — covers GET /api/studio/email (track shape, 12 missions, 4 email-type registers, signature em-dash), guards (guide 403, unknown 404, wrong-track 404, unauth 401), per-mission deterministic grading (m1..m9 perfect A + fail paths for greeting/attachment/cc_min/formatting/body_min_words), letter-grade scale via m12 partials, best-attempt sticky, points-events persistence, and REAL Claude claude-sonnet-4-6 AI grading for m10/m11/m12 (professional email -> rating 'Excellent' + all 3 AI dims pass; rude email -> rating 'Needs work' + all AI dims fail). GET /api/studio/reports/all returns 200 for guide with totals+students; 403 for explorer. Frontend (Playwright, viewport 1920x1080): /studio/email hub shows 'studio-hub-title'='Email & Communication', 4 studio-track-pills (docs/sheets/slides/email active), 12 mission cards. EmailClientCore verified end-to-end: m1 open two emails -> A/100/+100; m2 search + open field-trip -> A; m3 reply (to/subj prefilled, greeting+sign-off body) -> A 4/4 +100/+1 mark; m4 replyall with CC prefilled ('alex,jamie') -> A 3/3; m5 forward to alex + note -> A; m7 To/CC/BCC via email-showcc -> A; m8 attach via hover+click on email-file-Field Trip Form.pdf (chip appears) -> A 3/3; m9 formatting toolbar (bold ** / bullet • / signature em-dash —) -> A 4/4. AI PRIMARY: m10 professional email -> studio-ai-feedback panel renders 'AI Coach · Excellent' + 3-sentence Claude feedback, grade A 4/4 +120; m11 rude/casual to principal -> 'AI Coach · Needs work' + real Claude feedback ('Try opening with a respectful greeting like Dear Principal...'), grade F 1/5. Guide reports tab (as em-guide via em_guide_tok): /guide -> tab-reports -> reports-table with 17 explorer rows, per-track columns Docs/12, Sheets/11, Slides/12, Email/12. Our em-ui explorer row shows Email 92% 9/12 mastered, em-fresh shows Email 93% 10/12 mastered — matches the A submissions. Regression: /map, /leaderboard, /studio/docs (Word Processing), /studio/sheets (Spreadsheets), /studio/slides (Presentations) all load cleanly with 4 track pills including active Email.",
+  "ai_feature_verdicts": [
+    "Email AI grading (Claude claude-sonnet-4-6 via EMERGENT_LLM_KEY) - pass - evidence: POST /api/studio/email/email-m10/submit for a well-written professional email to mentor@company.com returned ai_rating='Excellent' with 3 sentences of on-topic feedback ('Your greeting and closing are spot-on... small tip: briefly mentioning why her answer matters...'), results t2/t3/t4 all passed, grade=A score=100; POST for a rude 'YO DUDE!!! ur project is kinda WEIRD lol...' returned ai_rating='Needs work' with distinct feedback ('a professional email needs a respectful greeting like Dear Mr./Ms. [Name]...'), t2/t3/t4 all failed. Both verified in UI: m10 result dialog shows studio-ai-feedback with 'AI Coach · Excellent' text, m11 rude submission shows 'AI Coach · Needs work' with F/20%. Response bodies match provider format (no 'mock'/'used_real_*=false' markers, no fallback text 'The AI Coach was unavailable'). - skills: ai-testing-core, ai-testing-llm"
+  ],
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_skillstudio_email.py",
+    "/app/test_reports/pytest/test_skillstudio_email.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Non-blocking: email attach menu uses CSS group-hover only (no click/keyboard alternative). Playwright can drive it via hover-then-click, but keyboard/mobile users cannot reach files. Consider toggling the menu on click as well as hover (a11y + touch).",
+    "Non-blocking observability: grade_email_ai() fail-opens (credits all AI tasks with rating='Unrated') when Claude errors. Consider surfacing an admin log/metric so silent Claude outages are still visible to Guides.",
+    "Non-blocking (repeat from earlier iterations): backend has grown to ~800 lines and skillstudio.py to ~1330 lines. Splitting per-track (docs/sheets/slides/email) into separate modules would improve maintainability."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_skillstudio_email.py (created)"
+  ],
+  "success_rate": {
+    "backend": "100% (25/25 pytest, incl. 2 real Claude AI tests)",
+    "frontend": "100% (hub + m1/m2/m3/m4/m5/m7/m8/m9/m10/m11 flows + guide reports + regression)"
+  },
+  "test_credentials": "Backend tests: em-fresh / em_fresh_tok (fresh explorer), em-guide / em_guide_tok (guide). Sessions live in DB test_database, collection user_sessions (NOT 'sessions'). UI test explorer: em-ui-1787242307527 / em_ui_tok_1787242307527. Cookie: session_token, httpOnly=true, secure=true, sameSite=None, host explorer-journey-4.preview.emergentagent.com. Bearer works too.",
+  "seed_data_creation": "Created three explorer/guide sessions via mongosh in DB test_database, collection user_sessions: em_exp_tok/em-exp, em_guide_tok/em-guide (role=guide), em_fresh_tok/em-fresh. Also created em_ui_tok_1787242307527/em-ui-1787242307527 for UI testing. em-fresh has A grades on email-m1..m9 (except partial-fail m3 kept sticky A) and A/F sticky on m10/m11; em-ui has A on m1..m10 and F on m11.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Email track (Phase 4) fully verified. Key selectors: email-folder-{inbox|sent|drafts|trash}, email-item-{id}, email-search, email-compose-btn, email-reading-pane, email-reply-btn/replyall-btn/forward-btn, email-to/cc/bcc/subject/body, email-showcc, email-fmt-bold/bullets/signature, email-attach-btn (hover to reveal), email-file-{filename}, email-send-btn, studio-result-grade, studio-ai-feedback, tab-reports, reports-table, report-row-{user_id}. GOTCHAS: (1) auth sessions live in db.user_sessions NOT db.sessions — earlier iterations sometimes populated the wrong collection. (2) email-file-* is hidden until hover; use await page.hover('[data-testid=email-attach-btn]') then click, or JS .click(). (3) Reports table Sheets column shows /11 because SHEETS_MISSIONS only has 11 missions defined (m1..m11) — this is correct, not a bug. (4) AI calls (m10/m11/m12) take 5-15s typically; the test uses 90s timeout. Real Claude output is verified — do NOT re-run these tests casually as they cost tokens."
+}

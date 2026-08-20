@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
+import json
 import logging
 import string
 import random
@@ -455,6 +456,44 @@ class MissionSubmit(BaseModel):
     doc: Dict
 
 
+async def grade_email_ai(mission, doc):
+    """Grade the AI dimensions (tone/etiquette/grammar) of the student's email via Claude.
+    Returns (results_list, feedback_str, rating_str)."""
+    ai_tasks = [t for t in mission["tasks"] if t["check"].get("kind") == "ai"]
+    if not ai_tasks:
+        return [], "", ""
+    target = mission.get("ai_target", {})
+    msgs = [m for m in (doc.get("messages") or []) if m.get("folder") == "sent" and m.get("kind") == target.get("sentKind")]
+    email = msgs[-1] if msgs else None
+    if not email or not (email.get("body") or "").strip():
+        # Nothing written yet — all AI dims fail with guidance.
+        return ([{"id": t["id"], "passed": False} for t in ai_tasks],
+                "Write and send the email first, then the AI Coach can grade your tone, etiquette, and grammar.", "Not yet")
+    from emergentintegrations.llm.chat import LlmChat, UserMessage
+    system_message = (
+        "You are an email-writing coach for middle-school CTE students. Evaluate a student's email for a "
+        f"{target.get('register','professional')} message to {target.get('recipient','the recipient')}. "
+        "Return STRICT JSON only, no prose, with keys: tone_ok (bool), etiquette_ok (bool), grammar_ok (bool), "
+        "rating (one of 'Excellent','Good','Needs work'), feedback (2-3 short, warm, specific sentences of advice). "
+        "Judge tone_ok = tone matches the register and reader; etiquette_ok = has proper greeting+closing, is respectful, "
+        "no slang/ALL CAPS, clear purpose; grammar_ok = no notable grammar/spelling errors. Be encouraging but honest."
+    )
+    prompt = f"Subject: {email.get('subject','')}\nTo: {', '.join(email.get('to', []))}\n\n{email.get('body','')}"
+    try:
+        chat = LlmChat(api_key=EMERGENT_LLM_KEY, session_id=f"emailgrade_{mission['id']}", system_message=system_message).with_model("anthropic", "claude-sonnet-4-6")
+        raw = await chat.send_message(UserMessage(text=prompt))
+        txt = raw[raw.find("{"): raw.rfind("}") + 1]
+        data = json.loads(txt)
+    except Exception as e:
+        logger.error(f"Email AI grade error: {e}")
+        # Fail-open: give credit so a Claude hiccup never blocks a student, with a note.
+        return ([{"id": t["id"], "passed": True} for t in ai_tasks],
+                "The AI Coach was unavailable, so your writing tasks were credited. Ask your teacher for feedback too!", "Unrated")
+    dim_map = {"tone": bool(data.get("tone_ok")), "etiquette": bool(data.get("etiquette_ok")), "grammar": bool(data.get("grammar_ok"))}
+    results = [{"id": t["id"], "passed": dim_map.get(t["check"]["dim"], False)} for t in ai_tasks]
+    return results, str(data.get("feedback", "")), str(data.get("rating", ""))
+
+
 # ---------------- Skill Studio (guided, auto-graded missions) ----------------
 @api_router.get("/studio/{track_id}")
 async def studio_track(track_id: str, user=Depends(get_current_user)):
@@ -468,6 +507,35 @@ async def studio_track(track_id: str, user=Depends(get_current_user)):
     return {**data, "progress": progress}
 
 
+@api_router.get("/studio/reports/all")
+async def studio_reports(guide=Depends(get_current_user)):
+    if guide.get("role") != "guide":
+        raise HTTPException(status_code=403, detail="Guides only")
+    tracks = ["docs", "sheets", "slides", "email"]
+    totals = {t: len(skillstudio.MISSIONS.get(t, [])) for t in tracks}
+    explorers = await db.users.find({"role": "explorer"}, {"_id": 0, "user_id": 1, "name": 1, "email": 1}).to_list(1000)
+    rows = []
+    for ex in explorers:
+        prog = await db.studio_progress.find({"user_id": ex["user_id"]}, {"_id": 0}).to_list(500)
+        if not prog:
+            continue
+        by_track = {}
+        for t in tracks:
+            tp = [p for p in prog if p.get("track") == t]
+            if tp:
+                by_track[t] = {
+                    "attempted": len(tp),
+                    "total": totals[t],
+                    "mastered": sum(1 for p in tp if p.get("mastery")),
+                    "avg": round(sum(p.get("score", 0) for p in tp) / len(tp)),
+                    "missions": {p["mission_id"]: {"score": p.get("score", 0), "grade": p.get("grade", "F"), "mastery": p.get("mastery", False)} for p in tp},
+                }
+        last = max((p.get("updated_at", "") for p in prog), default="")
+        rows.append({"user_id": ex["user_id"], "name": ex.get("name", ""), "email": ex.get("email", ""), "tracks": by_track, "last_active": last})
+    rows.sort(key=lambda r: r["name"].lower())
+    return {"totals": totals, "students": rows}
+
+
 @api_router.post("/studio/{track_id}/{mission_id}/submit")
 async def studio_submit(track_id: str, mission_id: str, payload: MissionSubmit, explorer=Depends(require_explorer)):
     mission = skillstudio.MISSION_INDEX.get(mission_id)
@@ -475,6 +543,14 @@ async def studio_submit(track_id: str, mission_id: str, payload: MissionSubmit, 
         raise HTTPException(status_code=404, detail="Mission not found")
 
     graded = skillstudio.grade_mission(mission_id, payload.doc)
+    ai_feedback, ai_rating = "", ""
+    if track_id == "email":
+        ai_results, ai_feedback, ai_rating = await grade_email_ai(mission, payload.doc)
+        if ai_results:
+            graded["results"] = graded["results"] + ai_results
+            graded["passed"] += sum(1 for r in ai_results if r["passed"])
+            graded["total"] += len(ai_results)
+            graded["score"] = round(graded["passed"] / graded["total"] * 100) if graded["total"] else 0
     score = graded["score"]
     points_awarded = round(graded["points"] * score / 100)
 
@@ -516,6 +592,7 @@ async def studio_submit(track_id: str, mission_id: str, payload: MissionSubmit, 
         "score": best_score, "grade": best_grade, "mastery": sticky_mastery,
         "points_awarded": max(delta, 0), "compass_mark_earned": newly_mastered,
         "horizon_points": updated.get("horizon_points", 0), "compass_marks": updated.get("compass_marks", 0),
+        "ai_feedback": ai_feedback, "ai_rating": ai_rating,
     }
 
 

@@ -57,10 +57,12 @@ Gamified education platform. Stack: React + FastAPI + MongoDB. Auth: Google sign
 
 - ✅ **Skill Studio — Phase 3: Presentations (slides track)**: 12 guided auto-graded missions (Meet a Slide → Building a Deck → Bulleted Content → 5×5 Rule → Layouts → Themes → Images → Charts → Animations → Transitions → Speaker Notes → Capstone+PDF). New `SlideEditorCore`: slide canvas with 4 layouts + 4 themes, thumbnail rail (add/delete/switch), editable title/bullets, image gallery (6 stock images), recharts bar/pie, framer-motion animations + transitions, speaker notes. Same A–F + HP grading. Hub pills now cover all 3 tracks. Linked from quest t2-q4. Tested 100% (iteration_11, 81/81 backend tests).
 
-## Skill Studio — COMPLETE (all 3 tracks)
-- Word Processing (12), Spreadsheets (11), Presentations (12) — 35 auto-graded missions total, covering the full CTE productivity-software standards.
-- Backend tests: `test_skillstudio.py` (docs 25) + `test_skillstudio_sheets.py` (25) + `test_skillstudio_slides.py` (31) = 81 passing.
-- Known non-blocking: slide gallery uses external Unsplash URLs (grading unaffected if an image fails to load); consider self-hosting for offline resilience.
+## Skill Studio — COMPLETE (all 4 tracks)
+- Word Processing (12), Spreadsheets (11), Presentations (12), **Email & Communication (12)** — 47 auto-graded missions covering the full CTE productivity + communication standards.
+- **Email Studio (Phase 4)**: simulated email client (`EmailClientCore`) — Inbox/Sent/Drafts/Trash, search, reply/reply-all/forward, compose (To/CC/BCC), attachments (file library), formatting (bold/bullets/signature). Skills practiced 10-12× across missions. Missions 10-12 use **Claude (claude-sonnet-4-6) AI grading of tone/etiquette/grammar that COUNTS toward the letter grade**, with an AI Coach feedback panel + rating. Covers the 4 email types (formal/professional/semi-formal/informal), school-life + CTE/workplace theme.
+- **Guide Reports** (`GuideConsole` Reports tab, `GET /api/studio/reports/all`, guide-only): per-Explorer average % and mastered/total for each track.
+- Backend tests: docs 25 + sheets 25 + slides 31 + email 25 (incl. 2 real Claude tests) = 106 passing. Verified iteration_17.
+- Known non-blocking: email attach menu is hover-only (add click for touch/a11y); AI grade fail-opens on Claude error (consider logging); backend/skillstudio.py large (consider splitting per track).
 
 ## Next backlog
 - P1: Class Grade Export (CSV of Studio grades for Guides); Guide Studio view (assign missions, see mastery per student).

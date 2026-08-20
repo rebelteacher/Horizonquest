@@ -6,6 +6,7 @@ import AppNav from "@/components/AppNav";
 import DocEditorCore from "@/components/studio/DocEditorCore";
 import SheetEditorCore from "@/components/studio/SheetEditorCore";
 import SlideEditorCore from "@/components/studio/SlideEditorCore";
+import EmailClientCore from "@/components/studio/EmailClientCore";
 import { checkTask } from "@/lib/studioGrade";
 import { exportNodeToPDF } from "@/lib/pdf";
 import { Button } from "@/components/ui/button";
@@ -128,11 +129,15 @@ export default function StudioMission() {
               ? <SheetEditorCore doc={doc} setDoc={setDoc} config={config} pageRef={pageRef} />
               : track === "slides"
                 ? <SlideEditorCore doc={doc} setDoc={setDoc} config={config} pageRef={pageRef} />
-                : <DocEditorCore doc={doc} setDoc={setDoc} config={config} pageRef={pageRef} />}
+                : track === "email"
+                  ? <EmailClientCore doc={doc} setDoc={setDoc} config={config} />
+                  : <DocEditorCore doc={doc} setDoc={setDoc} config={config} pageRef={pageRef} />}
             <div className="flex flex-wrap gap-3 mt-4">
-              <Button data-testid="studio-export-btn" variant="outline" className="border-white/15" onClick={doExport}>
-                <Download className="w-4 h-4 mr-2" /> Export PDF
-              </Button>
+              {track !== "email" && (
+                <Button data-testid="studio-export-btn" variant="outline" className="border-white/15" onClick={doExport}>
+                  <Download className="w-4 h-4 mr-2" /> Export PDF
+                </Button>
+              )}
               <Button data-testid="studio-submit-btn" onClick={submit} disabled={submitting} className="bg-primary text-primary-foreground hover:bg-[#FDBA74]">
                 {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Submit for a grade{allDone ? " ✓" : ""}</>}
               </Button>
@@ -189,6 +194,12 @@ export default function StudioMission() {
                 </div>
                 {!result.mastery && <p className="text-sm text-muted-foreground mt-4">Fix any red tasks and resubmit to raise your grade (90%+ earns mastery).</p>}
               </div>
+              {result.ai_feedback && (
+                <div data-testid="studio-ai-feedback" className="rounded-xl border border-[#818CF8]/40 bg-[#818CF8]/10 p-4 mb-4 text-left">
+                  <p className="text-xs uppercase tracking-widest font-mono-data text-[#a5b4fc] mb-1">AI Coach {result.ai_rating ? `· ${result.ai_rating}` : ""}</p>
+                  <p className="text-sm text-slate-200">{result.ai_feedback}</p>
+                </div>
+              )}
               <div className="space-y-3">
                 <div className="flex gap-3">
                   <Button data-testid="studio-result-review-btn" variant="outline" className="flex-1 border-white/15" onClick={() => setResult(null)}>Keep editing</Button>

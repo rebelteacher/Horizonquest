@@ -43,6 +43,7 @@ export default function GuideConsole() {
             <TabsTrigger value="reviews" data-testid="tab-reviews"><ClipboardCheck className="w-4 h-4 mr-2" />Review Queue</TabsTrigger>
             <TabsTrigger value="mastery" data-testid="tab-mastery"><BarChart3 className="w-4 h-4 mr-2" />Mastery</TabsTrigger>
             <TabsTrigger value="curriculum" data-testid="tab-curriculum"><BookOpen className="w-4 h-4 mr-2" />Curriculum</TabsTrigger>
+            <TabsTrigger value="reports" data-testid="tab-reports"><ClipboardCheck className="w-4 h-4 mr-2" />Reports</TabsTrigger>
             <TabsTrigger value="leaderboard" data-testid="tab-leaderboard"><Trophy className="w-4 h-4 mr-2" />Rankings</TabsTrigger>
           </TabsList>
 
@@ -52,6 +53,7 @@ export default function GuideConsole() {
           <TabsContent value="reviews" className="mt-6"><ReviewsTab /></TabsContent>
           <TabsContent value="mastery" className="mt-6"><MasteryTab expeditions={expeditions} /></TabsContent>
           <TabsContent value="curriculum" className="mt-6"><CurriculumTab /></TabsContent>
+          <TabsContent value="reports" className="mt-6"><ReportsTab /></TabsContent>
           <TabsContent value="leaderboard" className="mt-6"><LeaderboardControlsTab expeditions={expeditions} reload={loadExpeditions} /></TabsContent>
         </Tabs>
       </div>
@@ -241,6 +243,60 @@ function MasteryTab({ expeditions }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function ReportsTab() {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const TRACKS = [{ id: "docs", name: "Docs" }, { id: "sheets", name: "Sheets" }, { id: "slides", name: "Slides" }, { id: "email", name: "Email" }];
+
+  useEffect(() => {
+    api.get("/studio/reports/all").then((r) => setData(r.data)).finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
+  if (!data || data.students.length === 0) return <p className="text-sm text-muted-foreground py-10 text-center">No Skill Studio activity yet. Once Explorers complete missions, their grades appear here.</p>;
+
+  const gradeColor = (s) => (s >= 90 ? "#34D399" : s >= 80 ? "#22D3EE" : s >= 70 ? "#FB923C" : s >= 60 ? "#F59E0B" : "#E11D48");
+
+  return (
+    <div>
+      <p className="text-sm text-muted-foreground mb-4">Skill Studio scores per Explorer. Each cell shows missions mastered / total and the average score.</p>
+      <div className="overflow-x-auto hq-scrollbar">
+        <table className="w-full text-sm border-collapse" data-testid="reports-table">
+          <thead>
+            <tr className="text-left text-xs uppercase tracking-widest text-muted-foreground">
+              <th className="py-2 pr-4">Explorer</th>
+              {TRACKS.map((t) => <th key={t.id} className="py-2 px-3 text-center">{t.name} <span className="opacity-50">/{data.totals[t.id]}</span></th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {data.students.map((s) => (
+              <tr key={s.user_id} data-testid={`report-row-${s.user_id}`} className="border-t border-white/10">
+                <td className="py-2.5 pr-4">
+                  <p className="text-slate-200">{s.name || s.email}</p>
+                  <p className="text-xs text-muted-foreground">{s.email}</p>
+                </td>
+                {TRACKS.map((t) => {
+                  const tr = s.tracks[t.id];
+                  return (
+                    <td key={t.id} className="py-2.5 px-3 text-center">
+                      {tr ? (
+                        <div>
+                          <span className="font-mono-data" style={{ color: gradeColor(tr.avg) }}>{tr.avg}%</span>
+                          <p className="text-[11px] text-muted-foreground">{tr.mastered}/{tr.total} mastered</p>
+                        </div>
+                      ) : <span className="text-slate-600">—</span>}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

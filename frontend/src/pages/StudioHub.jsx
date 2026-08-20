@@ -46,7 +46,7 @@ export default function StudioHub() {
         </div>
 
         <div className="flex flex-wrap gap-2 mt-6">
-          {[{ id: "docs", name: "Word Processing" }, { id: "sheets", name: "Spreadsheets" }, { id: "slides", name: "Presentations" }].map((t) => (
+          {[{ id: "docs", name: "Word Processing" }, { id: "sheets", name: "Spreadsheets" }, { id: "slides", name: "Presentations" }, { id: "email", name: "Email & Communication" }].map((t) => (
             <button
               key={t.id}
               data-testid={`studio-track-pill-${t.id}`}
