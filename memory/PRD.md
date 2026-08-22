@@ -93,6 +93,13 @@ Gamified education platform. Stack: React + FastAPI + MongoDB. Auth: Google sign
 - ✅ **Responsive fix**: `min-w-0` on the mission grid column stops mobile horizontal overflow from the wide Gmail rows.
 - ✅ Tested 100% (iteration_19): backend 43/43 pytest, frontend all flows. ⚠️ Requires **redeploy** for production.
 
+## Implemented (2026-06) — Iteration 7: Drafts, Assign Missions, No-Reward-for-Blank
+- ✅ **Drafts That Save**: students can "Save draft" in the email composer → moves to Drafts folder; drafts persist across reloads (studio_drafts collection, debounced PUT; merged on load). Reopen a draft to finish and send (draft is removed on send). Explorer-only writes.
+- ✅ **Assign Missions**: Guide Console → Assignments tab. Guides assign specific Studio missions (any track) to a **class = Expedition**, and see a completion table (per student, check/✗ per mission, X/Y done). "Finished" = a **passing score of 60%+**. Endpoints: POST/GET/DELETE /api/assignments (guide-only), GET /api/me/assignments (explorer). Students see an orange **"Assigned"** badge on those missions in the Skill Studio.
+- ✅ **No Reward For Blank**: sending an effectively blank email (student wrote <5 words) awards **0 Horizon Points** (blank_send flag) — result modal + toast explain why. Only real writing earns credit.
+- ✅ Tested 100% (iteration_20): backend 19/19 pytest (blank→0pts, drafts CRUD+persistence+RBAC, assignments CRUD+RBAC+done-boundary at 60), frontend (draft save→persist across reload→reopen→send, blank-send UI, assignments create/table/delete, explorer Assigned badge). ⚠️ Requires **redeploy** for production.
+
+
 
 
 

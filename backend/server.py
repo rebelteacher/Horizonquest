@@ -536,6 +536,104 @@ async def studio_reports(guide=Depends(get_current_user)):
     return {"totals": totals, "students": rows}
 
 
+# ---------------- Skill Studio: Drafts (save an unfinished email) ----------------
+class DraftsSave(BaseModel):
+    drafts: List[Dict]
+
+
+@api_router.get("/studio/{track_id}/{mission_id}/drafts")
+async def get_drafts(track_id: str, mission_id: str, user=Depends(get_current_user)):
+    row = await db.studio_drafts.find_one({"user_id": user["user_id"], "mission_id": mission_id}, {"_id": 0})
+    return {"drafts": (row.get("drafts", []) if row else [])}
+
+
+@api_router.put("/studio/{track_id}/{mission_id}/drafts")
+async def save_drafts(track_id: str, mission_id: str, payload: DraftsSave, user=Depends(get_current_user)):
+    if user.get("role") != "explorer":
+        return {"ok": True, "skipped": True}
+    await db.studio_drafts.update_one(
+        {"user_id": user["user_id"], "mission_id": mission_id},
+        {"$set": {"user_id": user["user_id"], "track": track_id, "mission_id": mission_id,
+                  "drafts": payload.drafts, "updated_at": now_utc().isoformat()}},
+        upsert=True,
+    )
+    return {"ok": True}
+
+
+# ---------------- Skill Studio: Assignments (Guides assign missions to a class) ----------------
+class AssignmentCreate(BaseModel):
+    expedition_id: str
+    track: str
+    mission_ids: List[str]
+    note: Optional[str] = ""
+
+
+PASS_SCORE = 60  # a mission counts as "finished" when the best score is a passing 60%+
+
+
+@api_router.post("/assignments")
+async def create_assignment(payload: AssignmentCreate, guide=Depends(require_guide)):
+    exp = await db.expeditions.find_one({"expedition_id": payload.expedition_id, "guide_id": guide["user_id"]}, {"_id": 0})
+    if not exp:
+        raise HTTPException(status_code=404, detail="Expedition not found")
+    valid = {m["id"] for m in skillstudio.MISSIONS.get(payload.track, [])}
+    mids = [m for m in payload.mission_ids if m in valid]
+    if not mids:
+        raise HTTPException(status_code=400, detail="No valid missions selected")
+    a = {
+        "assignment_id": f"asg_{uuid.uuid4().hex[:12]}", "guide_id": guide["user_id"],
+        "expedition_id": payload.expedition_id, "track": payload.track, "mission_ids": mids,
+        "note": payload.note or "", "created_at": now_utc().isoformat(),
+    }
+    await db.assignments.insert_one(a)
+    a.pop("_id", None)
+    return a
+
+
+@api_router.get("/assignments")
+async def list_assignments(guide=Depends(require_guide)):
+    asgs = await db.assignments.find({"guide_id": guide["user_id"]}, {"_id": 0}).sort("created_at", -1).to_list(300)
+    result = []
+    for a in asgs:
+        exp = await db.expeditions.find_one({"expedition_id": a["expedition_id"]}, {"_id": 0, "name": 1})
+        members = await db.users.find({"expedition_ids": a["expedition_id"], "role": "explorer"},
+                                      {"_id": 0, "user_id": 1, "name": 1, "email": 1}).to_list(500)
+        titles = {m["id"]: m["title"] for m in skillstudio.MISSIONS.get(a["track"], []) if m["id"] in a["mission_ids"]}
+        students = []
+        for mem in members:
+            prog = await db.studio_progress.find(
+                {"user_id": mem["user_id"], "mission_id": {"$in": a["mission_ids"]}}, {"_id": 0}
+            ).to_list(200)
+            pm = {p["mission_id"]: p for p in prog}
+            done = {mid: bool(pm.get(mid, {}).get("score", 0) >= PASS_SCORE) for mid in a["mission_ids"]}
+            students.append({
+                "user_id": mem["user_id"], "name": mem.get("name", ""), "email": mem.get("email", ""),
+                "done": done, "done_count": sum(1 for v in done.values() if v),
+            })
+        students.sort(key=lambda s: (s["name"] or s["email"]).lower())
+        result.append({
+            **a, "expedition_name": exp["name"] if exp else "—",
+            "mission_titles": titles, "students": students, "member_count": len(members),
+        })
+    return result
+
+
+@api_router.delete("/assignments/{assignment_id}")
+async def delete_assignment(assignment_id: str, guide=Depends(require_guide)):
+    await db.assignments.delete_one({"assignment_id": assignment_id, "guide_id": guide["user_id"]})
+    return {"ok": True}
+
+
+@api_router.get("/me/assignments")
+async def my_assignments(user=Depends(get_current_user)):
+    ids = user.get("expedition_ids", [])
+    if not ids:
+        return []
+    asgs = await db.assignments.find({"expedition_id": {"$in": ids}}, {"_id": 0}).sort("created_at", -1).to_list(300)
+    return asgs
+
+
+
 @api_router.post("/studio/{track_id}/{mission_id}/submit")
 async def studio_submit(track_id: str, mission_id: str, payload: MissionSubmit, user=Depends(get_current_user)):
     mission = skillstudio.MISSION_INDEX.get(mission_id)
@@ -554,6 +652,17 @@ async def studio_submit(track_id: str, mission_id: str, payload: MissionSubmit, 
     score = graded["score"]
     points_awarded = round(graded["points"] * score / 100)
 
+    # No credit for a blank email: if a message was sent but the student wrote essentially nothing, award 0 points.
+    sent_msgs = [m for m in (payload.doc.get("messages") or [])
+                 if m.get("folder") == "sent" and m.get("kind") in ("reply", "replyall", "forward", "new")]
+    blank_send = False
+    if sent_msgs:
+        latest = sent_msgs[-1]
+        sb = latest.get("bodyStudent")
+        sb = sb if sb is not None else (latest.get("body") or "")
+        if len(sb.split()) < 5:
+            blank_send = True
+            points_awarded = 0
     # Guides (and any non-explorer) can grade-preview missions as a teaching tool.
     # Nothing is persisted and no points are awarded.
     if user.get("role") != "explorer":
@@ -562,7 +671,7 @@ async def studio_submit(track_id: str, mission_id: str, payload: MissionSubmit, 
             "score": score, "grade": skillstudio.letter_grade(score), "mastery": score >= 90,
             "points_awarded": 0, "compass_mark_earned": False,
             "horizon_points": user.get("horizon_points", 0), "compass_marks": user.get("compass_marks", 0),
-            "ai_feedback": ai_feedback, "ai_rating": ai_rating, "preview": True,
+            "ai_feedback": ai_feedback, "ai_rating": ai_rating, "preview": True, "blank_send": blank_send,
         }
 
     prev = await db.studio_progress.find_one({"user_id": user["user_id"], "mission_id": mission_id}, {"_id": 0})
@@ -603,7 +712,7 @@ async def studio_submit(track_id: str, mission_id: str, payload: MissionSubmit, 
         "score": best_score, "grade": best_grade, "mastery": sticky_mastery,
         "points_awarded": max(delta, 0), "compass_mark_earned": newly_mastered,
         "horizon_points": updated.get("horizon_points", 0), "compass_marks": updated.get("compass_marks", 0),
-        "ai_feedback": ai_feedback, "ai_rating": ai_rating,
+        "ai_feedback": ai_feedback, "ai_rating": ai_rating, "blank_send": blank_send,
     }
 
 

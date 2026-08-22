@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Inbox, Send, FileText, Trash2, Search, Reply, ReplyAll, Forward, Paperclip, Bold, List, PenSquare, X, Star, Square, GripVertical, ArrowLeft } from "lucide-react";
+import { toast } from "sonner";
+import { Inbox, Send, FileText, Trash2, Search, Reply, ReplyAll, Forward, Paperclip, Bold, List, PenSquare, X, Star, Square, GripVertical, ArrowLeft, Save } from "lucide-react";
 
 const FOLDERS = [
   { id: "inbox", name: "Inbox", icon: Inbox },
@@ -39,8 +40,18 @@ export default function EmailClientCore({ doc, setDoc, config }) {
   }
 
   const openMsg = (m) => {
+    if (m.folder === "drafts") { editDraft(m); return; }
     setOpenId(m.id);
     if (!m.read) setDoc({ ...doc, messages: messages.map((x) => (x.id === m.id ? { ...x, read: true } : x)) });
+  };
+  const editDraft = (m) => {
+    setAttachOpen(false); setPos({ x: null, y: null }); setOpenId(null);
+    setCompose({
+      mode: m.kind === "new" ? "new" : m.kind, kind: m.kind || "new", draftId: m.id,
+      to: (m.to || []).join(", "), cc: (m.cc || []).join(", "), bcc: (m.bcc || []).join(", "),
+      subject: m.subject || "", body: m.body || "", attachments: m.attachments || [],
+      showCc: !!((m.cc || []).length || (m.bcc || []).length),
+    });
   };
   const doSearch = (v) => { setQuery(v); if (v) setDoc({ ...doc, searched: true }); };
 
@@ -104,8 +115,22 @@ export default function EmailClientCore({ doc, setDoc, config }) {
       attachments: c.attachments, read: true, inReplyTo: open?.id || null, date: "Just now", external: false,
       hasBold: body.includes("**"), hasBullets: /(^|\n)\s*(•|-)\s+/.test(body), hasSignature: body.includes("—"),
     };
-    setDoc({ ...doc, messages: [...messages, msg] });
+    // Sending a draft removes it from the Drafts folder.
+    setDoc({ ...doc, messages: [...messages.filter((m) => m.id !== c.draftId), msg] });
     setCompose(null); setAttachOpen(false); setFolder("sent"); setOpenId(msg.id);
+  };
+
+  const saveDraft = () => {
+    const c = compose;
+    const id = c.draftId || `draft_${Date.now()}`;
+    const draft = {
+      id, folder: "drafts", kind: c.kind, fromName: "You", fromEmail: config.studentEmail,
+      to: splitAddrs(c.to), cc: splitAddrs(c.cc), bcc: splitAddrs(c.bcc), subject: c.subject, body: c.body,
+      bodyStudent: studentPortion(c.body || ""), attachments: c.attachments, read: true, date: "Draft", external: false,
+    };
+    setDoc({ ...doc, messages: [...messages.filter((m) => m.id !== id), draft] });
+    setCompose(null); setAttachOpen(false); setFolder("drafts");
+    toast.success("Saved to Drafts ⛵ — finish it anytime.");
   };
 
   const Btn = ({ onClick, icon: Icon, label, testid }) => (
@@ -245,6 +270,7 @@ export default function EmailClientCore({ doc, setDoc, config }) {
                   </div>
                 )}
               </div>
+              <button data-testid="email-savedraft-btn" onClick={saveDraft} className="inline-flex items-center gap-1.5 px-3 h-9 rounded-md border border-white/15 text-sm text-slate-200 hover:bg-white/5"><Save className="w-4 h-4" /> Save draft</button>
               <button data-testid="email-send-btn" onClick={send} className="inline-flex items-center gap-1.5 px-4 h-9 rounded-md bg-[#818CF8] text-white text-sm font-medium hover:bg-[#6366F1] ml-auto"><Send className="w-4 h-4" /> Send</button>
             </div>
           </div>

@@ -15,11 +15,19 @@ export default function StudioHub() {
   const isGuide = user?.role === "guide";
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [assignedIds, setAssignedIds] = useState([]);
 
   useEffect(() => {
     setLoading(true);
     api.get(`/studio/${track}`).then((r) => setData(r.data)).finally(() => setLoading(false));
   }, [track]);
+
+  useEffect(() => {
+    if (isGuide) { setAssignedIds([]); return; }
+    api.get("/me/assignments")
+      .then((r) => setAssignedIds((r.data || []).filter((a) => a.track === track).flatMap((a) => a.mission_ids)))
+      .catch(() => setAssignedIds([]));
+  }, [track, isGuide]);
 
   if (loading || !data) return (<div className="min-h-screen"><AppNav /><div className="flex justify-center py-40"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div></div>);
 
@@ -93,7 +101,10 @@ export default function StudioHub() {
                     </div>
                     <div className="min-w-0">
                       <h3 className="font-display text-lg leading-tight truncate flex items-center gap-2">{m.title}{isCapstone && <Sparkles className="w-4 h-4 text-primary shrink-0" />}</h3>
-                      <p className="text-xs text-muted-foreground mt-0.5 truncate">{m.chunk}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <p className="text-xs text-muted-foreground truncate">{m.chunk}</p>
+                        {assignedIds.includes(m.id) && <span data-testid={`assigned-badge-${m.id}`} className="text-[10px] font-semibold uppercase tracking-wide bg-[#FB923C]/20 text-[#FB923C] rounded px-1.5 py-0.5 shrink-0">Assigned</span>}
+                      </div>
                       <p className="text-[11px] text-slate-500 mt-1">{m.tasks.length} tasks · {m.points} pts</p>
                     </div>
                   </div>

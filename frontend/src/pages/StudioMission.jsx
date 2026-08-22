@@ -67,13 +67,29 @@ export default function StudioMission() {
       const m = missions.find((x) => x.id === missionId);
       setMission(m || null);
       if (m) {
-        setDoc(JSON.parse(JSON.stringify(m.doc)));
+        let freshDoc = JSON.parse(JSON.stringify(m.doc));
+        if (track === "email" && !isGuide) {
+          try {
+            const dr = await api.get(`/studio/email/${missionId}/drafts`);
+            const drafts = dr.data.drafts || [];
+            if (drafts.length) freshDoc = { ...freshDoc, messages: [...(freshDoc.messages || []), ...drafts] };
+          } catch (e) { /* no saved drafts */ }
+        }
+        setDoc(freshDoc);
         const idx = missions.findIndex((x) => x.id === missionId);
         setNextId(idx >= 0 && idx < missions.length - 1 ? missions[idx + 1].id : null);
       }
       setLoading(false);
     })();
-  }, [track, missionId]);
+  }, [track, missionId, isGuide]);
+
+  // Persist email drafts so students can finish them later (explorers only, debounced).
+  useEffect(() => {
+    if (track !== "email" || !doc || isGuide) return;
+    const drafts = (doc.messages || []).filter((m) => m.folder === "drafts");
+    const t = setTimeout(() => { api.put(`/studio/email/${missionId}/drafts`, { drafts }).catch(() => {}); }, 800);
+    return () => clearTimeout(t);
+  }, [doc, track, missionId, isGuide]);
 
   const taskStatus = useMemo(() => {
     if (!mission || !doc) return [];
@@ -100,7 +116,8 @@ export default function StudioMission() {
       const res = await api.post(`/studio/${track}/${missionId}/submit`, { doc });
       setResult(res.data);
       if (!res.data.preview) await refresh();
-      if (res.data.preview) toast.info(`Preview graded ${res.data.grade} (${res.data.score}%). Not saved.`);
+      if (res.data.blank_send) toast.warning("That email was blank — write a real message (greeting, a few sentences, and a sign-off) to earn points.");
+      else if (res.data.preview) toast.info(`Preview graded ${res.data.grade} (${res.data.score}%). Not saved.`);
       else if (res.data.mastery) toast.success(`Graded ${res.data.grade} · +${res.data.points_awarded} Horizon Points`);
       else toast.info(`Graded ${res.data.grade} (${res.data.score}%). Reach 90% for mastery.`);
     } catch (e) {
@@ -198,7 +215,8 @@ export default function StudioMission() {
                       <div className="flex items-center gap-2 text-primary"><Gem className="w-5 h-5" /><span className="font-mono-data text-xl">+{result.points_awarded}</span></div>
                       {result.compass_mark_earned && <div className="flex items-center gap-2 text-[#22D3EE]"><Anchor className="w-5 h-5" /><span className="font-mono-data text-xl">+1 Mark</span></div>}
                     </div>
-                    {!result.mastery && <p className="text-sm text-muted-foreground mt-4">Fix any red tasks and resubmit to raise your grade (90%+ earns mastery).</p>}
+                    {result.blank_send && <p data-testid="studio-result-blank-note" className="text-sm text-[#FB923C] mt-4">You sent a blank email, so it earned <b>0 points</b>. Write a real message — a greeting, a few sentences, and a sign-off — then resubmit.</p>}
+                    {!result.mastery && !result.blank_send && <p className="text-sm text-muted-foreground mt-4">Fix any red tasks and resubmit to raise your grade (90%+ earns mastery).</p>}
                   </>
                 )}
               </div>

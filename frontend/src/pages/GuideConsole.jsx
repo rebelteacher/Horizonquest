@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Anchor, Plus, Copy, Users, ClipboardCheck, BarChart3, Trophy, Loader2, Check, Compass, BookOpen, Target, Download } from "lucide-react";
+import { Anchor, Plus, Copy, Users, ClipboardCheck, BarChart3, Trophy, Loader2, Check, Compass, BookOpen, Target, Download, ListChecks, Trash2, X as XIcon } from "lucide-react";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from "recharts";
 
@@ -43,6 +43,7 @@ export default function GuideConsole() {
             <TabsTrigger value="reviews" data-testid="tab-reviews"><ClipboardCheck className="w-4 h-4 mr-2" />Review Queue</TabsTrigger>
             <TabsTrigger value="mastery" data-testid="tab-mastery"><BarChart3 className="w-4 h-4 mr-2" />Mastery</TabsTrigger>
             <TabsTrigger value="curriculum" data-testid="tab-curriculum"><BookOpen className="w-4 h-4 mr-2" />Curriculum</TabsTrigger>
+            <TabsTrigger value="assignments" data-testid="tab-assignments"><ListChecks className="w-4 h-4 mr-2" />Assignments</TabsTrigger>
             <TabsTrigger value="reports" data-testid="tab-reports"><ClipboardCheck className="w-4 h-4 mr-2" />Reports</TabsTrigger>
             <TabsTrigger value="leaderboard" data-testid="tab-leaderboard"><Trophy className="w-4 h-4 mr-2" />Rankings</TabsTrigger>
           </TabsList>
@@ -53,6 +54,7 @@ export default function GuideConsole() {
           <TabsContent value="reviews" className="mt-6"><ReviewsTab /></TabsContent>
           <TabsContent value="mastery" className="mt-6"><MasteryTab expeditions={expeditions} /></TabsContent>
           <TabsContent value="curriculum" className="mt-6"><CurriculumTab /></TabsContent>
+          <TabsContent value="assignments" className="mt-6"><AssignmentsTab expeditions={expeditions} /></TabsContent>
           <TabsContent value="reports" className="mt-6"><ReportsTab /></TabsContent>
           <TabsContent value="leaderboard" className="mt-6"><LeaderboardControlsTab expeditions={expeditions} reload={loadExpeditions} /></TabsContent>
         </Tabs>
@@ -139,6 +141,145 @@ function ExpeditionsTab({ expeditions, loading, reload }) {
           </div>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+const STUDIO_TRACKS = [{ id: "docs", name: "Word Processing" }, { id: "sheets", name: "Spreadsheets" }, { id: "slides", name: "Presentations" }, { id: "email", name: "Email & Communication" }];
+
+function AssignmentsTab({ expeditions }) {
+  const [expId, setExpId] = useState("");
+  const [track, setTrack] = useState("email");
+  const [missions, setMissions] = useState([]);
+  const [selected, setSelected] = useState([]);
+  const [assignments, setAssignments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
+
+  const loadAssignments = useCallback(async () => {
+    setLoading(true);
+    try { const res = await api.get("/assignments"); setAssignments(res.data); } catch (e) { /* noop */ }
+    setLoading(false);
+  }, []);
+  useEffect(() => { loadAssignments(); }, [loadAssignments]);
+
+  useEffect(() => {
+    setSelected([]);
+    api.get(`/studio/${track}`).then((r) => setMissions([...r.data.missions].sort((a, b) => a.order - b.order))).catch(() => setMissions([]));
+  }, [track]);
+
+  const toggle = (id) => setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+
+  const create = async () => {
+    if (!expId) { toast.error("Pick a class (Expedition)."); return; }
+    if (selected.length === 0) { toast.error("Select at least one mission."); return; }
+    setCreating(true);
+    try {
+      await api.post("/assignments", { expedition_id: expId, track, mission_ids: selected });
+      toast.success("Missions assigned! ⛵");
+      setSelected([]);
+      await loadAssignments();
+    } catch (e) { toast.error("Could not create assignment."); }
+    finally { setCreating(false); }
+  };
+
+  const remove = async (id) => {
+    await api.delete(`/assignments/${id}`);
+    toast.success("Assignment removed.");
+    await loadAssignments();
+  };
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-3">
+      <div className="hq-glass rounded-2xl p-6 border-t border-t-[#22D3EE]/30 h-fit">
+        <h2 className="font-display text-2xl mb-4 flex items-center gap-2"><ListChecks className="w-5 h-5 text-[#22D3EE]" /> New Assignment</h2>
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs text-muted-foreground">Class (Expedition)</label>
+            <Select value={expId} onValueChange={setExpId}>
+              <SelectTrigger data-testid="assign-expedition-select" className="bg-white/5 border-white/10 mt-1"><SelectValue placeholder="Choose a class…" /></SelectTrigger>
+              <SelectContent>
+                {expeditions.length === 0 && <div className="px-3 py-2 text-sm text-muted-foreground">Create an Expedition first.</div>}
+                {expeditions.map((e) => <SelectItem key={e.expedition_id} value={e.expedition_id} data-testid={`assign-exp-opt-${e.join_code}`}>{e.name} · {e.member_count} Explorers</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground">Studio track</label>
+            <Select value={track} onValueChange={setTrack}>
+              <SelectTrigger data-testid="assign-track-select" className="bg-white/5 border-white/10 mt-1"><SelectValue /></SelectTrigger>
+              <SelectContent>{STUDIO_TRACKS.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground">Missions ({selected.length} selected)</label>
+            <div className="mt-1 max-h-72 overflow-y-auto hq-scrollbar space-y-1 rounded-lg border border-white/10 p-2">
+              {missions.map((m) => (
+                <button key={m.id} data-testid={`assign-mission-${m.id}`} onClick={() => toggle(m.id)}
+                  className={`w-full text-left flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors ${selected.includes(m.id) ? "bg-[#22D3EE]/15 text-white" : "text-slate-300 hover:bg-white/5"}`}>
+                  <span className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${selected.includes(m.id) ? "bg-[#22D3EE] border-[#22D3EE]" : "border-white/25"}`}>{selected.includes(m.id) && <Check className="w-3 h-3 text-[#04121f]" />}</span>
+                  <span className="truncate">{m.order}. {m.title}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <Button data-testid="create-assignment-btn" onClick={create} disabled={creating} className="w-full bg-[#22D3EE] text-[#04121f] hover:bg-[#67E8F9]">
+            {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : "Assign to class"}
+          </Button>
+        </div>
+      </div>
+
+      <div className="lg:col-span-2">
+        {loading ? <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div> : (
+          <div className="space-y-4">
+            {assignments.length === 0 && <p className="text-muted-foreground py-12 text-center">No assignments yet. Assign missions to a class to track who's finished.</p>}
+            {assignments.map((a) => {
+              const mids = a.mission_ids;
+              return (
+                <div key={a.assignment_id} data-testid={`assignment-card-${a.assignment_id}`} className="hq-glass rounded-2xl p-5">
+                  <div className="flex items-start justify-between gap-4 mb-3">
+                    <div className="min-w-0">
+                      <h3 className="font-display text-xl truncate">{a.expedition_name}</h3>
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {mids.map((mid) => <span key={mid} className="text-xs bg-white/5 rounded px-2 py-0.5 text-slate-300">{a.mission_titles[mid] || mid}</span>)}
+                      </div>
+                    </div>
+                    <button data-testid={`delete-assignment-${a.assignment_id}`} onClick={() => remove(a.assignment_id)} className="text-slate-400 hover:text-[#E11D48] shrink-0"><Trash2 className="w-4 h-4" /></button>
+                  </div>
+                  {a.students.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No Explorers have joined this class yet.</p>
+                  ) : (
+                    <div className="overflow-x-auto hq-scrollbar">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="text-left text-xs text-muted-foreground">
+                            <th className="py-1 pr-3 font-medium">Explorer</th>
+                            {mids.map((mid) => <th key={mid} className="py-1 px-2 font-medium text-center"><span className="block max-w-[90px] truncate mx-auto" title={a.mission_titles[mid]}>{a.mission_titles[mid] || mid}</span></th>)}
+                            <th className="py-1 pl-2 font-medium text-center">Done</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {a.students.map((s) => (
+                            <tr key={s.user_id} data-testid={`assign-row-${s.user_id}`} className="border-t border-white/10">
+                              <td className="py-1.5 pr-3 truncate max-w-[160px]">{s.name || s.email}</td>
+                              {mids.map((mid) => (
+                                <td key={mid} className="py-1.5 px-2 text-center">
+                                  {s.done[mid] ? <Check className="w-4 h-4 text-[#34D399] mx-auto" /> : <XIcon className="w-4 h-4 text-slate-600 mx-auto" />}
+                                </td>
+                              ))}
+                              <td className="py-1.5 pl-2 text-center font-mono-data" style={{ color: s.done_count === mids.length ? "#34D399" : "#FB923C" }}>{s.done_count}/{mids.length}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

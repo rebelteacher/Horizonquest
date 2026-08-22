@@ -1,0 +1,29 @@
+{
+  "summary": "Tested the Skill Studio batch: NO REWARD FOR BLANK, DRAFTS (save/persist/reopen/send), ASSIGN MISSIONS (guide + explorer), plus email regression. Backend: new pytest suite /app/backend/tests/test_studio_drafts_assignments.py — 19/19 passed (blank_send=0 points on fresh explorer @60% score, short (<5 words) body also blank, good email awards full points + persists to horizon_points, guide preview blank flag with 0 points & no persistence; drafts PUT/GET per-mission + overwrite + guide skipped/[] + 401 unauthenticated; assignments create/invalid-mission filtering/404 unowned expedition/400 all-invalid/403 explorer RBAC/done map boundary at exactly 59 vs 60/me-assignments/delete). Frontend: draft saved on email-m3 -> moved to Drafts with success toast, PERSISTED across full page reload, reopened in compose with original subject+body, finished and sent -> disappeared from Drafts and appeared in Sent. Blank send on email-m6 with a brand-new explorer -> modal shows D/60%, +0 points, studio-result-blank-note, orange warning toast; then a real email -> A/100%, +100 HP, +1 Mark. Guide Console Assignments tab: expedition/track selects, mission checkboxes, create -> assignment card with completion table (check/x per mission, X/Y done), delete removes card. Explorer (expedition member) sees orange ASSIGNED badges on email-b1 and email-m3 only; non-member explorer sees none. Regression OK: b2 To/Cc/Bcc identify (4/4 tasks), Gmail-style rows, reading pane, draggable floating compose (moved 200px), guide teaching preview note with 0% not saved.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Guide Console → Assignments completion table", "issues": ["Mission column headers are hard-truncated without ellipsis/tooltip (e.g. 'Composing a Ne', 'Meet Your Inbo'); consider title attribute or truncate with ellipsis"]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_studio_drafts_assignments.py",
+    "/app/test_reports/pytest/test_studio_drafts_assignments.xml"
+  ],
+  "action_items": ["Optional polish: add ellipsis/tooltip for truncated mission column headers in the Assignments completion table"],
+  "critical_code_review_comments": [
+    "GET /api/studio/{track}/{mission}/drafts ignores track_id in the query (only user_id+mission_id) — harmless today since mission ids are globally unique, but the stored 'track' field is never used for filtering.",
+    "PUT /drafts silently returns {ok:true, skipped:true} for guides; frontend should not rely on ok alone to show a 'saved' state for non-explorers.",
+    "Blank-send check only inspects the LAST sent message (sent_msgs[-1]); a student could send a blank message after a good one, or vice versa, and grading depends on ordering."
+  ],
+  "updated_files": ["/app/backend/tests/test_studio_drafts_assignments.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "Ephemeral TEST_ explorers/expedition/assignments created by pytest fixtures and a UI explorer TEST_ui_blank; all removed after the run (also cleaned stale TEST_ leftovers from prior iterations). Pre-existing 'Test Class Assign' expedition + its assignment (email-b1, email-m3) left intact.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "em_exp_tok (explorer), em_guide_tok (guide), em_fresh_tok (explorer in Test Class Assign) — cookie session_token or Bearer",
+  "context_for_next_testing_agent": "Backend suite for this batch: /app/backend/tests/test_studio_drafts_assignments.py (19 tests, all green). Submit scores are STICKY — always mint a fresh explorer (see _mk_explorer helper) for grading assertions. UI draft persistence relies on a debounced PUT: wait ~3s after Save draft before reloading. Compose panel is portaled to body; b2 address chips only render inside the reading pane (open the Ms. Lee email first). Assigned badges require the explorer to be a member of the assignment's expedition (em-fresh in exp_61e14d36b5eb).",
+  "rca_of_the_issue": "No product defects found in this batch."
+}
