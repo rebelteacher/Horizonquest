@@ -804,6 +804,59 @@ async def get_assessment_bank(guide=Depends(require_guide)):
     return assessments.full_bank()
 
 
+TRACK_NAMES = {"docs": "Word Processing", "sheets": "Spreadsheets", "slides": "Presentations", "email": "Email & Communication"}
+
+
+@api_router.get("/reports/student/{user_id}")
+async def student_report(user_id: str, guide=Depends(require_guide)):
+    student = await db.users.find_one({"user_id": user_id}, {"_id": 0})
+    if not student:
+        raise HTTPException(status_code=404, detail="Explorer not found")
+    guide_exps = await db.expeditions.find({"guide_id": guide["user_id"]}, {"_id": 0, "expedition_id": 1, "name": 1}).to_list(200)
+    guide_exp_ids = {e["expedition_id"] for e in guide_exps}
+    student_exp_ids = set(student.get("expedition_ids", []))
+    shared = guide_exp_ids & student_exp_ids
+    if not shared:
+        raise HTTPException(status_code=403, detail="This Explorer is not in your classes")
+    classes = [e["name"] for e in guide_exps if e["expedition_id"] in shared]
+
+    prog = await db.studio_progress.find({"user_id": user_id}, {"_id": 0}).to_list(500)
+    pm = {p["mission_id"]: p for p in prog}
+    studio = []
+    for track in ["docs", "sheets", "slides", "email"]:
+        missions = skillstudio.MISSIONS.get(track, [])
+        done = [pm[m["id"]] for m in missions if m["id"] in pm]
+        mastered = sum(1 for p in done if p.get("score", 0) >= 90)
+        avg = round(sum(p.get("score", 0) for p in done) / len(done)) if done else None
+        studio.append({"track": track, "name": TRACK_NAMES[track], "total": len(missions),
+                       "attempted": len(done), "mastered": mastered, "avg": avg})
+
+    atts = await db.assessment_attempts.find({"user_id": user_id, "status": "completed"},
+                                             {"_id": 0, "assessment_id": 1, "score": 1}).to_list(500)
+    best = {}
+    for a in atts:
+        if a.get("score") is not None:
+            best[a["assessment_id"]] = max(best.get(a["assessment_id"], 0), a["score"])
+    checkpoints = []
+    for track in ["docs", "sheets", "slides", "email"]:
+        for cid in assessments.TRACK_CHECKPOINTS.get(track, []):
+            m = assessments.assessment_meta(cid)
+            checkpoints.append({"id": cid, "track_name": TRACK_NAMES[track], "title": m["title"],
+                                "best": best.get(cid), "pass": m["pass"]})
+    fmeta = assessments.assessment_meta(assessments.FINAL_ID)
+    final = {"title": fmeta["title"], "best": best.get(assessments.FINAL_ID), "pass": fmeta["pass"]}
+
+    return {
+        "student": {"name": student.get("name", ""), "email": student.get("email", ""),
+                    "level": student.get("level", 1), "horizon_points": student.get("horizon_points", 0),
+                    "compass_marks": student.get("compass_marks", 0), "fleet": student.get("fleet", ""),
+                    "tier": student.get("tier", "")},
+        "classes": classes, "guide_name": guide.get("name", ""),
+        "studio": studio, "checkpoints": checkpoints, "final": final,
+        "generated_at": now_utc().isoformat(),
+    }
+
+
 
 @api_router.post("/studio/{track_id}/{mission_id}/submit")
 async def studio_submit(track_id: str, mission_id: str, payload: MissionSubmit, user=Depends(get_current_user)):

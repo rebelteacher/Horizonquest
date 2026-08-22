@@ -18,6 +18,7 @@ import PhishingSpotter from "@/pages/PhishingSpotter";
 import StudioHub from "@/pages/StudioHub";
 import StudioMission from "@/pages/StudioMission";
 import AssessmentRunner from "@/pages/AssessmentRunner";
+import StudentReport from "@/pages/StudentReport";
 import { Compass } from "lucide-react";
 
 function Loader() {
@@ -59,6 +60,7 @@ function AppRouter() {
       <Route path="/studio/:track" element={<Protected><StudioHub /></Protected>} />
       <Route path="/studio/:track/:missionId" element={<Protected><StudioMission /></Protected>} />
       <Route path="/assessment/:assessmentId" element={<Protected><AssessmentRunner /></Protected>} />
+      <Route path="/report/:userId" element={<Protected role="guide"><StudentReport /></Protected>} />
       <Route path="/leaderboard" element={<Protected><Leaderboard /></Protected>} />
       <Route path="/guide" element={<Protected role="guide"><GuideConsole /></Protected>} />
       <Route path="*" element={<Navigate to="/" replace />} />

@@ -111,6 +111,11 @@ Gamified education platform. Stack: React + FastAPI + MongoDB. Auth: Google sign
 - ✅ Guide Console → **Question Bank** tab (read-only): every checkpoint + final question with the correct answer highlighted, grouped by track via section pills, each question tagged with a reference id (e.g. `email-cp1 #5`) so the teacher can request rewords/edits by id. Backend: GET /api/assessments/bank (guide-only) via assessments.full_bank().
 - Enables the teacher to review/approve all ~342 authored questions; sets up a future Guide question editor.
 
+## Implemented (2026-06) — Iteration 10: Printable per-student score report
+- ✅ One-page **Progress Report** per Explorer (guide-only): Skill Studio summary (mastered/attempted/average per track), all 12 checkpoint best scores + final, and a gamification snapshot (level, Horizon Points, Compass Marks). Print-friendly white sheet with a **Print / Save PDF** button (nav/button hidden via `@media print`).
+- ✅ Backend `GET /api/reports/student/{user_id}` (guide-only, 403 if the student isn't in the guide's classes). Frontend `/report/:userId` (route role-guarded) reachable via a **Report** link on each Test Scores gradebook row.
+- ✅ Verified: report data + RBAC via curl; page render + print button via screenshot. ⚠️ Requires **redeploy** for production.
+
 
 
 

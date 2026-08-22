@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Anchor, Plus, Copy, Users, ClipboardCheck, BarChart3, Trophy, Loader2, Check, Compass, BookOpen, Target, Download, ListChecks, Trash2, X as XIcon, BookMarked } from "lucide-react";
+import { Anchor, Plus, Copy, Users, ClipboardCheck, BarChart3, Trophy, Loader2, Check, Compass, BookOpen, Target, Download, ListChecks, Trash2, X as XIcon, BookMarked, Printer } from "lucide-react";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from "recharts";
 
@@ -498,6 +498,7 @@ function TestScoresTab() {
             <tr className="text-left text-xs text-muted-foreground">
               <th className="py-2 pr-3 font-medium sticky left-0 bg-transparent">Explorer</th>
               {data.columns.map((c) => <th key={c.id} className="py-2 px-2 font-medium text-center whitespace-nowrap"><span title={c.title}>{label(c.id)}</span></th>)}
+              <th className="py-2 pl-3 font-medium text-center whitespace-nowrap">Report</th>
             </tr>
           </thead>
           <tbody>
@@ -507,6 +508,7 @@ function TestScoresTab() {
                 {data.columns.map((c) => (
                   <td key={c.id} className="py-2 px-2 text-center font-mono-data" style={{ color: color(s.scores[c.id]) }}>{s.scores[c.id] != null ? `${s.scores[c.id]}%` : "—"}</td>
                 ))}
+                <td className="py-2 pl-3 text-center"><Link to={`/report/${s.user_id}`} data-testid={`report-link-${s.user_id}`} className="inline-flex items-center gap-1 text-[#22D3EE] hover:underline whitespace-nowrap"><Printer className="w-3.5 h-3.5" /> Report</Link></td>
               </tr>
             ))}
           </tbody>
