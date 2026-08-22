@@ -102,3 +102,18 @@ def grade_attempt(answer_key, answers):
             pass
     score = round(correct / total * 100) if total else 0
     return score, correct, total
+
+
+
+def _dump(assessment_id, cfg):
+    return {"id": assessment_id, "title": cfg["title"],
+            "questions": [{"n": i + 1, "q": it[0], "correct": it[1], "options": list(it[1:])}
+                          for i, it in enumerate(cfg["pool"])]}
+
+
+def full_bank():
+    """Guide-only: every question with its correct answer, for review/approval."""
+    out = {"tracks": {}, "final": _dump(FINAL_ID, FINAL)}
+    for track, cids in TRACK_CHECKPOINTS.items():
+        out["tracks"][track] = [_dump(cid, CHECKPOINTS[cid]) for cid in cids]
+    return out

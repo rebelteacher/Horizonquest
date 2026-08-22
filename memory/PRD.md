@@ -107,6 +107,10 @@ Gamified education platform. Stack: React + FastAPI + MongoDB. Auth: Google sign
 - ✅ Backend: bank_docs/sheets/slides/email.py + bank_final.py + assessments.py engine; endpoints /assessments/track/{track}, /assessments/final/meta, POST /assessments/{id}/start & /attempts/{id}/submit, /me/assessments, /assessments/reports.
 - ✅ Tested 100% (iteration_21): backend 13/13 new pytest; frontend all flows (checkpoint cards, quiz runner+retake, final, dashboard panel, gradebook+CSV). ⚠️ Requires **redeploy** for production.
 
+## Implemented (2026-06) — Iteration 9: Question Bank review viewer
+- ✅ Guide Console → **Question Bank** tab (read-only): every checkpoint + final question with the correct answer highlighted, grouped by track via section pills, each question tagged with a reference id (e.g. `email-cp1 #5`) so the teacher can request rewords/edits by id. Backend: GET /api/assessments/bank (guide-only) via assessments.full_bank().
+- Enables the teacher to review/approve all ~342 authored questions; sets up a future Guide question editor.
+
 
 
 

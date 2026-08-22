@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Anchor, Plus, Copy, Users, ClipboardCheck, BarChart3, Trophy, Loader2, Check, Compass, BookOpen, Target, Download, ListChecks, Trash2, X as XIcon } from "lucide-react";
+import { Anchor, Plus, Copy, Users, ClipboardCheck, BarChart3, Trophy, Loader2, Check, Compass, BookOpen, Target, Download, ListChecks, Trash2, X as XIcon, BookMarked } from "lucide-react";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from "recharts";
 
@@ -46,6 +46,7 @@ export default function GuideConsole() {
             <TabsTrigger value="assignments" data-testid="tab-assignments"><ListChecks className="w-4 h-4 mr-2" />Assignments</TabsTrigger>
             <TabsTrigger value="reports" data-testid="tab-reports"><ClipboardCheck className="w-4 h-4 mr-2" />Reports</TabsTrigger>
             <TabsTrigger value="testscores" data-testid="tab-testscores"><Target className="w-4 h-4 mr-2" />Test Scores</TabsTrigger>
+            <TabsTrigger value="questionbank" data-testid="tab-questionbank"><BookMarked className="w-4 h-4 mr-2" />Question Bank</TabsTrigger>
             <TabsTrigger value="leaderboard" data-testid="tab-leaderboard"><Trophy className="w-4 h-4 mr-2" />Rankings</TabsTrigger>
           </TabsList>
 
@@ -58,6 +59,7 @@ export default function GuideConsole() {
           <TabsContent value="assignments" className="mt-6"><AssignmentsTab expeditions={expeditions} /></TabsContent>
           <TabsContent value="reports" className="mt-6"><ReportsTab /></TabsContent>
           <TabsContent value="testscores" className="mt-6"><TestScoresTab /></TabsContent>
+          <TabsContent value="questionbank" className="mt-6"><QuestionBankTab /></TabsContent>
           <TabsContent value="leaderboard" className="mt-6"><LeaderboardControlsTab expeditions={expeditions} reload={loadExpeditions} /></TabsContent>
         </Tabs>
       </div>
@@ -386,6 +388,77 @@ function MasteryTab({ expeditions }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+const QB_SECTIONS = [
+  { id: "docs", name: "Word Processing" },
+  { id: "sheets", name: "Spreadsheets" },
+  { id: "slides", name: "Presentations" },
+  { id: "email", name: "Email" },
+  { id: "final", name: "Final Exam" },
+];
+
+function QuestionBankTab() {
+  const [bank, setBank] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [section, setSection] = useState("email");
+  useEffect(() => {
+    api.get("/assessments/bank").then((r) => setBank(r.data)).finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
+  if (!bank) return <p className="text-sm text-muted-foreground py-10 text-center">Could not load the question bank.</p>;
+
+  const assessments = section === "final" ? [bank.final] : (bank.tracks[section] || []);
+  const totalQ = assessments.reduce((n, a) => n + a.questions.length, 0);
+
+  return (
+    <div>
+      <div className="flex items-start justify-between gap-4 mb-4 flex-wrap">
+        <p className="text-sm text-muted-foreground max-w-2xl">Review every question and its correct answer (shown in green). To change one, just tell me its reference like <span className="text-[#22D3EE] font-mono-data">email-cp1 #5</span> and the new wording. Students see the answer choices in a shuffled order.</p>
+      </div>
+      <div className="flex flex-wrap gap-2 mb-6">
+        {QB_SECTIONS.map((s) => (
+          <button key={s.id} data-testid={`qb-section-${s.id}`} onClick={() => setSection(s.id)}
+            className={`px-3 h-9 rounded-full text-sm transition-colors ${section === s.id ? "bg-[#818CF8] text-white" : "bg-white/5 text-slate-300 hover:bg-white/10"}`}>{s.name}</button>
+        ))}
+      </div>
+
+      <p className="text-xs text-muted-foreground mb-4 font-mono-data">{totalQ} questions in this section</p>
+
+      <div className="space-y-8">
+        {assessments.map((a) => (
+          <div key={a.id} data-testid={`qb-assessment-${a.id}`}>
+            <div className="flex items-center gap-2 mb-3 sticky top-16 bg-background/80 backdrop-blur py-2 z-10">
+              <h3 className="font-display text-xl">{a.title}</h3>
+              <span className="text-xs font-mono-data text-muted-foreground bg-white/5 rounded px-2 py-0.5">{a.id}</span>
+              <span className="text-xs text-muted-foreground">· {a.questions.length} in pool</span>
+            </div>
+            <div className="space-y-3">
+              {a.questions.map((q) => (
+                <div key={q.n} data-testid={`qb-q-${a.id}-${q.n}`} className="hq-glass rounded-xl p-4">
+                  <p className="text-sm text-white font-medium flex gap-2">
+                    <span className="font-mono-data text-[#22D3EE] shrink-0">{a.id} #{q.n}</span>
+                    <span>{q.q}</span>
+                  </p>
+                  <div className="mt-2 grid gap-1 sm:grid-cols-2">
+                    {q.options.map((opt, oi) => {
+                      const correct = opt === q.correct;
+                      return (
+                        <div key={oi} className={`text-sm px-2 py-1 rounded flex items-center gap-1.5 ${correct ? "bg-[#34D399]/15 text-[#34D399]" : "text-slate-400"}`}>
+                          {correct ? <Check className="w-3.5 h-3.5 shrink-0" /> : <span className="w-3.5 shrink-0" />}{opt}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

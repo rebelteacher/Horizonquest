@@ -799,6 +799,11 @@ async def assessment_reports(guide=Depends(require_guide)):
     return {"columns": columns, "students": rows}
 
 
+@api_router.get("/assessments/bank")
+async def get_assessment_bank(guide=Depends(require_guide)):
+    return assessments.full_bank()
+
+
 
 @api_router.post("/studio/{track_id}/{mission_id}/submit")
 async def studio_submit(track_id: str, mission_id: str, payload: MissionSubmit, user=Depends(get_current_user)):
