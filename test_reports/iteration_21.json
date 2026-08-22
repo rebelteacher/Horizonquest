@@ -1,0 +1,38 @@
+{
+  "summary": "Full test of the NEW assessments feature (checkpoints + final exam) backend and frontend. Wrote /app/backend/tests/test_assessments.py (13 pytest cases, all PASS) covering unlock gate, anti-cheat randomization (20 Qs, 4 unique options, differing draw/option order across attempts), grading via answer_key, 100% pass path, retake cap (3rd start = 403 'No attempts remaining'), first-pass-only +150 HP (no double pay, no points on fail, no points on final), final exam meta (25/70/1 attempt) + single-attempt enforcement, 404 for unknown assessment, guide preview (preview=true, 0 points, attempt row deleted, bypasses lock + attempt cap), gradebook (guide-only 403 for explorer, 13 columns, per-student best scores, null when unattempted, no _id), GET /me/assessments (13 items, best_score/passed/attempts_used). Frontend verified end-to-end with Playwright as a seeded explorer (unlocked email-cp1) and as a guide: StudioHub checkpoint cards (locked/unlocked/attempt counts/scores), final exam card, quiz runner (progress bar, 20 question cards x 4 options, blocked submit toast, result score/attempts remaining/20-item review, retake restarting a fresh attempt, 'No attempts left' state, error screen 'No attempts remaining'), final exam 25 Qs + Completed state, guide teaching-preview banner text, JourneyMap 'My Test Scores' panel, Guide Console Test Scores tab with rows + working CSV download. Regression: /app/backend/tests/test_studio_drafts_assignments.py 19/19 PASS.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/assessments/{id}/start (guide)", "issue": "Guide preview attempts are inserted into db.assessment_attempts at /start and only removed at /submit, so an abandoned guide preview leaves an orphan 'in_progress' row forever (observed 1 leftover row for em-guide). Suggest not persisting guide attempts (cache/sign the key) or TTL-cleaning stale in_progress rows."},
+      {"endpoint": "POST /api/assessments/{id}/start (explorer)", "issue": "Abandoned explorer attempts also stay 'in_progress' and are not counted toward the attempt cap, so an explorer can open unlimited fresh randomized attempts (question-mining) as long as they never submit; only submitted attempts count. Consider expiring/invalidating a prior in_progress attempt when a new one is started."},
+      {"endpoint": "POST /api/assessments/attempts/{id}/submit", "issue": "A checkpoint that was already passed still reports attempts_remaining=1, so the UI offers a 'Retake' after a pass (score can only go up since best_score is used). Matches the '2 attempts' spec, but confirm this is intended product behavior."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Guide Console > Test Scores (gradebook)", "issues": ["Column headers strip the track prefix (GuideConsole.jsx:425 `c.title.replace(/^.*\u00b7\\s*/, '')`), producing four identical repeated groups: 'Checkpoint 1, Checkpoint 2, Checkpoint 3' x4 with no way to tell Docs/Sheets/Slides/Email apart. Keep the track prefix or add a grouped header row per track (tooltip-only disambiguation is not discoverable).", "At 1920px the 13th column (HorizonQuest CTE Final Exam) is clipped off-screen and requires horizontal scroll with no visible scroll affordance; a sticky Explorer column exists but header/values of the final column are cut ('Checl')."]},
+      {"screen": "Skill Studio hub (email)", "issues": ["Checkpoint 3 card reads 'Covers 6 lessons' (email track has 14 missions), which conflicts with the section copy 'A 20-question test after every 4 lessons' — copy should be generalized."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_assessments.py", "/app/test_reports/pytest/test_assessments.xml", "/app/backend/tests/test_studio_drafts_assignments.py"],
+  "action_items": [
+    "Gradebook: disambiguate checkpoint columns by track (keep 'Email \u00b7 Checkpoint 1' or group headers) and make the final-exam column reachable/visible.",
+    "Clean up / avoid persisting abandoned assessment attempts (guide previews leave orphan rows; explorer in_progress attempts allow unlimited question-mining).",
+    "Refresh or delete stale legacy test files: /app/backend/tests/backend_test.py + test_new_features.py fail only because their seeded sessions (qa_exp_tok/qa_guide_tok, expires_at 2026-08-11) are EXPIRED (401), and /app/backend/tests/test_skillstudio_email.py asserts outdated expectations (12 missions vs 14, guide submit 403 vs current 200 teaching-preview, older rubric check counts). These are test-data/expectation rot, NOT app regressions \u2014 they inflate the suite failure count (129/233)."
+  ],
+  "critical_code_review_comments": [
+    "assessments.py build_attempt_questions relies on `random` global state per request \u2014 fine, but the correct answer is always bank index 0, so any leak of the pool file (e.g. bundling banks client-side later) breaks anti-cheat; keep banks server-only.",
+    "server.py submit_assessment computes `completed_count` before the update, so attempts_used/attempts_remaining are correct, but for guides attempts_remaining is reported as max_attempts (2) even though nothing is stored \u2014 harmless yet slightly misleading in the API contract (UI hides it in preview).",
+    "server.py /assessments/reports does an N(students) x 13 sequential Mongo query loop (_assessment_summary per cell); with a real class size this becomes ~hundreds of round trips \u2014 replace with a single aggregate group by (user_id, assessment_id)."
+  ],
+  "updated_files": ["/app/backend/tests/test_assessments.py"],
+  "success_rate": {"backend": "100% (13/13 new assessment tests; 19/19 latest regression suite)", "frontend": "100% of assessment flows verified (explorer, guide preview, dashboard, gradebook)"},
+  "seed_data_creation": "Created and DELETED: explorer qa-asmt-* (per-worker, token qa_asmt_tok_*) and UI explorer qa-ui-asmt (token qa_ui_asmt_tok, expedition exp_61e14d36b5eb, studio_progress 100 for email-b1/b2/m1/m2). All attempts/points_events/progress/sessions removed; db.assessment_attempts is now empty (0 rows).",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "em_exp_tok (explorer, email checkpoints LOCKED), em_guide_tok (guide, owns exp_61e14d36b5eb), em_fresh_tok (fresh explorer). To test the explorer quiz UI, seed studio_progress score>=60 for email-b1,email-b2,email-m1,email-m2. NOTE: legacy tokens qa_exp_tok/qa_guide_tok are EXPIRED.",
+  "context_for_next_testing_agent": "New assessment coverage lives in /app/backend/tests/test_assessments.py (self-seeds its own explorer + unlock progress and cleans up; reads answer_key from db.assessment_attempts to force 100%). It is safe to re-run repeatedly. Frontend assessment flows (checkpoint take/retake/exhaust, final exam single attempt, guide preview, dashboard scores panel, gradebook + CSV) were all verified working in this iteration. Remaining known-noisy suites: backend_test.py, test_new_features.py (expired seeded sessions) and test_skillstudio_email.py (stale expectations).",
+  "rca_of_the_issue": "No functional defects found in the assessments feature. The 129 failures in the full pytest run root-cause to (a) expired session docs (qa_exp_tok/qa_guide_tok expires_at 2026-08-11 < now 2026-08-22) causing blanket 401s, and (b) hard-coded legacy expectations in test_skillstudio_email.py that predate the current 14-mission email track, the guide teaching-preview (submit now 200 not 403) and the expanded grading rubrics."
+}

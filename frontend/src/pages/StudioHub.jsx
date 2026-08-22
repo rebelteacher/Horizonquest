@@ -4,7 +4,7 @@ import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import AppNav from "@/components/AppNav";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, FileText, CheckCircle2, Loader2, ArrowRight, Award, Sparkles, GraduationCap } from "lucide-react";
+import { ArrowLeft, FileText, CheckCircle2, Loader2, ArrowRight, Award, Sparkles, GraduationCap, ClipboardCheck, Lock, Trophy } from "lucide-react";
 
 const GRADE_COLOR = { A: "#34D399", B: "#22D3EE", C: "#FB923C", D: "#F59E0B", F: "#E11D48" };
 
@@ -28,6 +28,13 @@ export default function StudioHub() {
       .then((r) => setAssignedIds((r.data || []).filter((a) => a.track === track).flatMap((a) => a.mission_ids)))
       .catch(() => setAssignedIds([]));
   }, [track, isGuide]);
+
+  const [checkpoints, setCheckpoints] = useState([]);
+  const [finalMeta, setFinalMeta] = useState(null);
+  useEffect(() => {
+    api.get(`/assessments/track/${track}`).then((r) => setCheckpoints(r.data.checkpoints || [])).catch(() => setCheckpoints([]));
+    api.get(`/assessments/final/meta`).then((r) => setFinalMeta(r.data)).catch(() => setFinalMeta(null));
+  }, [track]);
 
   if (loading || !data) return (<div className="min-h-screen"><AppNav /><div className="flex justify-center py-40"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div></div>);
 
@@ -118,6 +125,53 @@ export default function StudioHub() {
               </button>
             );
           })}
+        </div>
+
+        <div className="mt-10">
+          <h2 className="font-display text-2xl flex items-center gap-2"><ClipboardCheck className="w-5 h-5 text-[#22D3EE]" /> Checkpoint Tests</h2>
+          <p className="text-sm text-muted-foreground mt-1">A 20-question test at the end of each block of lessons. You get one retake. Questions and answers are shuffled for each Explorer.</p>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 mt-4">
+            {checkpoints.map((c, i) => {
+              const noAttempts = c.attempts_used >= c.max_attempts;
+              const remaining = Math.max(0, c.max_attempts - c.attempts_used);
+              return (
+                <div key={c.id} data-testid={`checkpoint-card-${c.id}`} className={`hq-glass rounded-2xl p-5 border ${c.passed ? "border-[#34D399]/40" : "border-white/10"}`}>
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="font-display text-lg leading-tight">Checkpoint {i + 1}</h3>
+                    {c.best_score != null && <span className="font-display text-xl shrink-0" style={{ color: c.passed ? "#34D399" : "#FB923C" }} data-testid={`checkpoint-score-${c.id}`}>{c.best_score}%</span>}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">Covers {c.covers.length} lessons · {c.question_count} questions · pass {c.pass}%</p>
+                  <p className="text-[11px] text-slate-500 mt-2">{c.attempts_used}/{c.max_attempts} attempts used{c.passed ? " · Passed ✓" : ""}</p>
+                  {!c.unlocked ? (
+                    <div className="mt-3 flex items-center gap-2 text-xs text-slate-400"><Lock className="w-4 h-4" /> {c.locked_reason}</div>
+                  ) : noAttempts ? (
+                    <Button data-testid={`checkpoint-review-${c.id}`} disabled variant="outline" className="w-full mt-3 opacity-60">No attempts left</Button>
+                  ) : (
+                    <Button data-testid={`checkpoint-take-${c.id}`} onClick={() => navigate(`/assessment/${c.id}`)} className="w-full mt-3 bg-[#22D3EE] text-[#04121f] hover:bg-[#67E8F9]">
+                      {c.attempts_used === 0 ? "Take test" : `Retake (${remaining} left)`}
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {finalMeta && (
+            <div data-testid="final-exam-card" className="hq-glass rounded-2xl p-5 mt-4 border border-primary/40 flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                <div className="w-12 h-12 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0"><Trophy className="w-6 h-6" /></div>
+                <div className="min-w-0">
+                  <h3 className="font-display text-xl">{finalMeta.title}</h3>
+                  <p className="text-xs text-muted-foreground">{finalMeta.question_count} questions across all skills · pass {finalMeta.pass}% · <span className="text-[#FB923C]">no retakes</span>{finalMeta.best_score != null ? ` · Best: ${finalMeta.best_score}%` : ""}</p>
+                </div>
+              </div>
+              {finalMeta.attempts_used >= finalMeta.max_attempts ? (
+                <Button data-testid="final-exam-done" disabled variant="outline" className="opacity-60 shrink-0">Completed ({finalMeta.best_score}%)</Button>
+              ) : (
+                <Button data-testid="final-exam-start" onClick={() => navigate(`/assessment/final`)} className="bg-primary text-primary-foreground hover:bg-primary/90 shrink-0">Start Final Exam</Button>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

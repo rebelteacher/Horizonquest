@@ -25,6 +25,7 @@ export default function JourneyMap() {
   const [joinCode, setJoinCode] = useState("");
   const [joining, setJoining] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [testScores, setTestScores] = useState([]);
 
   const load = useCallback(async () => {
     try {
@@ -38,6 +39,7 @@ export default function JourneyMap() {
       prog.data.progress.forEach((p) => (pmap[p.quest_id] = p));
       setProgress(pmap);
       setExpeditions(exps.data);
+      api.get("/me/assessments").then((r) => setTestScores(r.data || [])).catch(() => {});
     } finally {
       setLoading(false);
     }
@@ -135,6 +137,22 @@ export default function JourneyMap() {
             </div>
           </div>
         </div>
+
+        {/* My Test Scores */}
+        {testScores.some((t) => t.best_score != null) && (
+          <div className="hq-fade-up hq-glass rounded-2xl p-6 mb-8" data-testid="dashboard-test-scores" style={{ animationDelay: "0.15s" }}>
+            <p className="text-xs uppercase tracking-widest text-muted-foreground font-mono-data mb-3 flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-[#22D3EE]" /> My Test Scores</p>
+            <div className="flex flex-wrap gap-2">
+              {testScores.filter((t) => t.best_score != null).map((t) => (
+                <div key={t.id} data-testid={`dashboard-score-${t.id}`} className="flex items-center gap-2 rounded-lg bg-white/5 px-3 py-2">
+                  <span className="text-xs text-slate-300">{t.title}</span>
+                  <span className="font-mono-data text-sm font-semibold" style={{ color: t.passed ? "#34D399" : "#FB923C" }}>{t.best_score}%</span>
+                  {t.passed && <CheckCircle2 className="w-3.5 h-3.5 text-[#34D399]" />}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Journey Map */}
         <div className="hq-fade-up" style={{ animationDelay: "0.2s" }}>

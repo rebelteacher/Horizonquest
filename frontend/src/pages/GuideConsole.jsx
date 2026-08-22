@@ -45,6 +45,7 @@ export default function GuideConsole() {
             <TabsTrigger value="curriculum" data-testid="tab-curriculum"><BookOpen className="w-4 h-4 mr-2" />Curriculum</TabsTrigger>
             <TabsTrigger value="assignments" data-testid="tab-assignments"><ListChecks className="w-4 h-4 mr-2" />Assignments</TabsTrigger>
             <TabsTrigger value="reports" data-testid="tab-reports"><ClipboardCheck className="w-4 h-4 mr-2" />Reports</TabsTrigger>
+            <TabsTrigger value="testscores" data-testid="tab-testscores"><Target className="w-4 h-4 mr-2" />Test Scores</TabsTrigger>
             <TabsTrigger value="leaderboard" data-testid="tab-leaderboard"><Trophy className="w-4 h-4 mr-2" />Rankings</TabsTrigger>
           </TabsList>
 
@@ -56,6 +57,7 @@ export default function GuideConsole() {
           <TabsContent value="curriculum" className="mt-6"><CurriculumTab /></TabsContent>
           <TabsContent value="assignments" className="mt-6"><AssignmentsTab expeditions={expeditions} /></TabsContent>
           <TabsContent value="reports" className="mt-6"><ReportsTab /></TabsContent>
+          <TabsContent value="testscores" className="mt-6"><TestScoresTab /></TabsContent>
           <TabsContent value="leaderboard" className="mt-6"><LeaderboardControlsTab expeditions={expeditions} reload={loadExpeditions} /></TabsContent>
         </Tabs>
       </div>
@@ -384,6 +386,59 @@ function MasteryTab({ expeditions }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function TestScoresTab() {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    api.get("/assessments/reports").then((r) => setData(r.data)).finally(() => setLoading(false));
+  }, []);
+  const color = (s) => (s == null ? "#64748b" : s >= 90 ? "#34D399" : s >= 70 ? "#22D3EE" : "#E11D48");
+  const SHORT = { docs: "Docs", sheets: "Sheets", slides: "Slides", email: "Email" };
+  const label = (id) => (id === "final" ? "Final" : `${SHORT[id.split("-")[0]] || id} C${id.slice(-1)}`);
+
+  if (loading) return <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
+  if (!data || data.students.length === 0) return <p className="text-sm text-muted-foreground py-10 text-center">No Explorers have joined your Expeditions yet. Test scores will appear here once students join and take a checkpoint or the final.</p>;
+
+  const exportCSV = () => {
+    const esc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const rows = [["Explorer", "Email", ...data.columns.map((c) => c.title)].map(esc).join(",")];
+    data.students.forEach((s) => rows.push([s.name || s.email, s.email, ...data.columns.map((c) => (s.scores[c.id] != null ? `${s.scores[c.id]}%` : ""))].map(esc).join(",")));
+    const blob = new Blob([rows.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = `test-scores-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div>
+      <div className="flex items-start justify-between gap-4 mb-4 flex-wrap">
+        <p className="text-sm text-muted-foreground">Best checkpoint & final scores per Explorer. Blank = not attempted yet.</p>
+        <button data-testid="testscores-export-csv-btn" onClick={exportCSV} className="inline-flex items-center gap-2 shrink-0 px-3 h-9 rounded-md bg-[#22D3EE] text-[#04121f] text-sm font-medium hover:bg-[#22D3EE]/90"><Download className="w-4 h-4" /> Export CSV</button>
+      </div>
+      <div className="overflow-x-auto hq-scrollbar">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left text-xs text-muted-foreground">
+              <th className="py-2 pr-3 font-medium sticky left-0 bg-transparent">Explorer</th>
+              {data.columns.map((c) => <th key={c.id} className="py-2 px-2 font-medium text-center whitespace-nowrap"><span title={c.title}>{label(c.id)}</span></th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {data.students.map((s) => (
+              <tr key={s.user_id} data-testid={`testscore-row-${s.user_id}`} className="border-t border-white/10">
+                <td className="py-2 pr-3 truncate max-w-[160px]">{s.name || s.email}</td>
+                {data.columns.map((c) => (
+                  <td key={c.id} className="py-2 px-2 text-center font-mono-data" style={{ color: color(s.scores[c.id]) }}>{s.scores[c.id] != null ? `${s.scores[c.id]}%` : "—"}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

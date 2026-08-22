@@ -17,6 +17,7 @@ from datetime import datetime, timezone, timedelta
 
 import curriculum
 import skillstudio
+import assessments
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -631,6 +632,171 @@ async def my_assignments(user=Depends(get_current_user)):
         return []
     asgs = await db.assignments.find({"expedition_id": {"$in": ids}}, {"_id": 0}).sort("created_at", -1).to_list(300)
     return asgs
+
+
+# ---------------- Assessments: checkpoint tests + comprehensive final ----------------
+class AttemptSubmit(BaseModel):
+    answers: Dict[str, int]
+
+
+async def _assessment_summary(user_id, assessment_id):
+    attempts = await db.assessment_attempts.find(
+        {"user_id": user_id, "assessment_id": assessment_id, "status": "completed"}, {"_id": 0}
+    ).to_list(50)
+    best = max([a["score"] for a in attempts], default=None)
+    return {
+        "best_score": best,
+        "attempts_used": len(attempts),
+        "passed": any(a.get("passed") for a in attempts),
+    }
+
+
+@api_router.get("/assessments/track/{track_id}")
+async def get_track_assessments(track_id: str, user=Depends(get_current_user)):
+    metas = assessments.track_checkpoint_metas(track_id)
+    if not metas:
+        return {"checkpoints": []}
+    prog = await db.studio_progress.find({"user_id": user["user_id"]}, {"_id": 0, "mission_id": 1, "score": 1}).to_list(500)
+    passed_missions = {p["mission_id"] for p in prog if p.get("score", 0) >= 60}
+    out = []
+    for m in metas:
+        summ = await _assessment_summary(user["user_id"], m["id"])
+        missing = [mid for mid in m["covers"] if mid not in passed_missions]
+        unlocked = len(missing) == 0 or user.get("role") != "explorer"
+        out.append({**m, **summ,
+                    "unlocked": unlocked,
+                    "locked_reason": None if unlocked else f"Finish the {len(m['covers'])} lessons in this block first"})
+    return {"checkpoints": out}
+
+
+@api_router.get("/assessments/final/meta")
+async def get_final_meta(user=Depends(get_current_user)):
+    m = assessments.assessment_meta(assessments.FINAL_ID)
+    summ = await _assessment_summary(user["user_id"], assessments.FINAL_ID)
+    return {**m, **summ, "unlocked": True}
+
+
+@api_router.post("/assessments/{assessment_id}/start")
+async def start_assessment(assessment_id: str, user=Depends(get_current_user)):
+    meta = assessments.assessment_meta(assessment_id)
+    if not meta:
+        raise HTTPException(status_code=404, detail="Assessment not found")
+    if user.get("role") == "explorer":
+        if meta["kind"] == "checkpoint":
+            prog = await db.studio_progress.find({"user_id": user["user_id"]}, {"_id": 0, "mission_id": 1, "score": 1}).to_list(500)
+            passed_missions = {p["mission_id"] for p in prog if p.get("score", 0) >= 60}
+            if any(mid not in passed_missions for mid in meta["covers"]):
+                raise HTTPException(status_code=403, detail="Finish the lessons in this block before taking the checkpoint")
+        completed = await db.assessment_attempts.count_documents(
+            {"user_id": user["user_id"], "assessment_id": assessment_id, "status": "completed"})
+        if completed >= meta["max_attempts"]:
+            raise HTTPException(status_code=403, detail="No attempts remaining")
+    public, key = assessments.build_attempt_questions(assessment_id)
+    # Reuse an unsubmitted attempt instead of drawing a new one — prevents orphan rows and question-mining.
+    existing = await db.assessment_attempts.find_one(
+        {"user_id": user["user_id"], "assessment_id": assessment_id, "status": "in_progress"}, {"_id": 0})
+    if existing:
+        return {"attempt_id": existing["attempt_id"], "assessment_id": assessment_id, "kind": meta["kind"],
+                "title": meta["title"], "pass": meta["pass"], "questions": existing["questions"]}
+    attempt = {
+        "attempt_id": f"att_{uuid.uuid4().hex[:14]}", "user_id": user["user_id"],
+        "assessment_id": assessment_id, "kind": meta["kind"], "track": meta.get("track"),
+        "answer_key": key, "questions": public, "status": "in_progress",
+        "score": None, "passed": None, "started_at": now_utc().isoformat(),
+    }
+    await db.assessment_attempts.insert_one(dict(attempt))
+    return {"attempt_id": attempt["attempt_id"], "assessment_id": assessment_id, "kind": meta["kind"],
+            "title": meta["title"], "pass": meta["pass"], "questions": public}
+
+
+@api_router.post("/assessments/attempts/{attempt_id}/submit")
+async def submit_assessment(attempt_id: str, payload: AttemptSubmit, user=Depends(get_current_user)):
+    attempt = await db.assessment_attempts.find_one({"attempt_id": attempt_id, "user_id": user["user_id"]}, {"_id": 0})
+    if not attempt:
+        raise HTTPException(status_code=404, detail="Attempt not found")
+    if attempt["status"] == "completed":
+        raise HTTPException(status_code=400, detail="Attempt already submitted")
+    meta = assessments.assessment_meta(attempt["assessment_id"])
+    score, correct, total = assessments.grade_attempt(attempt["answer_key"], payload.answers)
+    passed = score >= meta["pass"]
+
+    is_explorer = user.get("role") == "explorer"
+    prior_passed = False
+    points_awarded = 0
+    if is_explorer:
+        prior = await db.assessment_attempts.find(
+            {"user_id": user["user_id"], "assessment_id": attempt["assessment_id"], "status": "completed"},
+            {"_id": 0, "passed": 1}).to_list(50)
+        prior_passed = any(p.get("passed") for p in prior)
+        if meta["kind"] == "checkpoint" and passed and not prior_passed:
+            points_awarded = assessments.CHECKPOINT_POINTS
+    completed_count = 0
+    if is_explorer:
+        completed_count = await db.assessment_attempts.count_documents(
+            {"user_id": user["user_id"], "assessment_id": attempt["assessment_id"], "status": "completed"})
+
+    review = [{"question": q["question"], "options": q["options"],
+               "correct": attempt["answer_key"][q["qid"]], "chosen": payload.answers.get(q["qid"], -1)}
+              for q in attempt["questions"]]
+
+    if is_explorer:
+        await db.assessment_attempts.update_one(
+            {"attempt_id": attempt_id},
+            {"$set": {"status": "completed", "score": score, "correct": correct, "total": total,
+                      "passed": passed, "attempt_number": completed_count + 1,
+                      "points_awarded": points_awarded, "completed_at": now_utc().isoformat()}})
+        if points_awarded > 0:
+            await db.users.update_one({"user_id": user["user_id"]}, {"$inc": {"horizon_points": points_awarded}})
+            await db.points_events.insert_one({"user_id": user["user_id"], "delta": points_awarded,
+                                               "mission_id": attempt["assessment_id"], "territory_id": "t2",
+                                               "type": "assessment", "created_at": now_utc().isoformat()})
+    else:
+        await db.assessment_attempts.delete_one({"attempt_id": attempt_id})  # guides: preview, don't persist
+
+    attempts_used = (completed_count + 1) if is_explorer else 0
+    return {"score": score, "correct": correct, "total": total, "passed": passed,
+            "points_awarded": points_awarded, "attempts_used": attempts_used,
+            "attempts_remaining": max(0, meta["max_attempts"] - attempts_used),
+            "preview": not is_explorer, "review": review}
+
+
+@api_router.get("/me/assessments")
+async def my_assessments(user=Depends(get_current_user)):
+    out = []
+    for track, cids in assessments.TRACK_CHECKPOINTS.items():
+        for cid in cids:
+            m = assessments.assessment_meta(cid)
+            summ = await _assessment_summary(user["user_id"], cid)
+            out.append({**m, **summ})
+    fm = assessments.assessment_meta(assessments.FINAL_ID)
+    out.append({**fm, **(await _assessment_summary(user["user_id"], assessments.FINAL_ID))})
+    return out
+
+
+@api_router.get("/assessments/reports")
+async def assessment_reports(guide=Depends(require_guide)):
+    exps = await db.expeditions.find({"guide_id": guide["user_id"]}, {"_id": 0, "expedition_id": 1}).to_list(100)
+    exp_ids = [e["expedition_id"] for e in exps]
+    members = await db.users.find({"expedition_ids": {"$in": exp_ids}, "role": "explorer"},
+                                  {"_id": 0, "user_id": 1, "name": 1, "email": 1}).to_list(1000) if exp_ids else []
+    all_ids = [cid for cids in assessments.TRACK_CHECKPOINTS.values() for cid in cids] + [assessments.FINAL_ID]
+    columns = [{"id": cid, "title": assessments.assessment_meta(cid)["title"]} for cid in all_ids]
+    member_ids = [m["user_id"] for m in members]
+    best = {}
+    if member_ids:
+        atts = await db.assessment_attempts.find(
+            {"user_id": {"$in": member_ids}, "status": "completed"},
+            {"_id": 0, "user_id": 1, "assessment_id": 1, "score": 1}).to_list(20000)
+        for a in atts:
+            k = (a["user_id"], a["assessment_id"])
+            if a.get("score") is not None and (k not in best or a["score"] > best[k]):
+                best[k] = a["score"]
+    rows = []
+    for mem in members:
+        rows.append({"user_id": mem["user_id"], "name": mem.get("name", ""), "email": mem.get("email", ""),
+                     "scores": {cid: best.get((mem["user_id"], cid)) for cid in all_ids}})
+    rows.sort(key=lambda r: (r["name"] or r["email"]).lower())
+    return {"columns": columns, "students": rows}
 
 
 

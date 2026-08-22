@@ -99,6 +99,14 @@ Gamified education platform. Stack: React + FastAPI + MongoDB. Auth: Google sign
 - ✅ **No Reward For Blank**: sending an effectively blank email (student wrote <5 words) awards **0 Horizon Points** (blank_send flag) — result modal + toast explain why. Only real writing earns credit.
 - ✅ Tested 100% (iteration_20): backend 19/19 pytest (blank→0pts, drafts CRUD+persistence+RBAC, assignments CRUD+RBAC+done-boundary at 60), frontend (draft save→persist across reload→reopen→send, blank-send UI, assignments create/table/delete, explorer Assigned badge). ⚠️ Requires **redeploy** for production.
 
+## Implemented (2026-06) — Iteration 8: Assessments (checkpoint tests + comprehensive final)
+- ✅ **Checkpoint tests**: a 20-question MC test at the end of each block of Skill Studio lessons — 3 per track (12 total). Each draws 20 from a 24-question curated pool with **answer options shuffled per student** (anti-cheat). **1 retake** (max 2 attempts), **70% to pass**, passing awards **+150 Horizon Points** (first pass only). Unlocks only after the covered missions are passed (score ≥60).
+- ✅ **Comprehensive Final**: one exam for all expeditions — 25 questions drawn from a 30-question pool spanning all 4 tracks, 70% pass, **no retakes**, graded but ungated.
+- ✅ **Anti-cheat**: banks server-only with correct answer as index 0; engine draws a random subset + shuffles options per attempt; per-attempt answer key stored server-side. Re-starting reuses the unsubmitted attempt (no question-mining).
+- ✅ **Visibility**: students see best scores on the Journey Map ("My Test Scores"); Guides get a **Test Scores** gradebook tab (track-distinct columns, CSV export). Guides can take any test in teaching-preview (0 points, nothing saved).
+- ✅ Backend: bank_docs/sheets/slides/email.py + bank_final.py + assessments.py engine; endpoints /assessments/track/{track}, /assessments/final/meta, POST /assessments/{id}/start & /attempts/{id}/submit, /me/assessments, /assessments/reports.
+- ✅ Tested 100% (iteration_21): backend 13/13 new pytest; frontend all flows (checkpoint cards, quiz runner+retake, final, dashboard panel, gradebook+CSV). ⚠️ Requires **redeploy** for production.
+
 
 
 
