@@ -84,6 +84,16 @@ Gamified education platform. Stack: React + FastAPI + MongoDB. Auth: Google sign
 - ✅ **UX**: StudioHub shows a "Teaching preview — not graded or saved" banner for Guides; StudioMission result modal hides points/marks and shows a preview note for Guides.
 - ✅ Self-tested: Guide fetch 200, Guide submit returns preview A/100% with 0 pts and 0 DB writes; frontend screenshot confirms nav link + banner + 14 ordered email missions. ⚠️ Requires **redeploy** to reach production.
 
+## Implemented (2026-06) — Iteration 6: Email UX + integrity feedback batch
+- ✅ **Movable compose window**: reply/compose is now a floating, draggable panel (portaled, no full-screen dark overlay) so mission instructions stay visible while writing. Drag by the title bar.
+- ✅ **Gmail-style inbox rows**: checkbox + star, bold sender (unread), subject + grey preview snippet, date on the right, amber `[EXTERNAL]` chips.
+- ✅ **Fuller inboxes**: every email mission inbox padded to ~10 messages via `_FILLER_POOL` / `_pad_inboxes()`.
+- ✅ **Bcc on "Reading the Address Lines" (email-b2)**: added a Bcc recipient + 4th task to click the Bcc address; note that Bcc is a hidden copy.
+- ✅ **Blank-email integrity fix (P0 from teacher)**: grading now only counts what the student actually typed (`bodyStudent` = text before the quoted original), closing the loophole where quoted text satisfied greeting/sign-off. EVERY send/reply/forward/compose mission now requires greeting + 12+ word message + sign-off. Verified: blank m3 reply → 40%, m7 recipients-only → 50%.
+- ✅ **Responsive fix**: `min-w-0` on the mission grid column stops mobile horizontal overflow from the wide Gmail rows.
+- ✅ Tested 100% (iteration_19): backend 43/43 pytest, frontend all flows. ⚠️ Requires **redeploy** for production.
+
+
 
 
 ## Backlog / Remaining (older)

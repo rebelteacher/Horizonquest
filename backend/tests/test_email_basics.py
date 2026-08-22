@@ -100,14 +100,15 @@ class TestEmailTrackOrdering:
         by_id = {m["id"]: m for m in track["missions"]}
         tasks = {t["id"]: t["check"] for t in by_id["email-b2"]["tasks"]}
         assert tasks["t1"] == {"kind": "email_opened", "id": "e1"}
-        assert tasks["t2"] == {"kind": "picked", "field": "cc"}
-        assert tasks["t3"] == {"kind": "picked", "field": "to"}
+        assert tasks["t2"] == {"kind": "picked", "field": "to"}
+        assert tasks["t3"] == {"kind": "picked", "field": "cc"}
+        assert tasks["t4"] == {"kind": "picked", "field": "bcc"}
 
     def test_b2_seed_doc_has_to_and_cc(self, track):
         by_id = {m["id"]: m for m in track["missions"]}
         msg = by_id["email-b2"]["doc"]["messages"][0]
         assert msg["id"] == "e1"
-        assert len(msg["to"]) >= 1 and len(msg["cc"]) >= 1
+        assert len(msg["to"]) >= 1 and len(msg["cc"]) >= 1 and len(msg["bcc"]) >= 1
 
     def test_no_mongo_id_leak(self, track):
         assert "_id" not in track
@@ -143,13 +144,13 @@ class TestEmailB1:
 class TestEmailB2Picked:
     def test_full_pass(self, fresh_explorer):
         doc = {"messages": [{"id": "e1", "folder": "inbox", "read": True}],
-               "picked": ["to", "cc"]}
+               "picked": ["to", "cc", "bcc"]}
         r = _submit(fresh_explorer["headers"], "email-b2", doc)
         assert r.status_code == 200, r.text[:400]
         d = r.json()
         assert d["score"] == 100, d
-        assert d["total"] == 3 and d["passed"] == 3
-        assert _res(d) == {"t1": True, "t2": True, "t3": True}
+        assert d["total"] == 4 and d["passed"] == 4
+        assert _res(d) == {"t1": True, "t2": True, "t3": True, "t4": True}
         assert d["mastery"] is True
 
     def test_picked_missing_fails_t2_t3(self, fresh_explorer):
@@ -157,8 +158,8 @@ class TestEmailB2Picked:
         r = _submit(fresh_explorer["headers"], "email-b2", doc)
         assert r.status_code == 200, r.text[:400]
         res = _res(r.json())
-        assert res == {"t1": True, "t2": False, "t3": False}
-        assert r.json()["score"] == 33
+        assert res == {"t1": True, "t2": False, "t3": False, "t4": False}
+        assert r.json()["score"] == 25
 
     def test_picked_empty_fails(self, fresh_explorer):
         doc = {"messages": [{"id": "e1", "folder": "inbox", "read": True}], "picked": []}
@@ -168,13 +169,13 @@ class TestEmailB2Picked:
     def test_partial_picked_cc_only(self, fresh_explorer):
         doc = {"messages": [{"id": "e1", "folder": "inbox", "read": True}], "picked": ["cc"]}
         d = _submit(fresh_explorer["headers"], "email-b2", doc).json()
-        assert _res(d) == {"t1": True, "t2": True, "t3": False}
-        assert d["score"] == 67
+        assert _res(d) == {"t1": True, "t2": False, "t3": True, "t4": False}
+        assert d["score"] == 50
 
     def test_best_attempt_sticky_and_persisted(self, fresh_explorer):
         h = fresh_explorer["headers"]
         full = _submit(h, "email-b2", {"messages": [{"id": "e1", "folder": "inbox", "read": True}],
-                                       "picked": ["to", "cc"]}).json()
+                                       "picked": ["to", "cc", "bcc"]}).json()
         assert full["score"] == 100
         partial = _submit(h, "email-b2", {"messages": [{"id": "e1", "folder": "inbox", "read": False}]}).json()
         assert partial["score"] == 100, "best score should be sticky"
@@ -240,10 +241,13 @@ class TestEmailRegression:
         r = requests.post(f"{API}/studio/email/email-b2/submit", json={"doc": {}}, timeout=20)
         assert r.status_code in (401, 403)
 
-    def test_guide_cannot_submit(self):
+    def test_guide_submit_returns_preview(self):
+        """Guides now get a non-persisted teaching preview (0 points) instead of 403."""
         r = requests.post(f"{API}/studio/email/email-b2/submit", headers=GH,
                           json={"doc": {"messages": []}}, timeout=30)
-        assert r.status_code == 403
+        assert r.status_code == 200, r.text[:300]
+        d = r.json()
+        assert d.get("preview") is True and d.get("points_awarded", 0) == 0, d
 
 
 # ---------- Reports (CSV export data source) ----------

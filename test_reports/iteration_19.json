@@ -1,0 +1,51 @@
+{
+  "summary": "Validated the EMAIL-track classroom-feedback batch (draggable compose, Gmail rows, 10-email inboxes, Bcc task in email-b2, anti-blank-send grading). Backend: 43/43 pytest assertions pass across /app/backend/tests/test_email_feedback_batch.py (new) and test_email_basics.py (updated for the new b2 4-task shape + guide preview behaviour). All grading assertions used freshly created explorer sessions to avoid the sticky best-score. Frontend: verified b2 To/Cc/Bcc clickable grading (A/100%, 4/4 tasks), Gmail-style rows (10 rows, sender + subject + grey snippet + date, 3 [EXTERNAL] chips, bold unread), floating draggable compose panel (portaled, 0 full-screen overlays, drag moved panel 400x200px, close button works, mission Instruction/Tasks stay visible), reading pane + Back, and the end-to-end anti-blank-send flow on both email-m6 (blank -> F 40% 2/5, proper -> A 100% 5/5) and email-m3 (auto-quoted-only reply -> F 40% 2/5 with greeting/sign-off/12-word tasks red; proper reply -> A 100%). Guide teaching preview still works (A grade + 'not graded or saved' note, no progress persisted).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Skill Studio email mission pages (mobile <=430px)",
+        "issues": [
+          "Horizontal page overflow persists: document.scrollWidth=1135 vs clientWidth=390 on /studio/email/email-* (docs track is fine at 390). Root cause: each Gmail row's 'flex-1 min-w-0 truncate' snippet resolves to 827px because the grid column wrapper (StudioMission.jsx line 129, div.lg:col-span-2) has no min-w-0, so its automatic minimum size expands to the row's intrinsic width. Suggested fix: add min-w-0 (and/or overflow-hidden) to that grid column. Already acknowledged as a known non-blocking item in commit 617f6a5."
+        ]
+      },
+      {
+        "screen": "Email compose default position (desktop 1920x1080)",
+        "issues": [
+          "The floating compose panel spawns at bottom-right (x=1392,y=625) and covers the 'Your Tasks' card; the Instruction card stays readable and the panel is draggable, so this is cosmetic only. Consider offsetting it to the left of the right-hand column by default."
+        ]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_email_feedback_batch.py",
+    "/app/backend/tests/test_email_basics.py",
+    "/app/test_reports/pytest/test_email_feedback_batch.xml"
+  ],
+  "action_items": [
+    "Optional (cosmetic, pre-existing): add min-w-0 to the mission grid column in StudioMission.jsx to stop the <=430px horizontal scroll on email mission pages.",
+    "Optional: shift the compose panel's default spawn position so it does not cover the 'Your Tasks' card."
+  ],
+  "critical_code_review_comments": [
+    "Blank-send fix is correctly scoped: _check_one() uses m['bodyStudent'] with a fallback to the full body, so legacy saved docs (no bodyStudent) still grade — verified by test_legacy_doc_without_bodystudent_falls_back. Note the intentional side effect that an old sticky 100 stays 100.",
+    "Partial credit still awards Horizon Points for a blank email (+40 on m3/m6 at 40%). Mastery correctly requires 90%+, but if the pedagogical intent is 'no reward for blank sends', consider gating points on a minimum score.",
+    "studentPortion() splits on the literal '\\n---' separator; if a student types '---' in their own message, the text after it is excluded from grading. Low risk but worth a more robust marker.",
+    "skillstudio.py is 1417 lines — consider splitting mission data (per track) from the grading engine."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_email_feedback_batch.py",
+    "/app/backend/tests/test_email_basics.py"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "Ephemeral explorers TEST_fb_* (auto-deleted by pytest fixture) and a UI explorer TEST_ui_fb1 / token TEST_ui_fb1_tok (still in test_database, used for browser cookie injection).",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "Cookie/Bearer session tokens: em_exp_tok (explorer), em_guide_tok (guide), em_fresh_tok (fresh explorer), TEST_ui_fb1_tok (UI explorer created this iteration).",
+  "context_for_next_testing_agent": "test_email_basics.py was updated for the new email-b2 shape (t2=picked to, t3=picked cc, t4=picked bcc; missing picks now 25/50/75 instead of 33/67) and for guides now receiving a 200 preview response instead of 403 on submit. New file test_email_feedback_batch.py covers blank-send (m3/m4/m7/m8), b2 bcc, inbox padding (all 14 missions have exactly 10 inbox messages), m5/m10 regression, and guide preview non-persistence. Remember submit returns the sticky BEST score — always create a fresh explorer for score-lowering assertions.",
+  "rca_of_the_issue": "No functional defects found. Only outstanding item is the pre-existing mobile horizontal overflow caused by a missing min-w-0 on the mission grid column combined with the wide Gmail-style rows."
+}

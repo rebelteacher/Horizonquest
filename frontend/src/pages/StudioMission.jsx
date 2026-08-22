@@ -126,7 +126,7 @@ export default function StudioMission() {
 
         <div className="grid lg:grid-cols-3 gap-6 mt-6">
           {/* Editor */}
-          <div className="lg:col-span-2 order-2 lg:order-1">
+          <div className="lg:col-span-2 order-2 lg:order-1 min-w-0">
             {track === "sheets"
               ? <SheetEditorCore doc={doc} setDoc={setDoc} config={config} pageRef={pageRef} />
               : track === "slides"

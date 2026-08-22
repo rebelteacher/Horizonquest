@@ -922,11 +922,12 @@ TRACKS["email"] = {"id": "email", "name": "Email & Communication", "subtitle": "
 
 def _msg(mid, folder, from_name, from_email, subject, body, to=None, cc=None, bcc=None,
          read=False, kind="seed", attachments=None, in_reply_to=None,
-         has_bold=False, has_bullets=False, has_signature=False):
+         has_bold=False, has_bullets=False, has_signature=False, date="Aug 21", external=False):
     return {"id": mid, "folder": folder, "fromName": from_name, "fromEmail": from_email,
             "to": to or [STUDENT_EMAIL], "cc": cc or [], "bcc": bcc or [], "subject": subject,
             "body": body, "attachments": attachments or [], "read": read, "kind": kind,
-            "inReplyTo": in_reply_to, "hasBold": has_bold, "hasBullets": has_bullets, "hasSignature": has_signature}
+            "inReplyTo": in_reply_to, "hasBold": has_bold, "hasBullets": has_bullets, "hasSignature": has_signature,
+            "date": date, "external": external, "bodyStudent": None}
 
 
 def _edoc(messages):
@@ -951,14 +952,15 @@ EMAIL_MISSIONS = [
         "points": 100,
     },
     {
-        "id": "email-b2", "track": "email", "order": 2, "title": "Reading the Address Lines", "chunk": "Identify · From, To & Cc",
-        "instruction": ["## Who's on an email?", "- **From** — who sent it.", "- **To** — the main person it's for.", "- **Cc** — others who got a copy.",
-                        "In the reading pane you can **click an address** to identify it.", "## Practice", "Open the email, then click the address on the **Cc** line and the address on the **To** line."],
-        "doc": _edoc([_msg("e1", "inbox", "Ms. Lee", "ms.lee@horizonmiddle.edu", "Group project update", "Here is the update for our group project.", to=[STUDENT_EMAIL], cc=["alex@horizonmiddle.edu", "jamie@horizonmiddle.edu"])]),
+        "id": "email-b2", "track": "email", "order": 2, "title": "Reading the Address Lines", "chunk": "Identify · From, To, Cc & Bcc",
+        "instruction": ["## Who's on an email?", "- **From** — who sent it.", "- **To** — the main person it's for.", "- **Cc** — others who got a copy.", "- **Bcc** — a *hidden* copy (normally other people can't see this line).",
+                        "In the reading pane you can **click an address** to identify it. We've shown the Bcc line here so you can learn to spot every part.", "## Practice", "Open the email from Ms. Lee, then click the address on the **To**, **Cc**, and **Bcc** lines to find each part."],
+        "doc": _edoc([_msg("e1", "inbox", "Ms. Lee", "ms.lee@horizonmiddle.edu", "Group project update", "Here is the update for our group project.", to=[STUDENT_EMAIL], cc=["alex@horizonmiddle.edu", "jamie@horizonmiddle.edu"], bcc=["principal@horizonmiddle.edu"])]),
         "tasks": [
             {"id": "t1", "label": "Open the email from Ms. Lee", "check": {"kind": "email_opened", "id": "e1"}},
-            {"id": "t2", "label": "Click an address on the Cc line", "check": {"kind": "picked", "field": "cc"}},
-            {"id": "t3", "label": "Click the address on the To line", "check": {"kind": "picked", "field": "to"}},
+            {"id": "t2", "label": "Click the address on the To line", "check": {"kind": "picked", "field": "to"}},
+            {"id": "t3", "label": "Click an address on the Cc line", "check": {"kind": "picked", "field": "cc"}},
+            {"id": "t4", "label": "Click the address on the Bcc line", "check": {"kind": "picked", "field": "bcc"}},
         ],
         "points": 100,
     },
@@ -1000,6 +1002,7 @@ EMAIL_MISSIONS = [
             {"id": "t2", "label": "Keep the subject starting with 'Re:'", "check": {"kind": "subject_prefix", "sentKind": "reply", "prefix": "Re:"}},
             {"id": "t3", "label": "Include a greeting (Dear/Hi/Hello)", "check": {"kind": "has_greeting", "sentKind": "reply"}},
             {"id": "t4", "label": "Include a sign-off (Thanks/Sincerely + name)", "check": {"kind": "has_signoff", "sentKind": "reply"}},
+            {"id": "t5", "label": "Write a real message of your own (12+ words)", "check": {"kind": "body_min_words", "sentKind": "reply", "min": 12}},
         ], "points": 100,
     },
     {
@@ -1012,6 +1015,9 @@ EMAIL_MISSIONS = [
             {"id": "t1", "label": "Use Reply All", "check": {"kind": "sent_exists", "sentKind": "replyall"}},
             {"id": "t2", "label": "Keep the teammates on CC (alex & jamie)", "check": {"kind": "cc_min", "sentKind": "replyall", "min": 2}},
             {"id": "t3", "label": "Keep the 'Re:' subject", "check": {"kind": "subject_prefix", "sentKind": "replyall", "prefix": "Re:"}},
+            {"id": "t4", "label": "Start with a greeting (Dear/Hi/Hello)", "check": {"kind": "has_greeting", "sentKind": "replyall"}},
+            {"id": "t5", "label": "End with a sign-off (Thanks/Sincerely + name)", "check": {"kind": "has_signoff", "sentKind": "replyall"}},
+            {"id": "t6", "label": "Write a real message of your own (12+ words)", "check": {"kind": "body_min_words", "sentKind": "replyall", "min": 12}},
         ], "points": 100,
     },
     {
@@ -1023,7 +1029,9 @@ EMAIL_MISSIONS = [
             {"id": "t1", "label": "Forward the email", "check": {"kind": "sent_exists", "sentKind": "forward"}},
             {"id": "t2", "label": "Send it to alex@horizonmiddle.edu", "check": {"kind": "to_includes", "sentKind": "forward", "email": "alex@horizonmiddle.edu"}},
             {"id": "t3", "label": "Keep the 'Fwd:' subject", "check": {"kind": "subject_prefix", "sentKind": "forward", "prefix": "Fwd:"}},
-            {"id": "t4", "label": "Add a short note (10+ words)", "check": {"kind": "body_min_words", "sentKind": "forward", "min": 10}},
+            {"id": "t4", "label": "Start with a greeting (Dear/Hi/Hello)", "check": {"kind": "has_greeting", "sentKind": "forward"}},
+            {"id": "t5", "label": "Add a real note of your own (12+ words) explaining why you're forwarding it", "check": {"kind": "body_min_words", "sentKind": "forward", "min": 12}},
+            {"id": "t6", "label": "End with a sign-off (Thanks/Sincerely + name)", "check": {"kind": "has_signoff", "sentKind": "forward"}},
         ], "points": 100,
     },
     {
@@ -1036,6 +1044,7 @@ EMAIL_MISSIONS = [
             {"id": "t2", "label": "Send it to ms.lee@horizonmiddle.edu", "check": {"kind": "to_includes", "sentKind": "new", "email": "ms.lee@horizonmiddle.edu"}},
             {"id": "t3", "label": "Write a subject line", "check": {"kind": "subject_nonempty", "sentKind": "new"}},
             {"id": "t4", "label": "Include a greeting and a sign-off", "check": {"kind": "has_greeting_signoff", "sentKind": "new"}},
+            {"id": "t5", "label": "Write a real message of your own (12+ words)", "check": {"kind": "body_min_words", "sentKind": "new", "min": 12}},
         ], "points": 100,
     },
     {
@@ -1047,6 +1056,9 @@ EMAIL_MISSIONS = [
             {"id": "t1", "label": "To: ms.lee@horizonmiddle.edu", "check": {"kind": "to_includes", "sentKind": "new", "email": "ms.lee@horizonmiddle.edu"}},
             {"id": "t2", "label": "CC: principal@horizonmiddle.edu", "check": {"kind": "cc_includes", "sentKind": "new", "email": "principal@horizonmiddle.edu"}},
             {"id": "t3", "label": "BCC: you@horizonmiddle.edu", "check": {"kind": "bcc_includes", "sentKind": "new", "email": "you@horizonmiddle.edu"}},
+            {"id": "t4", "label": "Write a subject line", "check": {"kind": "subject_nonempty", "sentKind": "new"}},
+            {"id": "t5", "label": "Include a greeting and a sign-off", "check": {"kind": "has_greeting_signoff", "sentKind": "new"}},
+            {"id": "t6", "label": "Write a real message of your own (12+ words)", "check": {"kind": "body_min_words", "sentKind": "new", "min": 12}},
         ], "points": 100,
     },
     {
@@ -1057,7 +1069,9 @@ EMAIL_MISSIONS = [
         "tasks": [
             {"id": "t1", "label": "Reply to Mr. Diaz", "check": {"kind": "sent_exists", "sentKind": "reply"}},
             {"id": "t2", "label": "Attach 'Field Trip Form.pdf'", "check": {"kind": "has_attachment", "sentKind": "reply", "name": "Field Trip Form.pdf"}},
-            {"id": "t3", "label": "Mention the attachment in your message", "check": {"kind": "body_min_words", "sentKind": "reply", "min": 8}},
+            {"id": "t3", "label": "Write a real message (12+ words) that mentions the attachment", "check": {"kind": "body_min_words", "sentKind": "reply", "min": 12}},
+            {"id": "t4", "label": "Start with a greeting (Dear/Hi/Hello)", "check": {"kind": "has_greeting", "sentKind": "reply"}},
+            {"id": "t5", "label": "End with a sign-off (Thanks/Sincerely + name)", "check": {"kind": "has_signoff", "sentKind": "reply"}},
         ], "points": 100,
     },
     {
@@ -1070,6 +1084,8 @@ EMAIL_MISSIONS = [
             {"id": "t2", "label": "Bold at least one detail", "check": {"kind": "formatting", "sentKind": "new", "feature": "bold"}},
             {"id": "t3", "label": "Use a bulleted list", "check": {"kind": "formatting", "sentKind": "new", "feature": "bullets"}},
             {"id": "t4", "label": "Add a signature", "check": {"kind": "formatting", "sentKind": "new", "feature": "signature"}},
+            {"id": "t5", "label": "Start with a greeting (Dear/Hi/Hello)", "check": {"kind": "has_greeting", "sentKind": "new"}},
+            {"id": "t6", "label": "Write a real message of your own (12+ words)", "check": {"kind": "body_min_words", "sentKind": "new", "min": 12}},
         ], "points": 100,
     },
     {
@@ -1083,6 +1099,9 @@ EMAIL_MISSIONS = [
             _ai("t2", "Professional, respectful tone for a mentor", "tone"),
             _ai("t3", "Good email etiquette (greeting, closing, no slang)", "etiquette"),
             _ai("t4", "Correct grammar & spelling", "grammar"),
+            {"id": "t5", "label": "Start with a proper greeting", "check": {"kind": "has_greeting", "sentKind": "new"}},
+            {"id": "t6", "label": "End with a proper sign-off", "check": {"kind": "has_signoff", "sentKind": "new"}},
+            {"id": "t7", "label": "Write a real message of your own (12+ words)", "check": {"kind": "body_min_words", "sentKind": "new", "min": 12}},
         ], "points": 120,
     },
     {
@@ -1097,6 +1116,7 @@ EMAIL_MISSIONS = [
             _ai("t3", "Correctly formal tone for a principal", "tone"),
             _ai("t4", "Strong etiquette (respectful, clear request)", "etiquette"),
             _ai("t5", "Correct grammar & spelling", "grammar"),
+            {"id": "t6", "label": "Write a real message of your own (12+ words)", "check": {"kind": "body_min_words", "sentKind": "new", "min": 12}},
         ], "points": 120,
     },
     {
@@ -1117,11 +1137,44 @@ EMAIL_MISSIONS = [
             _ai("t6", "Professional tone in your reply to your manager", "tone"),
             _ai("t7", "Good etiquette across your emails", "etiquette"),
             _ai("t8", "Correct grammar & spelling", "grammar"),
+            {"id": "t9", "label": "Start your reply with a greeting", "check": {"kind": "has_greeting", "sentKind": "reply"}},
+            {"id": "t10", "label": "End your reply with a sign-off", "check": {"kind": "has_signoff", "sentKind": "reply"}},
+            {"id": "t11", "label": "Write a real reply message of your own (12+ words)", "check": {"kind": "body_min_words", "sentKind": "reply", "min": 12}},
         ], "points": 150,
     },
 ]
 
 MISSIONS["email"] = EMAIL_MISSIONS
+
+# Realistic "filler" inbox mail so every mission's inbox looks full (~10 emails), like a real inbox.
+_FILLER_POOL = [
+    {"fromName": "Little SIS Premium", "fromEmail": "no-reply@littlesis.net", "subject": "Little SIS updated your Google Classroom", "body": "Little SIS has made updates to your Google Classroom roster. No action is needed on your part.", "external": True, "date": "1:06 PM", "read": True},
+    {"fromName": "Yearbook Club", "fromEmail": "yearbook@horizonmiddle.edu", "subject": "Last chance for baby photos", "body": "Send in your baby photo for the yearbook by Friday! Email it as an attachment to this address.", "external": False, "date": "Aug 21", "read": True},
+    {"fromName": "Cafeteria", "fromEmail": "cafeteria@horizonmiddle.edu", "subject": "Next week's lunch menu", "body": "Here is the lunch menu for next week. Pizza is on Wednesday and taco day is Friday!", "external": False, "date": "Aug 20", "read": True},
+    {"fromName": "Picture Day", "fromEmail": "orders@lifetouch.com", "subject": "Order your school pictures", "body": "School pictures are ready to order online. Use your student order code from the flyer.", "external": True, "date": "Aug 20", "read": True},
+    {"fromName": "Band Director", "fromEmail": "band@horizonmiddle.edu", "subject": "Rehearsal moved to Room 12", "body": "Today's rehearsal is in Room 12 instead of the band hall. Bring your folder and a pencil.", "external": False, "date": "Aug 19", "read": True},
+    {"fromName": "Student Council", "fromEmail": "stuco@horizonmiddle.edu", "subject": "Vote for spirit week themes", "body": "Cast your vote for next month's spirit week themes in the form linked in this email.", "external": False, "date": "Aug 19", "read": True},
+    {"fromName": "Nurse Patterson", "fromEmail": "nurse@horizonmiddle.edu", "subject": "Updated health forms due", "body": "Please remind your family that updated health forms are due by the end of the month.", "external": False, "date": "Aug 18", "read": True},
+    {"fromName": "Google Workspace", "fromEmail": "no-reply@google.com", "subject": "A security tip for your account", "body": "Keep your account safe. Never share your password with anyone, even a friend.", "external": True, "date": "Aug 18", "read": True},
+    {"fromName": "PE Coach", "fromEmail": "pe@horizonmiddle.edu", "subject": "Bring sneakers on Thursday", "body": "We have the fitness challenge on Thursday. Don't forget to bring your sneakers to class.", "external": False, "date": "Aug 17", "read": True},
+    {"fromName": "Library", "fromEmail": "library@horizonmiddle.edu", "subject": "Your hold is ready to pick up", "body": "The book you placed on hold is ready at the front desk. Please pick it up within three days.", "external": False, "date": "Aug 16", "read": True},
+]
+
+
+def _pad_inboxes(target=10):
+    """Append filler inbox mail to each email mission so the inbox feels realistically full."""
+    for m in EMAIL_MISSIONS:
+        msgs = m["doc"]["messages"]
+        idx = 0
+        while len(msgs) < target and idx < len(_FILLER_POOL):
+            f = _FILLER_POOL[idx]
+            idx += 1
+            msgs.append(_msg(f"fill-{m['id']}-{idx}", "inbox", f["fromName"], f["fromEmail"], f["subject"],
+                             f["body"], read=f["read"], date=f["date"], external=f["external"]))
+
+
+_pad_inboxes()
+
 MISSION_INDEX = {m["id"]: m for track in MISSIONS.values() for m in track}
 
 
@@ -1284,6 +1337,9 @@ def _check_one(check, doc):
                 return False
             body = (m.get("body") or "")
             bl = body.lower()
+            sbody = m.get("bodyStudent")
+            sbody = sbody if sbody is not None else body
+            sbl = sbody.lower()
             subj = (m.get("subject") or "").strip()
             if kind == "subject_prefix":
                 return subj.lower().startswith(check["prefix"].lower())
@@ -1300,18 +1356,18 @@ def _check_one(check, doc):
             if kind == "cc_min":
                 return len(m.get("cc", [])) >= check["min"]
             if kind == "has_greeting":
-                return any(g in bl for g in _GREETINGS)
+                return any(g in sbl for g in _GREETINGS)
             if kind == "has_signoff":
-                return any(s in bl for s in _SIGNOFFS)
+                return any(s in sbl for s in _SIGNOFFS)
             if kind == "has_greeting_signoff":
-                return any(g in bl for g in _GREETINGS) and any(s in bl for s in _SIGNOFFS)
+                return any(g in sbl for g in _GREETINGS) and any(s in sbl for s in _SIGNOFFS)
             if kind == "has_attachment":
                 atts = m.get("attachments", [])
                 if "name" in check:
                     return any((a.get("name") == check["name"]) for a in atts)
                 return len(atts) > 0
             if kind == "body_min_words":
-                return len(body.split()) >= check["min"]
+                return len(sbody.split()) >= check["min"]
             if kind == "formatting":
                 return {"bold": m.get("hasBold"), "bullets": m.get("hasBullets"), "signature": m.get("hasSignature")}.get(check["feature"], False)
     except Exception:

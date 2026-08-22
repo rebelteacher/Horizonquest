@@ -73,6 +73,7 @@ export function checkTask(check, doc) {
       if (k === "sent_exists") return !!m;
       if (!m) return false;
       const body = m.body || "", bl = body.toLowerCase(), subj = (m.subject || "").trim();
+      const sbody = (m.bodyStudent != null ? m.bodyStudent : body), sbl = sbody.toLowerCase();
       const inList = (arr, e) => (arr || []).map((x) => x.toLowerCase()).includes(e.toLowerCase());
       const GRE = ["dear ", "hi ", "hi,", "hello", "good morning", "good afternoon", "hey ", "greetings"];
       const SIG = ["thanks", "thank you", "sincerely", "best,", "best regards", "regards", "cheers", "respectfully", "yours"];
@@ -83,11 +84,11 @@ export function checkTask(check, doc) {
       if (k === "cc_includes") return inList(m.cc, check.email);
       if (k === "bcc_includes") return inList(m.bcc, check.email);
       if (k === "cc_min") return (m.cc || []).length >= check.min;
-      if (k === "has_greeting") return GRE.some((g) => bl.includes(g));
-      if (k === "has_signoff") return SIG.some((s) => bl.includes(s));
-      if (k === "has_greeting_signoff") return GRE.some((g) => bl.includes(g)) && SIG.some((s) => bl.includes(s));
+      if (k === "has_greeting") return GRE.some((g) => sbl.includes(g));
+      if (k === "has_signoff") return SIG.some((s) => sbl.includes(s));
+      if (k === "has_greeting_signoff") return GRE.some((g) => sbl.includes(g)) && SIG.some((s) => sbl.includes(s));
       if (k === "has_attachment") return (m.attachments || []).length > 0 && (!check.name || (m.attachments || []).some((a) => a.name === check.name));
-      if (k === "body_min_words") return body.split(/\s+/).filter(Boolean).length >= check.min;
+      if (k === "body_min_words") return sbody.split(/\s+/).filter(Boolean).length >= check.min;
       if (k === "formatting") return { bold: m.hasBold, bullets: m.hasBullets, signature: m.hasSignature }[check.feature] || false;
     }
   } catch (e) { return false; }
