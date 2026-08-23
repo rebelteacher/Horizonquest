@@ -116,6 +116,11 @@ Gamified education platform. Stack: React + FastAPI + MongoDB. Auth: Google sign
 - ✅ Backend `GET /api/reports/student/{user_id}` (guide-only, 403 if the student isn't in the guide's classes). Frontend `/report/:userId` (route role-guarded) reachable via a **Report** link on each Test Scores gradebook row.
 - ✅ Verified: report data + RBAC via curl; page render + print button via screenshot. ⚠️ Requires **redeploy** for production.
 
+## Implemented (2026-06) — Iteration 11: Teaching slides per lesson block
+- ✅ **Block-based Skill Studio hub**: each track's missions are now grouped into blocks (aligned to the 3 checkpoints). Each block shows **Teaching Slides → the 4 skill missions → the block's Checkpoint test**, then a Final Exam card at the bottom. Flow: teacher presents slides → students do the skills → take the checkpoint.
+- ✅ **Google Slides embed per block**: Guides paste a Google Slides "Publish to web" embed link per block (`slides-edit-{cp}` → input); it renders as a responsive 16:9 iframe for the whole class (live/auto-updating). Students see a placeholder until the guide adds one. Backend GET /api/block-slides/{track}, PUT /api/block-slides/{block_id} (guide-only, validates https://docs.google.com/ URLs). Stored globally in db.block_slides (shared across all expeditions).
+- ✅ Verified: backend set/get + Google-only validation + RBAC via curl; guide & student block layouts via screenshot (edit button guide-only, checkpoint unlock states intact). ⚠️ Requires **redeploy** for production.
+
 
 
 

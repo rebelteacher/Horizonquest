@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "@/lib/api";
+import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import AppNav from "@/components/AppNav";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, FileText, CheckCircle2, Loader2, ArrowRight, Award, Sparkles, GraduationCap, ClipboardCheck, Lock, Trophy } from "lucide-react";
+import { ArrowLeft, FileText, CheckCircle2, Loader2, ArrowRight, Award, Sparkles, GraduationCap, ClipboardCheck, Lock, Trophy, Presentation } from "lucide-react";
 
 const GRADE_COLOR = { A: "#34D399", B: "#22D3EE", C: "#FB923C", D: "#F59E0B", F: "#E11D48" };
 
@@ -31,10 +32,23 @@ export default function StudioHub() {
 
   const [checkpoints, setCheckpoints] = useState([]);
   const [finalMeta, setFinalMeta] = useState(null);
+  const [blockSlides, setBlockSlides] = useState({});
+  const [editingBlock, setEditingBlock] = useState(null);
+  const [urlInput, setUrlInput] = useState("");
   useEffect(() => {
     api.get(`/assessments/track/${track}`).then((r) => setCheckpoints(r.data.checkpoints || [])).catch(() => setCheckpoints([]));
     api.get(`/assessments/final/meta`).then((r) => setFinalMeta(r.data)).catch(() => setFinalMeta(null));
+    api.get(`/block-slides/${track}`).then((r) => setBlockSlides(r.data || {})).catch(() => setBlockSlides({}));
   }, [track]);
+
+  const saveBlockSlides = async (blockId, url) => {
+    try {
+      await api.put(`/block-slides/${blockId}`, { embed_url: url });
+      setBlockSlides((m) => ({ ...m, [blockId]: url }));
+      setEditingBlock(null);
+      toast.success(url ? "Teaching slides linked!" : "Slides link removed.");
+    } catch (e) { toast.error(e?.response?.data?.detail || "Please paste a valid Google Slides embed link."); }
+  };
 
   if (loading || !data) return (<div className="min-h-screen"><AppNav /><div className="flex justify-center py-40"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div></div>);
 
@@ -42,6 +56,37 @@ export default function StudioHub() {
   const progress = data.progress || {};
   const mastered = missions.filter((m) => progress[m.id]?.mastery).length;
   const firstUndone = missions.find((m) => !progress[m.id]?.mastery) || missions[0];
+
+  const missionCard = (m, i) => {
+    const p = progress[m.id];
+    const isCapstone = m.points > 100;
+    return (
+      <button key={m.id} data-testid={`studio-mission-card-${m.id}`} onClick={() => navigate(`/studio/${track}/${m.id}`)} style={{ animationDelay: `${i * 0.03}s` }}
+        className="hq-fade-up text-left hq-glass rounded-2xl p-5 border border-white/10 hover:border-[#22D3EE]/50 hover:-translate-y-0.5 transition-all">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3 min-w-0">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-mono-data ${isCapstone ? "bg-primary/15 text-primary" : "bg-[#22D3EE]/15 text-[#22D3EE]"}`}>
+              {isCapstone ? <Award className="w-5 h-5" /> : m.order}
+            </div>
+            <div className="min-w-0">
+              <h3 className="font-display text-lg leading-tight truncate flex items-center gap-2">{m.title}{isCapstone && <Sparkles className="w-4 h-4 text-primary shrink-0" />}</h3>
+              <div className="flex items-center gap-2 mt-0.5">
+                <p className="text-xs text-muted-foreground truncate">{m.chunk}</p>
+                {assignedIds.includes(m.id) && <span data-testid={`assigned-badge-${m.id}`} className="text-[10px] font-semibold uppercase tracking-wide bg-[#FB923C]/20 text-[#FB923C] rounded px-1.5 py-0.5 shrink-0">Assigned</span>}
+              </div>
+              <p className="text-[11px] text-slate-500 mt-1">{m.tasks.length} tasks · {m.points} pts</p>
+            </div>
+          </div>
+          {p && (
+            <div className="text-right shrink-0">
+              <span className="font-display text-2xl" style={{ color: GRADE_COLOR[p.grade] }}>{p.grade}</span>
+              {p.mastery && <CheckCircle2 className="w-4 h-4 text-emerald-400 ml-auto mt-1" />}
+            </div>
+          )}
+        </div>
+      </button>
+    );
+  };
 
   return (
     <div className="min-h-screen">
@@ -89,90 +134,92 @@ export default function StudioHub() {
           {mastered === 0 ? "Start Mission 1" : "Continue"} · {firstUndone.title} <ArrowRight className="w-4 h-4 ml-2" />
         </Button>
 
-        <div className="grid gap-3 sm:grid-cols-2 mt-8">
-          {missions.map((m, i) => {
-            const p = progress[m.id];
-            const isCapstone = m.points > 100;
-            return (
-              <button
-                key={m.id}
-                data-testid={`studio-mission-card-${m.id}`}
-                onClick={() => navigate(`/studio/${track}/${m.id}`)}
-                style={{ animationDelay: `${i * 0.03}s` }}
-                className="hq-fade-up text-left hq-glass rounded-2xl p-5 border border-white/10 hover:border-[#22D3EE]/50 hover:-translate-y-0.5 transition-all"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-start gap-3 min-w-0">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-mono-data ${isCapstone ? "bg-primary/15 text-primary" : "bg-[#22D3EE]/15 text-[#22D3EE]"}`}>
-                      {isCapstone ? <Award className="w-5 h-5" /> : m.order}
-                    </div>
-                    <div className="min-w-0">
-                      <h3 className="font-display text-lg leading-tight truncate flex items-center gap-2">{m.title}{isCapstone && <Sparkles className="w-4 h-4 text-primary shrink-0" />}</h3>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <p className="text-xs text-muted-foreground truncate">{m.chunk}</p>
-                        {assignedIds.includes(m.id) && <span data-testid={`assigned-badge-${m.id}`} className="text-[10px] font-semibold uppercase tracking-wide bg-[#FB923C]/20 text-[#FB923C] rounded px-1.5 py-0.5 shrink-0">Assigned</span>}
+        {(() => {
+          const blocks = checkpoints
+            .map((c) => ({ cp: c, missions: missions.filter((m) => c.covers.includes(m.id)).sort((a, b) => a.order - b.order) }))
+            .filter((b) => b.missions.length > 0);
+          if (blocks.length === 0) {
+            return <div className="grid gap-3 sm:grid-cols-2 mt-8">{missions.map((m, i) => missionCard(m, i))}</div>;
+          }
+          return (
+            <div className="mt-8 space-y-10">
+              {blocks.map((b, bi) => {
+                const c = b.cp;
+                const noAttempts = c.attempts_used >= c.max_attempts;
+                const remaining = Math.max(0, c.max_attempts - c.attempts_used);
+                const url = blockSlides[c.id];
+                const first = b.missions[0].order, last = b.missions[b.missions.length - 1].order;
+                return (
+                  <section key={c.id} data-testid={`block-${c.id}`}>
+                    <h2 className="font-display text-2xl">Block {bi + 1} <span className="text-sm text-muted-foreground">· Lessons {first}–{last}</span></h2>
+                    <p className="text-sm text-muted-foreground mt-1 mb-3">Watch the teaching slides, complete the {b.missions.length} skills, then take the checkpoint.</p>
+
+                    <div className="hq-glass rounded-2xl p-4 mb-4 border border-white/10">
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <p className="text-sm font-medium flex items-center gap-2"><Presentation className="w-4 h-4 text-[#818CF8]" /> Teaching Slides</p>
+                        {isGuide && <button data-testid={`slides-edit-${c.id}`} onClick={() => { setEditingBlock(c.id); setUrlInput(url || ""); }} className="text-xs text-[#a5b4fc] hover:underline">{url ? "Edit link" : "Add slides link"}</button>}
                       </div>
-                      <p className="text-[11px] text-slate-500 mt-1">{m.tasks.length} tasks · {m.points} pts</p>
+                      {editingBlock === c.id ? (
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <input data-testid={`slides-input-${c.id}`} value={urlInput} onChange={(e) => setUrlInput(e.target.value)} placeholder="Paste Google Slides 'Publish to web' embed link" className="flex-1 h-9 rounded-md bg-slate-800 border border-slate-600 px-2 text-sm text-white placeholder:text-slate-400 outline-none focus:border-[#818CF8]" />
+                          <Button size="sm" data-testid={`slides-save-${c.id}`} onClick={() => saveBlockSlides(c.id, urlInput.trim())} className="bg-[#22D3EE] text-[#04121f] hover:bg-[#67E8F9]">Save</Button>
+                          {url && <Button size="sm" variant="outline" onClick={() => saveBlockSlides(c.id, "")}>Remove</Button>}
+                          <Button size="sm" variant="ghost" onClick={() => setEditingBlock(null)}>Cancel</Button>
+                        </div>
+                      ) : url ? (
+                        <div className="aspect-video w-full rounded-lg overflow-hidden bg-black" data-testid={`slides-embed-${c.id}`}>
+                          <iframe src={url} title={`Teaching slides block ${bi + 1}`} className="w-full h-full" allowFullScreen frameBorder="0" />
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">{isGuide ? "Add your Google Slides 'Publish to web' link so your class can follow along before these lessons." : "Your guide will add teaching slides here."}</p>
+                      )}
                     </div>
-                  </div>
-                  {p && (
-                    <div className="text-right shrink-0">
-                      <span className="font-display text-2xl" style={{ color: GRADE_COLOR[p.grade] }}>{p.grade}</span>
-                      {p.mastery && <CheckCircle2 className="w-4 h-4 text-emerald-400 ml-auto mt-1" />}
-                    </div>
-                  )}
-                </div>
-              </button>
-            );
-          })}
-        </div>
 
-        <div className="mt-10">
-          <h2 className="font-display text-2xl flex items-center gap-2"><ClipboardCheck className="w-5 h-5 text-[#22D3EE]" /> Checkpoint Tests</h2>
-          <p className="text-sm text-muted-foreground mt-1">A 20-question test at the end of each block of lessons. You get one retake. Questions and answers are shuffled for each Explorer.</p>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 mt-4">
-            {checkpoints.map((c, i) => {
-              const noAttempts = c.attempts_used >= c.max_attempts;
-              const remaining = Math.max(0, c.max_attempts - c.attempts_used);
-              return (
-                <div key={c.id} data-testid={`checkpoint-card-${c.id}`} className={`hq-glass rounded-2xl p-5 border ${c.passed ? "border-[#34D399]/40" : "border-white/10"}`}>
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-display text-lg leading-tight">Checkpoint {i + 1}</h3>
-                    {c.best_score != null && <span className="font-display text-xl shrink-0" style={{ color: c.passed ? "#34D399" : "#FB923C" }} data-testid={`checkpoint-score-${c.id}`}>{c.best_score}%</span>}
+                    <div className="grid gap-3 sm:grid-cols-2">{b.missions.map((m, i) => missionCard(m, i))}</div>
+
+                    <div className={`hq-glass rounded-2xl p-5 mt-4 border ${c.passed ? "border-[#34D399]/40" : "border-white/10"}`} data-testid={`checkpoint-card-${c.id}`}>
+                      <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <div>
+                          <h3 className="font-display text-lg flex items-center gap-2"><ClipboardCheck className="w-4 h-4 text-[#22D3EE]" /> Checkpoint {bi + 1} Test</h3>
+                          <p className="text-xs text-muted-foreground mt-1">{c.question_count} questions · pass {c.pass}% · 1 retake · {c.attempts_used}/{c.max_attempts} used{c.passed ? " · Passed ✓" : ""}</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          {c.best_score != null && <span className="font-display text-2xl" style={{ color: c.passed ? "#34D399" : "#FB923C" }} data-testid={`checkpoint-score-${c.id}`}>{c.best_score}%</span>}
+                          {!c.unlocked ? (
+                            <span className="flex items-center gap-2 text-xs text-slate-400"><Lock className="w-4 h-4" /> {c.locked_reason}</span>
+                          ) : noAttempts ? (
+                            <Button data-testid={`checkpoint-review-${c.id}`} disabled variant="outline" className="opacity-60">No attempts left</Button>
+                          ) : (
+                            <Button data-testid={`checkpoint-take-${c.id}`} onClick={() => navigate(`/assessment/${c.id}`)} className="bg-[#22D3EE] text-[#04121f] hover:bg-[#67E8F9]">
+                              {c.attempts_used === 0 ? "Take Checkpoint" : `Retake (${remaining} left)`}
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+                );
+              })}
+
+              {finalMeta && (
+                <div data-testid="final-exam-card" className="hq-glass rounded-2xl p-5 border border-primary/40 flex flex-col sm:flex-row sm:items-center gap-4">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="w-12 h-12 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0"><Trophy className="w-6 h-6" /></div>
+                    <div className="min-w-0">
+                      <h3 className="font-display text-xl">{finalMeta.title}</h3>
+                      <p className="text-xs text-muted-foreground">{finalMeta.question_count} questions across all skills · pass {finalMeta.pass}% · <span className="text-[#FB923C]">no retakes</span>{finalMeta.best_score != null ? ` · Best: ${finalMeta.best_score}%` : ""}</p>
+                    </div>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">Covers {c.covers.length} lessons · {c.question_count} questions · pass {c.pass}%</p>
-                  <p className="text-[11px] text-slate-500 mt-2">{c.attempts_used}/{c.max_attempts} attempts used{c.passed ? " · Passed ✓" : ""}</p>
-                  {!c.unlocked ? (
-                    <div className="mt-3 flex items-center gap-2 text-xs text-slate-400"><Lock className="w-4 h-4" /> {c.locked_reason}</div>
-                  ) : noAttempts ? (
-                    <Button data-testid={`checkpoint-review-${c.id}`} disabled variant="outline" className="w-full mt-3 opacity-60">No attempts left</Button>
+                  {finalMeta.attempts_used >= finalMeta.max_attempts ? (
+                    <Button data-testid="final-exam-done" disabled variant="outline" className="opacity-60 shrink-0">Completed ({finalMeta.best_score}%)</Button>
                   ) : (
-                    <Button data-testid={`checkpoint-take-${c.id}`} onClick={() => navigate(`/assessment/${c.id}`)} className="w-full mt-3 bg-[#22D3EE] text-[#04121f] hover:bg-[#67E8F9]">
-                      {c.attempts_used === 0 ? "Take test" : `Retake (${remaining} left)`}
-                    </Button>
+                    <Button data-testid="final-exam-start" onClick={() => navigate(`/assessment/final`)} className="bg-primary text-primary-foreground hover:bg-primary/90 shrink-0">Start Final Exam</Button>
                   )}
                 </div>
-              );
-            })}
-          </div>
-
-          {finalMeta && (
-            <div data-testid="final-exam-card" className="hq-glass rounded-2xl p-5 mt-4 border border-primary/40 flex flex-col sm:flex-row sm:items-center gap-4">
-              <div className="flex items-center gap-3 min-w-0 flex-1">
-                <div className="w-12 h-12 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0"><Trophy className="w-6 h-6" /></div>
-                <div className="min-w-0">
-                  <h3 className="font-display text-xl">{finalMeta.title}</h3>
-                  <p className="text-xs text-muted-foreground">{finalMeta.question_count} questions across all skills · pass {finalMeta.pass}% · <span className="text-[#FB923C]">no retakes</span>{finalMeta.best_score != null ? ` · Best: ${finalMeta.best_score}%` : ""}</p>
-                </div>
-              </div>
-              {finalMeta.attempts_used >= finalMeta.max_attempts ? (
-                <Button data-testid="final-exam-done" disabled variant="outline" className="opacity-60 shrink-0">Completed ({finalMeta.best_score}%)</Button>
-              ) : (
-                <Button data-testid="final-exam-start" onClick={() => navigate(`/assessment/final`)} className="bg-primary text-primary-foreground hover:bg-primary/90 shrink-0">Start Final Exam</Button>
               )}
             </div>
-          )}
-        </div>
+          );
+        })()}
       </div>
     </div>
   );

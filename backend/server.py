@@ -804,6 +804,33 @@ async def get_assessment_bank(guide=Depends(require_guide)):
     return assessments.full_bank()
 
 
+# ---------------- Teaching slides embedded before each lesson block ----------------
+class BlockSlides(BaseModel):
+    embed_url: str
+
+
+@api_router.get("/block-slides/{track_id}")
+async def get_block_slides(track_id: str, user=Depends(get_current_user)):
+    block_ids = assessments.TRACK_CHECKPOINTS.get(track_id, [])
+    rows = await db.block_slides.find({"block_id": {"$in": block_ids}}, {"_id": 0}).to_list(50)
+    return {r["block_id"]: r.get("embed_url", "") for r in rows}
+
+
+@api_router.put("/block-slides/{block_id}")
+async def set_block_slides(block_id: str, payload: BlockSlides, guide=Depends(require_guide)):
+    if not assessments.assessment_meta(block_id):
+        raise HTTPException(status_code=404, detail="Unknown block")
+    url = (payload.embed_url or "").strip()
+    if url and not url.startswith("https://docs.google.com/"):
+        raise HTTPException(status_code=400, detail="Please paste a Google Slides 'Publish to web' embed link (https://docs.google.com/...)")
+    await db.block_slides.update_one(
+        {"block_id": block_id},
+        {"$set": {"block_id": block_id, "embed_url": url, "updated_by": guide["user_id"], "updated_at": now_utc().isoformat()}},
+        upsert=True,
+    )
+    return {"ok": True, "block_id": block_id, "embed_url": url}
+
+
 TRACK_NAMES = {"docs": "Word Processing", "sheets": "Spreadsheets", "slides": "Presentations", "email": "Email & Communication"}
 
 
