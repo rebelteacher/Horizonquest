@@ -4,6 +4,7 @@ import api from "@/lib/api";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import AppNav from "@/components/AppNav";
+import { SlideCarousel } from "@/components/studio/SlideCarousel";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, FileText, CheckCircle2, Loader2, ArrowRight, Award, Sparkles, GraduationCap, ClipboardCheck, Lock, Trophy, Presentation } from "lucide-react";
 
@@ -33,6 +34,7 @@ export default function StudioHub() {
   const [checkpoints, setCheckpoints] = useState([]);
   const [finalMeta, setFinalMeta] = useState(null);
   const [blockSlides, setBlockSlides] = useState({});
+  const [deckImages, setDeckImages] = useState({});
   const [editingBlock, setEditingBlock] = useState(null);
   const [urlInput, setUrlInput] = useState("");
   useEffect(() => {
@@ -40,6 +42,13 @@ export default function StudioHub() {
     api.get(`/assessments/final/meta`).then((r) => setFinalMeta(r.data)).catch(() => setFinalMeta(null));
     api.get(`/block-slides/${track}`).then((r) => setBlockSlides(r.data || {})).catch(() => setBlockSlides({}));
   }, [track]);
+
+  useEffect(() => {
+    fetch(`${process.env.PUBLIC_URL || ""}/decks/img/manifest.json`)
+      .then((r) => (r.ok ? r.json() : {}))
+      .then((m) => setDeckImages(m || {}))
+      .catch(() => setDeckImages({}));
+  }, []);
 
   const saveBlockSlides = async (blockId, url) => {
     try {
@@ -163,16 +172,33 @@ export default function StudioHub() {
                         <div className="flex flex-col sm:flex-row gap-2">
                           <input data-testid={`slides-input-${c.id}`} value={urlInput} onChange={(e) => setUrlInput(e.target.value)} placeholder="Paste Google Slides 'Publish to web' embed link" className="flex-1 h-9 rounded-md bg-slate-800 border border-slate-600 px-2 text-sm text-white placeholder:text-slate-400 outline-none focus:border-[#818CF8]" />
                           <Button size="sm" data-testid={`slides-save-${c.id}`} onClick={() => saveBlockSlides(c.id, urlInput.trim())} className="bg-[#22D3EE] text-[#04121f] hover:bg-[#67E8F9]">Save</Button>
-                          {url && <Button size="sm" variant="outline" onClick={() => saveBlockSlides(c.id, "")}>Remove</Button>}
+                          {url && <Button size="sm" variant="outline" onClick={() => saveBlockSlides(c.id, "")}>Use starter deck</Button>}
                           <Button size="sm" variant="ghost" onClick={() => setEditingBlock(null)}>Cancel</Button>
                         </div>
-                      ) : url ? (
-                        <div className="aspect-video w-full rounded-lg overflow-hidden bg-black" data-testid={`slides-embed-${c.id}`}>
-                          <iframe src={url} title={`Teaching slides block ${bi + 1}`} className="w-full h-full" allowFullScreen frameBorder="0" />
-                        </div>
-                      ) : (
-                        <p className="text-xs text-muted-foreground">{isGuide ? "Add your Google Slides 'Publish to web' link so your class can follow along before these lessons." : "Your guide will add teaching slides here."}</p>
-                      )}
+                      ) : (() => {
+                        const deckKey = `horizonquest_${track}_block${bi + 1}`;
+                        const deckUrl = `/decks/${deckKey}.pptx`;
+                        const images = deckImages[deckKey] || [];
+                        if (url) {
+                          return (
+                            <>
+                              <div className="aspect-video w-full rounded-lg overflow-hidden bg-black" data-testid={`slides-embed-${c.id}`}>
+                                <iframe src={url} title={`Teaching slides block ${bi + 1}`} className="w-full h-full" allowFullScreen frameBorder="0" />
+                              </div>
+                              {isGuide && <p className="text-[11px] text-muted-foreground mt-1">Showing your custom Google Slides. Click ‘Edit link’ to change or revert to the starter deck.</p>}
+                            </>
+                          );
+                        }
+                        if (images.length === 0) {
+                          return <div className="aspect-video w-full rounded-lg bg-slate-900/60 border border-white/10 flex items-center justify-center text-sm text-muted-foreground" data-testid={`slides-embed-${c.id}`}>Teaching slides are loading…</div>;
+                        }
+                        return (
+                          <div data-testid={`slides-embed-${c.id}`}>
+                            <SlideCarousel images={images} title={`Block ${bi + 1} teaching slides`} deckUrl={deckUrl} />
+                            <p className="text-[11px] text-muted-foreground mt-1">{isGuide ? "Showing the HorizonQuest starter deck. Click ‘Edit link’ to swap in your own published Google Slides." : "Use the arrows to move through the slides."}</p>
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     <div className="grid gap-3 sm:grid-cols-2">{b.missions.map((m, i) => missionCard(m, i))}</div>

@@ -125,6 +125,13 @@ Gamified education platform. Stack: React + FastAPI + MongoDB. Auth: Google sign
 
 
 
+## Implemented (2026-06) — Iteration 12: Auto-linked starter decks (reliable slide carousel)
+- ✅ **Starter decks now auto-display in every Skill Studio block** (student + guide) with no external dependency. Replaced the fragile Microsoft Office Web Viewer iframe (which needed public URL reachability) with pre-rendered slide images + a built-in carousel.
+- ✅ **Deck rendering pipeline**: `/app/scripts/render_decks.py` uses headless LibreOffice (pptx→pdf) + poppler `pdftoppm` (pdf→png @110dpi) to render all 13 decks into `/app/frontend/public/decks/img/<deck>/slide-NN.png` + `manifest.json`. Re-run after editing any `.pptx`.
+- ✅ **`SlideCarousel` component** (`/app/frontend/src/components/studio/SlideCarousel.jsx`): prev/next arrows, `n / total` counter, fullscreen overlay (Esc/←/→ keys), and a download-deck (.pptx) button. Wired into `StudioHub.jsx` per block (deck key `horizonquest_<track>_block<n>`).
+- ✅ **Guide override preserved**: a Guide's published Google Slides link still renders as a live iframe and takes priority; "Use starter deck" reverts to the built-in carousel.
+- ✅ Verified via screenshot as guide: carousel renders on-brand slide 1/10, next advances to 2/10, download+fullscreen controls present. Works in preview (no external service). ⚠️ Requires **redeploy** for production.
+
 ## Backlog / Remaining (older)
 - P1: Repurpose Guide Review Queue to flag struggling Explorers (reflections removed).
 - P1: Guide authoring of quests. Rank-movement indicators.
