@@ -6,9 +6,10 @@ import { useAuth } from "@/context/AuthContext";
 import AppNav from "@/components/AppNav";
 import { SlideCarousel } from "@/components/studio/SlideCarousel";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, FileText, CheckCircle2, Loader2, ArrowRight, Award, Sparkles, GraduationCap, ClipboardCheck, Lock, Trophy, Presentation } from "lucide-react";
+import { ArrowLeft, FileText, CheckCircle2, Loader2, ArrowRight, Award, Sparkles, GraduationCap, ClipboardCheck, Lock, Trophy, Presentation, Upload, ExternalLink, Trash2 } from "lucide-react";
 
 const GRADE_COLOR = { A: "#34D399", B: "#22D3EE", C: "#FB923C", D: "#F59E0B", F: "#E11D48" };
+const BACKEND = process.env.REACT_APP_BACKEND_URL;
 
 export default function StudioHub() {
   const { track } = useParams();
@@ -37,11 +38,14 @@ export default function StudioHub() {
   const [deckImages, setDeckImages] = useState({});
   const [editingBlock, setEditingBlock] = useState(null);
   const [urlInput, setUrlInput] = useState("");
+  const [uploadingBlock, setUploadingBlock] = useState(null);
   useEffect(() => {
     api.get(`/assessments/track/${track}`).then((r) => setCheckpoints(r.data.checkpoints || [])).catch(() => setCheckpoints([]));
     api.get(`/assessments/final/meta`).then((r) => setFinalMeta(r.data)).catch(() => setFinalMeta(null));
     api.get(`/block-slides/${track}`).then((r) => setBlockSlides(r.data || {})).catch(() => setBlockSlides({}));
   }, [track]);
+
+  const refreshBlockSlides = () => api.get(`/block-slides/${track}`).then((r) => setBlockSlides(r.data || {})).catch(() => {});
 
   useEffect(() => {
     fetch(`${process.env.PUBLIC_URL || ""}/decks/img/manifest.json`)
@@ -53,10 +57,33 @@ export default function StudioHub() {
   const saveBlockSlides = async (blockId, url) => {
     try {
       await api.put(`/block-slides/${blockId}`, { embed_url: url });
-      setBlockSlides((m) => ({ ...m, [blockId]: url }));
+      await refreshBlockSlides();
       setEditingBlock(null);
-      toast.success(url ? "Teaching slides linked!" : "Slides link removed.");
+      toast.success(url ? "Google Slides linked!" : "Google Slides link removed.");
     } catch (e) { toast.error(e?.response?.data?.detail || "Please paste a valid Google Slides embed link."); }
+  };
+
+  const uploadPptx = async (blockId, file) => {
+    if (!file) return;
+    if (!/\.pptx?$/i.test(file.name)) { toast.error("Please choose a PowerPoint file (.pptx or .ppt)."); return; }
+    setUploadingBlock(blockId);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      await api.post(`/block-slides/${blockId}/upload-pptx`, fd, { headers: { "Content-Type": "multipart/form-data" } });
+      await refreshBlockSlides();
+      setEditingBlock(null);
+      toast.success("PowerPoint uploaded — students will see your slides.");
+    } catch (e) { toast.error(e?.response?.data?.detail || "Upload failed. Please try again."); }
+    finally { setUploadingBlock(null); }
+  };
+
+  const deletePptx = async (blockId) => {
+    try {
+      await api.delete(`/block-slides/${blockId}/pptx`);
+      await refreshBlockSlides();
+      toast.success("Removed your PowerPoint — showing the starter deck.");
+    } catch (e) { toast.error("Could not remove the PowerPoint."); }
   };
 
   if (loading || !data) return (<div className="min-h-screen"><AppNav /><div className="flex justify-center py-40"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div></div>);
@@ -156,7 +183,9 @@ export default function StudioHub() {
                 const c = b.cp;
                 const noAttempts = c.attempts_used >= c.max_attempts;
                 const remaining = Math.max(0, c.max_attempts - c.attempts_used);
-                const url = blockSlides[c.id];
+                const bs = blockSlides[c.id] || {};
+                const url = bs.embed_url || "";
+                const pptx = bs.pptx || null;
                 const first = b.missions[0].order, last = b.missions[b.missions.length - 1].order;
                 return (
                   <section key={c.id} data-testid={`block-${c.id}`}>
@@ -166,16 +195,34 @@ export default function StudioHub() {
                     <div className="hq-glass rounded-2xl p-4 mb-4 border border-white/10">
                       <div className="flex items-center justify-between gap-2 mb-2">
                         <p className="text-sm font-medium flex items-center gap-2"><Presentation className="w-4 h-4 text-[#818CF8]" /> Teaching Slides</p>
-                        {isGuide && <button data-testid={`slides-edit-${c.id}`} onClick={() => { setEditingBlock(c.id); setUrlInput(url || ""); }} className="text-xs text-[#a5b4fc] hover:underline">{url ? "Edit link" : "Add slides link"}</button>}
+                        {isGuide && <button data-testid={`slides-edit-${c.id}`} onClick={() => { setEditingBlock(editingBlock === c.id ? null : c.id); setUrlInput(url || ""); }} className="text-xs text-[#a5b4fc] hover:underline">{editingBlock === c.id ? "Close" : "Manage slides"}</button>}
                       </div>
-                      {editingBlock === c.id ? (
-                        <div className="flex flex-col sm:flex-row gap-2">
-                          <input data-testid={`slides-input-${c.id}`} value={urlInput} onChange={(e) => setUrlInput(e.target.value)} placeholder="Paste Google Slides 'Publish to web' embed link" className="flex-1 h-9 rounded-md bg-slate-800 border border-slate-600 px-2 text-sm text-white placeholder:text-slate-400 outline-none focus:border-[#818CF8]" />
-                          <Button size="sm" data-testid={`slides-save-${c.id}`} onClick={() => saveBlockSlides(c.id, urlInput.trim())} className="bg-[#22D3EE] text-[#04121f] hover:bg-[#67E8F9]">Save</Button>
-                          {url && <Button size="sm" variant="outline" onClick={() => saveBlockSlides(c.id, "")}>Use starter deck</Button>}
-                          <Button size="sm" variant="ghost" onClick={() => setEditingBlock(null)}>Cancel</Button>
+                      {isGuide && editingBlock === c.id && (
+                        <div className="mb-3 space-y-3 rounded-lg bg-slate-900/50 border border-white/10 p-3">
+                          <div>
+                            <p className="text-xs text-slate-300 mb-1.5">Option 1 · Paste a published <span className="text-[#a5b4fc]">Google Slides</span> link (fully editable, live-updating)</p>
+                            <div className="flex flex-col sm:flex-row gap-2">
+                              <input data-testid={`slides-input-${c.id}`} value={urlInput} onChange={(e) => setUrlInput(e.target.value)} placeholder="https://docs.google.com/presentation/d/.../embed" className="flex-1 h-9 rounded-md bg-slate-800 border border-slate-600 px-2 text-sm text-white placeholder:text-slate-400 outline-none focus:border-[#818CF8]" />
+                              <Button size="sm" data-testid={`slides-save-${c.id}`} onClick={() => saveBlockSlides(c.id, urlInput.trim())} className="bg-[#22D3EE] text-[#04121f] hover:bg-[#67E8F9]">Save link</Button>
+                              {url && <Button size="sm" variant="outline" data-testid={`slides-remove-link-${c.id}`} onClick={() => saveBlockSlides(c.id, "")}>Remove link</Button>}
+                            </div>
+                          </div>
+                          <div className="border-t border-white/10 pt-3">
+                            <p className="text-xs text-slate-300 mb-1.5">Option 2 · Upload your own <span className="text-[#a5b4fc]">PowerPoint</span> (.pptx)</p>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <label data-testid={`pptx-upload-label-${c.id}`} className={`inline-flex items-center gap-2 h-9 px-3 rounded-md text-sm cursor-pointer border border-slate-600 bg-slate-800 hover:border-[#818CF8] text-white ${uploadingBlock === c.id ? "opacity-60 pointer-events-none" : ""}`}>
+                                {uploadingBlock === c.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                                {uploadingBlock === c.id ? "Uploading…" : (pptx ? "Replace PowerPoint" : "Upload PowerPoint")}
+                                <input data-testid={`pptx-upload-input-${c.id}`} type="file" accept=".pptx,.ppt,application/vnd.openxmlformats-officedocument.presentationml.presentation" className="hidden" onChange={(e) => { uploadPptx(c.id, e.target.files?.[0]); e.target.value = ""; }} />
+                              </label>
+                              {pptx && <span className="text-xs text-slate-400 truncate max-w-[180px]" title={pptx.filename}>{pptx.filename}</span>}
+                              {pptx && <Button size="sm" variant="outline" data-testid={`pptx-remove-${c.id}`} onClick={() => deletePptx(c.id)} className="gap-1"><Trash2 className="w-3.5 h-3.5" /> Remove</Button>}
+                            </div>
+                            <p className="text-[11px] text-muted-foreground mt-1.5">Tip: a Google Slides link always wins over an uploaded PowerPoint. Remove the link to show your PowerPoint.</p>
+                          </div>
                         </div>
-                      ) : (() => {
+                      )}
+                      {(() => {
                         const deckKey = `horizonquest_${track}_block${bi + 1}`;
                         const deckUrl = `/decks/${deckKey}.pptx`;
                         const images = deckImages[deckKey] || [];
@@ -185,8 +232,23 @@ export default function StudioHub() {
                               <div className="aspect-video w-full rounded-lg overflow-hidden bg-black" data-testid={`slides-embed-${c.id}`}>
                                 <iframe src={url} title={`Teaching slides block ${bi + 1}`} className="w-full h-full" allowFullScreen frameBorder="0" />
                               </div>
-                              {isGuide && <p className="text-[11px] text-muted-foreground mt-1">Showing your custom Google Slides. Click ‘Edit link’ to change or revert to the starter deck.</p>}
+                              {isGuide && <p className="text-[11px] text-muted-foreground mt-1">Showing your custom Google Slides.</p>}
                             </>
+                          );
+                        }
+                        if (pptx) {
+                          const fileUrl = `${BACKEND}/api/decks/pptx/${c.id}.pptx?v=${pptx.version}`;
+                          const officeSrc = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl)}`;
+                          return (
+                            <div data-testid={`slides-embed-${c.id}`}>
+                              <div className="aspect-video w-full rounded-lg overflow-hidden bg-black">
+                                <iframe src={officeSrc} title={`Teaching slides block ${bi + 1}`} className="w-full h-full" allowFullScreen frameBorder="0" />
+                              </div>
+                              <div className="flex items-center justify-between gap-2 mt-1.5 flex-wrap">
+                                <p className="text-[11px] text-muted-foreground">Showing {isGuide ? "your uploaded" : "the class"} PowerPoint. If it doesn't load, use the link →</p>
+                                <a href={fileUrl} target="_blank" rel="noopener noreferrer" data-testid={`pptx-open-${c.id}`} className="inline-flex items-center gap-1.5 text-xs text-[#22D3EE] hover:underline"><ExternalLink className="w-3.5 h-3.5" /> Open / Download slides</a>
+                              </div>
+                            </div>
                           );
                         }
                         if (images.length === 0) {
@@ -195,7 +257,7 @@ export default function StudioHub() {
                         return (
                           <div data-testid={`slides-embed-${c.id}`}>
                             <SlideCarousel images={images} title={`Block ${bi + 1} teaching slides`} deckUrl={deckUrl} />
-                            <p className="text-[11px] text-muted-foreground mt-1">{isGuide ? "Showing the HorizonQuest starter deck. Click ‘Edit link’ to swap in your own published Google Slides." : "Use the arrows to move through the slides."}</p>
+                            <p className="text-[11px] text-muted-foreground mt-1">{isGuide ? "Showing the HorizonQuest starter deck. Click ‘Manage slides’ to use your own Google Slides or PowerPoint." : "Use the arrows to move through the slides."}</p>
                           </div>
                         );
                       })()}

@@ -1,5 +1,6 @@
-from fastapi import FastAPI, APIRouter, Request, Response, HTTPException, Depends
+from fastapi import FastAPI, APIRouter, Request, Response, HTTPException, Depends, UploadFile, File
 from fastapi.responses import StreamingResponse
+from starlette.concurrency import run_in_threadpool
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -18,6 +19,7 @@ from datetime import datetime, timezone, timedelta
 import curriculum
 import skillstudio
 import assessments
+import objstore
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -808,12 +810,24 @@ async def get_assessment_bank(guide=Depends(require_guide)):
 class BlockSlides(BaseModel):
     embed_url: str
 
+PPTX_CT = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+_PPTX_EXTS = (".pptx", ".ppt")
+
+
+def _block_slide_public(r):
+    """Shape a db.block_slides row for the frontend."""
+    pptx = r.get("pptx")
+    return {
+        "embed_url": r.get("embed_url", ""),
+        "pptx": {"filename": pptx["filename"], "version": pptx["version"]} if pptx else None,
+    }
+
 
 @api_router.get("/block-slides/{track_id}")
 async def get_block_slides(track_id: str, user=Depends(get_current_user)):
     block_ids = assessments.TRACK_CHECKPOINTS.get(track_id, [])
     rows = await db.block_slides.find({"block_id": {"$in": block_ids}}, {"_id": 0}).to_list(50)
-    return {r["block_id"]: r.get("embed_url", "") for r in rows}
+    return {r["block_id"]: _block_slide_public(r) for r in rows}
 
 
 @api_router.put("/block-slides/{block_id}")
@@ -829,6 +843,56 @@ async def set_block_slides(block_id: str, payload: BlockSlides, guide=Depends(re
         upsert=True,
     )
     return {"ok": True, "block_id": block_id, "embed_url": url}
+
+
+@api_router.post("/block-slides/{block_id}/upload-pptx")
+async def upload_block_pptx(block_id: str, file: UploadFile = File(...), guide=Depends(require_guide)):
+    if not assessments.assessment_meta(block_id):
+        raise HTTPException(status_code=404, detail="Unknown block")
+    fname = (file.filename or "deck.pptx").strip()
+    if not fname.lower().endswith(_PPTX_EXTS):
+        raise HTTPException(status_code=400, detail="Please upload a PowerPoint file (.pptx or .ppt).")
+    data = await file.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="The file is empty.")
+    if len(data) > 40 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File is too large (max 40 MB).")
+    version = uuid.uuid4().hex[:12]
+    storage_path = f"horizonquest/decks/{block_id}/{version}.pptx"
+    await run_in_threadpool(objstore.put_object, storage_path, data, PPTX_CT)
+    await db.block_slides.update_one(
+        {"block_id": block_id},
+        {"$set": {"block_id": block_id,
+                  "pptx": {"storage_path": storage_path, "filename": fname, "version": version,
+                           "uploaded_at": now_utc().isoformat(), "uploaded_by": guide["user_id"]}}},
+        upsert=True,
+    )
+    return {"ok": True, "block_id": block_id, "pptx": {"filename": fname, "version": version}}
+
+
+@api_router.delete("/block-slides/{block_id}/pptx")
+async def delete_block_pptx(block_id: str, guide=Depends(require_guide)):
+    await db.block_slides.update_one({"block_id": block_id}, {"$unset": {"pptx": ""}})
+    return {"ok": True}
+
+
+@api_router.get("/decks/pptx/{fname}")
+async def serve_block_pptx(fname: str):
+    """Public: serves an uploaded PowerPoint so the Office viewer + download link can fetch it.
+    fname is '<block_id>.pptx' so the URL ends in a real extension."""
+    block_id = fname.rsplit(".", 1)[0]
+    row = await db.block_slides.find_one({"block_id": block_id})
+    if not row or not row.get("pptx"):
+        raise HTTPException(status_code=404, detail="No PowerPoint uploaded for this block")
+    pptx = row["pptx"]
+    data, ct = await run_in_threadpool(objstore.get_object, pptx["storage_path"])
+    return Response(
+        content=data, media_type=PPTX_CT,
+        headers={
+            "Content-Disposition": f'inline; filename="{pptx.get("filename", "deck.pptx")}"',
+            "Cache-Control": "public, max-age=3600",
+        },
+    )
 
 
 TRACK_NAMES = {"docs": "Word Processing", "sheets": "Spreadsheets", "slides": "Presentations", "email": "Email & Communication"}

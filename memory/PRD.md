@@ -132,6 +132,14 @@ Gamified education platform. Stack: React + FastAPI + MongoDB. Auth: Google sign
 - ✅ **Guide override preserved**: a Guide's published Google Slides link still renders as a live iframe and takes priority; "Use starter deck" reverts to the built-in carousel.
 - ✅ Verified via screenshot as guide: carousel renders on-brand slide 1/10, next advances to 2/10, download+fullscreen controls present. Works in preview (no external service). ⚠️ Requires **redeploy** for production.
 
+## Implemented (2026-06) — Iteration 13: Teacher PowerPoint uploads (Emergent Object Storage + Office viewer)
+- ✅ **Guides can upload their own .pptx per block** via "Manage slides" (Option 2). File is stored in **Emergent Object Storage** (no external account; persists across deploys) — no LibreOffice/Cloudinary needed.
+- ✅ **Students see the uploaded deck** embedded via Microsoft's free Office Online viewer (renders the real slides; confirmed loading in preview) with a guaranteed **Open / Download** fallback link.
+- ✅ **Display priority per block**: guide's Google Slides link → guide's uploaded PowerPoint → built-in starter-deck carousel.
+- ✅ Backend: `POST /api/block-slides/{block_id}/upload-pptx` (guide-only, .pptx/.ppt, ≤40MB), `DELETE /api/block-slides/{block_id}/pptx` (guide-only), public `GET /api/decks/pptx/{block_id}.pptx` (streams from object storage for the Office viewer + download). `GET /api/block-slides/{track}` now returns `{embed_url, pptx:{filename,version}}` per block. Helper: `/app/backend/objstore.py` (lazy key init — must read EMERGENT_LLM_KEY at call time, not import time).
+- ✅ Verified via curl: upload 200, metadata, public serve 200 (correct content-type/size), explorer upload 403, delete → 404, bad extension 400. Frontend screenshot: Manage panel (both options) + Office viewer rendering the uploaded deck. ⚠️ Requires **redeploy** for production.
+- Note: Cloudinary was considered for server-side pptx→image conversion but skipped (account approval takes ~3 days). Can be added later to auto-convert uploads into the native carousel.
+
 ## Backlog / Remaining (older)
 - P1: Repurpose Guide Review Queue to flag struggling Explorers (reflections removed).
 - P1: Guide authoring of quests. Rank-movement indicators.
