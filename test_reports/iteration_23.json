@@ -1,0 +1,43 @@
+{
+  "summary": "Full backend + frontend validation of iteration-23 work: leaderboard scopes (class/teacher/school/global), non-zero points regression fix, /me/rank-scopes, POST /me/school, and Guide Console by-class Reports / Test Scores / Assignments pickers. Backend: 21/21 pytest passed (new /app/backend/tests/test_rank_scopes.py). Frontend: all requested flows passed with cookie-injected guide (em_guide_tok) and explorer (em_exp_tok) sessions. The original complaint (rankings showing 0) is confirmed FIXED - class/teacher/school scope all report North Star = 100 for Test Class Assign, both in individual rows and Teams standings.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Leaderboard (/leaderboard) - explorer with no class",
+        "issues": ["Scope TabsList renders a single lone 'Everybody' pill (expected per spec, but visually looks like a stray button); consider hiding the tab strip entirely when only one scope is available."]
+      },
+      {
+        "screen": "Leaderboard - empty class scope",
+        "issues": ["Selecting a class with no members renders an empty area with no empty-state copy (just the 'Ranked by Total points' footer). An explicit 'No Explorers in this class yet' message would be clearer."]
+      },
+      {
+        "screen": "Guide Console - Reports tab",
+        "issues": ["Email column shows 50% in red for Em Fresh Explorer while the sub-label reads '1/14 mastered' — the red/danger colour applies to the average score, which reads as an error next to a positive mastery count. Cosmetic only."]
+      }
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_rank_scopes.py", "/app/test_reports/pytest/iter23.xml"],
+  "action_items": [
+    "Optional: default class ordering. Both the Guide Console ClassPicker and the Leaderboard class select default to the FIRST item of the newest-first expeditions list, i.e. the most recently created class (a freshly created empty class became the default). If the intended default is the primary/first-created class, sort ascending or persist the last selection.",
+    "Optional: no DELETE /api/expeditions/{id} endpoint exists (returns 405) — QA had to remove a test class directly in MongoDB. Consider adding a guide-scoped delete/archive.",
+    "Optional UI polish items listed under design_issues (empty-state copy, single-tab scope strip)."
+  ],
+  "critical_code_review_comments": [
+    "GuideConsole.jsx is 837 lines with ~10 tab components in one file — over the 700-line guideline; split ReportsTab / TestScoresTab / AssignmentsTab / QuestionBank into src/pages/guide/*.jsx.",
+    "Leaderboard.jsx loadBoard() has no try/catch around api.get('/leaderboard') and the /me/rank-scopes effect has no error handling — a 4xx/5xx leaves the page on the infinite spinner with no error UI (only the finally-less initial effect). Add an error state.",
+    "Leaderboard.jsx line 40: for scope 'teacher'/'school' it still sends expedition_id, so the backend derives the guide from the class. Works, but scope=teacher for an explorer in multiple classes silently uses classes[0]; make the intent explicit (send guide_id/school from /me/rank-scopes).",
+    "server.py leaderboard(): query['expedition_ids'] = '__none__' sentinel to force an empty result is a hack; prefer returning early with empty entries/fleets.",
+    "server.py leaderboard() loads up to 5000 users + 50000 points_events into memory per request; fine at current scale but should move to an aggregation pipeline before real classroom volume."
+  ],
+  "updated_files": ["/app/backend/tests/test_rank_scopes.py"],
+  "success_rate": { "backend": "100% (21/21)", "frontend": "100% of requested flows" },
+  "seed_data_creation": "Temporarily created class 'TEST_QA Class B' (exp_5af0c938d95a) + assignment asg_fb744db4e994 to exercise the multi-class pickers, then deleted both (assignment via DELETE /api/assignments, expedition via mongosh since no delete endpoint). Also set em-guide school to 'TEST_QA UI School' and 'TEST_QA School' during tests and restored 'Northgate Middle School'. Verified via /api/me/rank-scopes that final state is exactly one class 'Test Class Assign' (exp_61e14d36b5eb) and school 'Northgate Middle School'.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "Cookie/Bearer session_token=em_guide_tok (guide em-guide), em_exp_tok (explorer em-exp) on explorer-journey-4.preview.emergentagent.com",
+  "context_for_next_testing_agent": "Verified results. BACKEND (test_rank_scopes.py, 21 passed): scope=class requires expedition_id (400), bad id -> 404, scope_label='Test Class Assign', max score 100 > 0, fleets North Star=100; scope=teacher label \"Em Guide's Explorers\" with North Star 100; scope=school label 'Northgate Middle School'; unknown school -> empty entries 200; period=week -> metric 'week'; overall score == horizon_points for every entry (proves total points incl. Skill Studio/checkpoints); /me/rank-scopes guide = 1 class + teacher + school, explorer em-exp = empty classes/None teacher; POST /me/school works for guide, 403 for explorer; studio+assessment reports 403 for explorer, 404 for bad expedition_id; /leaderboard unauthenticated -> 401/403. FRONTEND: guide sees all 4 scope tabs, subtitle updates per scope ('Ranking <label> by Total/This Week points'); Teams toggle shows fleet-standings with fleet-row-0 'North Star 100' and toggles back to individual-rankings; explorer em-exp sees ONLY scope-global (expected) with 23 rows and 2 fleets (North Star 3325 / Unaligned 3277). Guide Console: school-panel prefilled 'Northgate Middle School', save shows toast 'School saved — students can now rank by school.'; Reports/Test Scores class-picker fires GET /studio/reports/all?expedition_id=... and /assessments/reports?expedition_id=... on change and shows only that class's students (Class B = 0 rows, Test Class Assign = 1 row Em Fresh Explorer); Assignments list picker filters cards exactly (Class B -> asg_fb744db4e994 only, Test Class Assign -> asg_e5526e6e4d2e only) and assign-expedition-select create form remains functional. Zero console errors and zero .error elements across all runs.",
+  "rca_of_the_issue": "Original zeros bug: 'By Territory' ranking counted only legacy CTE quest completions. Current implementation ranks on users.horizon_points (metric 'overall') or summed points_events deltas (metric 'week'), both of which include Skill Studio and Checkpoint awards — verified by the assertion score == horizon_points and by the non-zero 100-point class/teacher/school results."
+}

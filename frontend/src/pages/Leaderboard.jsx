@@ -13,43 +13,47 @@ const MEDAL = ["#FB923C", "#C0C0C0", "#CD7F32"];
 
 export default function Leaderboard() {
   const { user } = useAuth();
-  const [expeditions, setExpeditions] = useState([]);
-  const [territories, setTerritories] = useState([]);
-  const [scope, setScope] = useState("global");
-  const [tab, setTab] = useState("class");
-  const [territoryId, setTerritoryId] = useState("");
+  const [scopes, setScopes] = useState({ classes: [], teacher: null, school: "" });
+  const [scope, setScope] = useState("class");
+  const [classId, setClassId] = useState("");
+  const [period, setPeriod] = useState("total");
   const [fleetMode, setFleetMode] = useState(false);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
-      const path = user.role === "guide" ? "/expeditions" : "/me/expeditions";
-      const [exps, cur] = await Promise.all([api.get(path), api.get("/curriculum")]);
-      setExpeditions(exps.data);
-      setTerritories(cur.data.territories);
-      setTerritoryId(cur.data.territories[0]?.id || "");
-      if (exps.data.length > 0) setScope(exps.data[0].expedition_id);
+      try {
+        const res = await api.get("/me/rank-scopes");
+        setScopes(res.data);
+        if (res.data.classes?.length) setClassId(res.data.classes[0].expedition_id);
+        else setScope("global");
+      } catch (e) {
+        setScope("global");
+      }
     })();
-  }, [user.role]);
+  }, []);
+
+  const hasClasses = scopes.classes?.length > 0;
 
   const loadBoard = useCallback(async () => {
     setLoading(true);
     try {
-      const params = {};
-      if (scope !== "global") params.expedition_id = scope;
-      if (tab === "territory" && territoryId) params.territory_id = territoryId;
-      if (tab === "week") params.period = "week";
+      const params = { scope };
+      if (scope === "class") { if (!classId) { setLoading(false); return; } params.expedition_id = classId; }
+      else if (scope !== "global" && classId) params.expedition_id = classId;
+      if (period === "week") params.period = "week";
       const res = await api.get("/leaderboard", { params });
       setData(res.data);
     } finally {
       setLoading(false);
     }
-  }, [scope, tab, territoryId]);
+  }, [scope, classId, period]);
 
   useEffect(() => { loadBoard(); }, [loadBoard]);
 
-  const metricLabel = tab === "week" ? "This Week" : tab === "territory" ? (territories.find((t) => t.id === territoryId)?.name || "Territory") : "Total";
+  const metricLabel = period === "week" ? "This Week" : "Total";
+  const scopeLabel = data?.scope_label || "";
 
   return (
     <div className="min-h-screen">
@@ -59,43 +63,42 @@ export default function Leaderboard() {
           <div>
             <p className="text-xs uppercase tracking-widest font-mono-data text-primary">The horizon awaits</p>
             <h1 className="font-display text-5xl tracking-tight flex items-center gap-3"><Trophy className="w-9 h-9 text-primary" /> Explorer Rankings</h1>
+            {scopeLabel && <p className="text-sm text-muted-foreground mt-1">Ranking <span className="text-[#22D3EE]">{scopeLabel}</span> by {metricLabel} points</p>}
           </div>
-          <Select value={scope} onValueChange={setScope}>
-            <SelectTrigger data-testid="leaderboard-scope-select" className="w-64 bg-white/5 border-white/10">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="global">All Explorers</SelectItem>
-              {expeditions.map((e) => (<SelectItem key={e.expedition_id} value={e.expedition_id}>{e.name}</SelectItem>))}
-            </SelectContent>
-          </Select>
         </div>
 
-        {/* Tabs + fleet toggle */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <Tabs value={tab} onValueChange={setTab}>
-            <TabsList className="bg-white/5 border border-white/10">
-              <TabsTrigger value="class" data-testid="tab-my-class">My Class</TabsTrigger>
-              <TabsTrigger value="territory" data-testid="tab-by-territory">By Territory</TabsTrigger>
-              <TabsTrigger value="week" data-testid="tab-this-week">This Week</TabsTrigger>
-            </TabsList>
-          </Tabs>
+        {/* Scope selector */}
+        <div className="flex flex-col gap-4 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <Tabs value={scope} onValueChange={setScope} className={hasClasses ? "" : "hidden"}>
+              <TabsList className="bg-white/5 border border-white/10">
+                {hasClasses && <TabsTrigger value="class" data-testid="scope-class">My Class</TabsTrigger>}
+                {hasClasses && <TabsTrigger value="teacher" data-testid="scope-teacher">By Teacher</TabsTrigger>}
+                {hasClasses && <TabsTrigger value="school" data-testid="scope-school">By School</TabsTrigger>}
+                <TabsTrigger value="global" data-testid="scope-global">Everybody</TabsTrigger>
+              </TabsList>
+            </Tabs>
 
-          <div className="flex items-center gap-4">
-            {tab === "territory" && (
-              <Select value={territoryId} onValueChange={setTerritoryId}>
-                <SelectTrigger data-testid="territory-select" className="w-48 bg-white/5 border-white/10">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {territories.map((t) => (<SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>))}
-                </SelectContent>
-              </Select>
-            )}
-            <div className="flex items-center gap-2">
-              <Users className="w-4 h-4 text-[#22D3EE]" />
-              <Label htmlFor="fleet-mode" className="text-sm cursor-pointer">Fleets</Label>
-              <Switch id="fleet-mode" data-testid="fleet-mode-toggle" checked={fleetMode} onCheckedChange={setFleetMode} />
+            <div className="flex items-center gap-4 flex-wrap">
+              {scope === "class" && scopes.classes.length > 1 && (
+                <Select value={classId} onValueChange={setClassId}>
+                  <SelectTrigger data-testid="leaderboard-class-select" className="w-52 bg-white/5 border-white/10"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {scopes.classes.map((c) => <SelectItem key={c.expedition_id} value={c.expedition_id}>{c.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              )}
+              <Tabs value={period} onValueChange={setPeriod}>
+                <TabsList className="bg-white/5 border border-white/10">
+                  <TabsTrigger value="total" data-testid="period-total">Total</TabsTrigger>
+                  <TabsTrigger value="week" data-testid="period-week">This Week</TabsTrigger>
+                </TabsList>
+              </Tabs>
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4 text-[#22D3EE]" />
+                <Label htmlFor="fleet-mode" className="text-sm cursor-pointer">Teams</Label>
+                <Switch id="fleet-mode" data-testid="fleet-mode-toggle" checked={fleetMode} onCheckedChange={setFleetMode} />
+              </div>
             </div>
           </div>
         </div>
@@ -103,10 +106,10 @@ export default function Leaderboard() {
         {loading || !data ? (
           <div className="flex justify-center py-32"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
         ) : fleetMode ? (
-          /* -------- Fleet team mode -------- */
+          /* -------- Team (Fleet) mode -------- */
           <div className="space-y-3" data-testid="fleet-standings">
-            <p className="text-sm text-muted-foreground mb-4">Team standings by <span className="text-[#22D3EE]">{metricLabel}</span> points — every Explorer's score adds to their Fleet.</p>
-            {data.fleets.length === 0 && <p className="text-muted-foreground py-12 text-center">No fleets yet.</p>}
+            <p className="text-sm text-muted-foreground mb-4">Team standings across <span className="text-[#22D3EE]">{scopeLabel}</span> by {metricLabel} points — every Explorer's score adds to their Team.</p>
+            {data.fleets.length === 0 && <p className="text-muted-foreground py-12 text-center">No team points here yet.</p>}
             {data.fleets.map((f, i) => {
               const max = data.fleets[0]?.points || 1;
               return (
@@ -128,7 +131,7 @@ export default function Leaderboard() {
         ) : (
           /* -------- Individual rankings -------- */
           <div className="space-y-2" data-testid="individual-rankings">
-            {data.entries.length === 0 && <p className="text-muted-foreground py-12 text-center">No Explorers here yet. Complete a Trial to claim the top spot!</p>}
+            {data.entries.length === 0 && <p className="text-muted-foreground py-12 text-center">No Explorers here yet. Complete a mission or checkpoint to claim the top spot!</p>}
             {data.entries.map((e, i) => (
               <div
                 key={e.user_id}

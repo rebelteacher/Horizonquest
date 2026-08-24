@@ -146,6 +146,14 @@ Gamified education platform. Stack: React + FastAPI + MongoDB. Auth: Google sign
 - ✅ **Block → Checkpoint routing**: In `StudioMission.jsx`, after the **last lesson of a block**, the result CTA is "Take the Checkpoint" (→ `/assessment/<cpId>`) instead of rolling into the next block's Lesson 1. Gated on the checkpoint's `unlocked` flag (refreshed after submit): if the block isn't fully passed yet, shows "Back to this block's lessons" (→ Studio hub) to avoid the locked-assessment dead-end. Guides always see the checkpoint (preview).
 - ✅ Verified: backend via curl (rename 200/empty 400/explorer 403; admin search 200/short 400/explorer 403; own-role 400; role flip+restore); testing_agent (iteration_22) confirmed all 3 frontend flows; screenshots confirmed the unlock-gating fix (fresh explorer → finish-block, guide → checkpoint). ⚠️ Requires **redeploy** for production.
 
+## Implemented (2026-06) — Iteration 15: By-class views, ranking scopes, zeros-bug fix
+- ✅ **Rankings zeros bug FIXED (root cause found)**: the "By Territory" ranking only counted legacy CTE quests, so Skill Studio + Checkpoint work showed 0. Rankings now rank on **total points** (`horizon_points`) / **This Week** (`points_events`), both of which include Skill Studio + Checkpoints. Confirmed non-zero (North Star = 100) for a class that finished Block 1 + checkpoint.
+- ✅ **Ranking scopes (individuals + teams)**: Leaderboard now has **My Class / By Teacher / By School / Everybody** tabs (`/leaderboard?scope=class|teacher|school|global`), a **Total / This Week** toggle, and the **Teams** toggle — all respect the selected scope. Backend derives teacher/school from the class context. New: `GET /api/me/rank-scopes`.
+- ✅ **School field**: teachers set their school in Guide Console → Expeditions ("Your school" panel, `POST /api/me/school`); drives the "By School" scope. `school` added to `_public_user`.
+- ✅ **By-class Reports / Test Scores / Assignments**: each now has a class picker (defaults to first class, no "All"). `GET /api/studio/reports/all?expedition_id=` (also fixed a bug where it leaked ALL explorers globally) and `GET /api/assessments/reports?expedition_id=`; Assignments list filters cards by selected class.
+- ✅ Verified: testing_agent iteration_23 — backend 21/21 pytest, frontend 100% of flows, zero console errors. ⚠️ Requires **redeploy** for production.
+- NOTE: The **Mastery tab** still reflects the legacy CTE curriculum standards (unchanged per user's "don't change what you have done"). If they later want it to reflect Skill Studio/Checkpoint mastery, that's a follow-up.
+
 ## Backlog / Remaining (older)
 - P1: Repurpose Guide Review Queue to flag struggling Explorers (reflections removed).
 - P1: Guide authoring of quests. Rank-movement indicators.

@@ -202,6 +202,43 @@ def _public_user(u):
         "compass_marks": u.get("compass_marks", 0),
         "fleet": u.get("fleet"),
         "expedition_ids": u.get("expedition_ids", []),
+        "school": u.get("school", ""),
+    }
+
+
+class SchoolUpdate(BaseModel):
+    school: str
+
+
+@api_router.post("/me/school")
+async def set_my_school(payload: SchoolUpdate, guide=Depends(require_guide)):
+    school = (payload.school or "").strip()
+    await db.users.update_one({"user_id": guide["user_id"]}, {"$set": {"school": school}})
+    return {"ok": True, "school": school}
+
+
+@api_router.get("/me/rank-scopes")
+async def my_rank_scopes(user=Depends(get_current_user)):
+    """Available leaderboard scopes for the current user: their classes, teacher, and school."""
+    if user.get("role") == "guide":
+        exps = await db.expeditions.find({"guide_id": user["user_id"]}, {"_id": 0, "expedition_id": 1, "name": 1}).sort("created_at", -1).to_list(200)
+        return {
+            "classes": [{"expedition_id": e["expedition_id"], "name": e["name"]} for e in exps],
+            "teacher": {"guide_id": user["user_id"], "name": user.get("name") or "You"},
+            "school": user.get("school") or "",
+        }
+    ids = user.get("expedition_ids", [])
+    exps = await db.expeditions.find({"expedition_id": {"$in": ids}}, {"_id": 0}).to_list(200) if ids else []
+    teacher, school = None, ""
+    if exps:
+        g = await db.users.find_one({"user_id": exps[0]["guide_id"]}, {"_id": 0, "user_id": 1, "name": 1, "school": 1})
+        if g:
+            teacher = {"guide_id": g["user_id"], "name": g.get("name") or "Teacher"}
+            school = g.get("school") or ""
+    return {
+        "classes": [{"expedition_id": e["expedition_id"], "name": e["name"]} for e in exps],
+        "teacher": teacher,
+        "school": school,
     }
 
 
@@ -565,12 +602,22 @@ async def studio_track(track_id: str, user=Depends(get_current_user)):
 
 
 @api_router.get("/studio/reports/all")
-async def studio_reports(guide=Depends(get_current_user)):
+async def studio_reports(expedition_id: Optional[str] = None, guide=Depends(get_current_user)):
     if guide.get("role") != "guide":
         raise HTTPException(status_code=403, detail="Guides only")
     tracks = ["docs", "sheets", "slides", "email"]
     totals = {t: len(skillstudio.MISSIONS.get(t, [])) for t in tracks}
-    explorers = await db.users.find({"role": "explorer"}, {"_id": 0, "user_id": 1, "name": 1, "email": 1}).to_list(1000)
+    exps = await db.expeditions.find({"guide_id": guide["user_id"]}, {"_id": 0, "expedition_id": 1}).to_list(200)
+    my_exp_ids = [e["expedition_id"] for e in exps]
+    if expedition_id:
+        if expedition_id not in my_exp_ids:
+            raise HTTPException(status_code=404, detail="Expedition not found")
+        member_filter = {"expedition_ids": expedition_id, "role": "explorer"}
+    elif my_exp_ids:
+        member_filter = {"expedition_ids": {"$in": my_exp_ids}, "role": "explorer"}
+    else:
+        member_filter = None
+    explorers = await db.users.find(member_filter, {"_id": 0, "user_id": 1, "name": 1, "email": 1}).to_list(2000) if member_filter else []
     rows = []
     for ex in explorers:
         prog = await db.studio_progress.find({"user_id": ex["user_id"]}, {"_id": 0}).to_list(500)
@@ -830,11 +877,18 @@ async def my_assessments(user=Depends(get_current_user)):
 
 
 @api_router.get("/assessments/reports")
-async def assessment_reports(guide=Depends(require_guide)):
+async def assessment_reports(expedition_id: Optional[str] = None, guide=Depends(require_guide)):
     exps = await db.expeditions.find({"guide_id": guide["user_id"]}, {"_id": 0, "expedition_id": 1}).to_list(100)
     exp_ids = [e["expedition_id"] for e in exps]
-    members = await db.users.find({"expedition_ids": {"$in": exp_ids}, "role": "explorer"},
-                                  {"_id": 0, "user_id": 1, "name": 1, "email": 1}).to_list(1000) if exp_ids else []
+    if expedition_id:
+        if expedition_id not in exp_ids:
+            raise HTTPException(status_code=404, detail="Expedition not found")
+        member_query = {"expedition_ids": expedition_id, "role": "explorer"}
+    elif exp_ids:
+        member_query = {"expedition_ids": {"$in": exp_ids}, "role": "explorer"}
+    else:
+        member_query = None
+    members = await db.users.find(member_query, {"_id": 0, "user_id": 1, "name": 1, "email": 1}).to_list(2000) if member_query else []
     all_ids = [cid for cids in assessments.TRACK_CHECKPOINTS.values() for cid in cids] + [assessments.FINAL_ID]
     columns = [{"id": cid, "title": assessments.assessment_meta(cid)["title"]} for cid in all_ids]
     member_ids = [m["user_id"] for m in members]
@@ -1088,30 +1142,63 @@ async def studio_submit(track_id: str, mission_id: str, payload: MissionSubmit, 
 # ---------------- Leaderboard ----------------
 @api_router.get("/leaderboard")
 async def leaderboard(
+    scope: str = "global",
     expedition_id: Optional[str] = None,
-    territory_id: Optional[str] = None,
+    guide_id: Optional[str] = None,
+    school: Optional[str] = None,
     period: Optional[str] = None,
     user=Depends(get_current_user),
 ):
     query = {"role": "explorer"}
-    if expedition_id:
+    scope_label = "Everybody on HorizonQuest"
+
+    async def _guide_from_context():
+        gid = guide_id
+        if not gid and expedition_id:
+            e = await db.expeditions.find_one({"expedition_id": expedition_id}, {"_id": 0, "guide_id": 1})
+            gid = e["guide_id"] if e else None
+        if not gid and user.get("role") == "guide":
+            gid = user["user_id"]
+        return gid
+
+    if scope == "class":
+        if not expedition_id:
+            raise HTTPException(status_code=400, detail="expedition_id required for class scope")
         exp = await db.expeditions.find_one({"expedition_id": expedition_id}, {"_id": 0})
         if not exp:
             raise HTTPException(status_code=404, detail="Expedition not found")
         query["expedition_ids"] = expedition_id
-    explorers = await db.users.find(query, {"_id": 0, "user_id": 1, "name": 1, "picture": 1, "fleet": 1, "horizon_points": 1, "compass_marks": 1, "expedition_ids": 1}).to_list(1000)
+        scope_label = exp["name"]
+    elif scope == "teacher":
+        gid = await _guide_from_context()
+        if not gid:
+            raise HTTPException(status_code=400, detail="Could not determine the teacher")
+        exps = await db.expeditions.find({"guide_id": gid}, {"_id": 0, "expedition_id": 1}).to_list(500)
+        exp_ids = [e["expedition_id"] for e in exps]
+        query["expedition_ids"] = {"$in": exp_ids} if exp_ids else "__none__"
+        g = await db.users.find_one({"user_id": gid}, {"_id": 0, "name": 1})
+        scope_label = f"{(g or {}).get('name', 'Teacher')}'s Explorers"
+    elif scope == "school":
+        sch = (school or "").strip()
+        if not sch:
+            gid = await _guide_from_context()
+            if gid:
+                g = await db.users.find_one({"user_id": gid}, {"_id": 0, "school": 1})
+                sch = (g or {}).get("school") or ""
+        if not sch:
+            return {"entries": [], "fleets": [], "metric": "overall", "scope": "school", "scope_label": "School (not set yet)"}
+        guides = await db.users.find({"role": "guide", "school": sch}, {"_id": 0, "user_id": 1}).to_list(2000)
+        gids = [g["user_id"] for g in guides]
+        exps = await db.expeditions.find({"guide_id": {"$in": gids}}, {"_id": 0, "expedition_id": 1}).to_list(5000) if gids else []
+        exp_ids = [e["expedition_id"] for e in exps]
+        query["expedition_ids"] = {"$in": exp_ids} if exp_ids else "__none__"
+        scope_label = sch
+
+    explorers = await db.users.find(query, {"_id": 0, "user_id": 1, "name": 1, "picture": 1, "fleet": 1, "horizon_points": 1, "compass_marks": 1, "expedition_ids": 1}).to_list(5000)
     ids = [u["user_id"] for u in explorers]
 
     score_map = {}
-    if territory_id:
-        metric = "territory"
-        prog = await db.progress.find({"user_id": {"$in": ids}, "territory_id": territory_id}, {"_id": 0, "user_id": 1, "points_earned": 1}).to_list(10000)
-        for p in prog:
-            score_map[p["user_id"]] = score_map.get(p["user_id"], 0) + p.get("points_earned", 0)
-        labs = await db.lab_completions.find({"user_id": {"$in": ids}, "territory_id": territory_id}, {"_id": 0, "user_id": 1, "bonus": 1}).to_list(10000)
-        for l in labs:
-            score_map[l["user_id"]] = score_map.get(l["user_id"], 0) + l.get("bonus", 0)
-    elif period == "week":
+    if period == "week":
         metric = "week"
         cutoff = (now_utc() - timedelta(days=7)).isoformat()
         evs = await db.points_events.find({"user_id": {"$in": ids}, "created_at": {"$gte": cutoff}}, {"_id": 0, "user_id": 1, "delta": 1}).to_list(50000)
@@ -1145,7 +1232,7 @@ async def leaderboard(
         fleet_totals[f] = fleet_totals.get(f, 0) + score_map.get(u["user_id"], 0)
     fleets = [{"fleet": k, "points": v} for k, v in sorted(fleet_totals.items(), key=lambda x: -x[1])]
 
-    return {"entries": entries, "fleets": fleets, "metric": metric}
+    return {"entries": entries, "fleets": fleets, "metric": metric, "scope": scope, "scope_label": scope_label}
 
 
 # ---------------- Guide: Review Queue & Mastery ----------------

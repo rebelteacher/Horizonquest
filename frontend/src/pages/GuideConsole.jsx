@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Anchor, Plus, Copy, Users, ClipboardCheck, BarChart3, Trophy, Loader2, Check, Compass, BookOpen, Target, Download, ListChecks, Trash2, X as XIcon, BookMarked, Printer, Pencil, Search, UserCog } from "lucide-react";
+import { Anchor, Plus, Copy, Users, ClipboardCheck, BarChart3, Trophy, Loader2, Check, Compass, BookOpen, Target, Download, ListChecks, Trash2, X as XIcon, BookMarked, Printer, Pencil, Search, UserCog, School } from "lucide-react";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from "recharts";
 
@@ -57,8 +57,8 @@ export default function GuideConsole() {
           <TabsContent value="mastery" className="mt-6"><MasteryTab expeditions={expeditions} /></TabsContent>
           <TabsContent value="curriculum" className="mt-6"><CurriculumTab /></TabsContent>
           <TabsContent value="assignments" className="mt-6"><AssignmentsTab expeditions={expeditions} /></TabsContent>
-          <TabsContent value="reports" className="mt-6"><ReportsTab /></TabsContent>
-          <TabsContent value="testscores" className="mt-6"><TestScoresTab /></TabsContent>
+          <TabsContent value="reports" className="mt-6"><ReportsTab expeditions={expeditions} /></TabsContent>
+          <TabsContent value="testscores" className="mt-6"><TestScoresTab expeditions={expeditions} /></TabsContent>
           <TabsContent value="questionbank" className="mt-6"><QuestionBankTab /></TabsContent>
           <TabsContent value="leaderboard" className="mt-6"><LeaderboardControlsTab expeditions={expeditions} reload={loadExpeditions} /></TabsContent>
         </Tabs>
@@ -66,6 +66,45 @@ export default function GuideConsole() {
     </div>
   );
 }
+
+function ClassPicker({ expeditions = [], value, onChange }) {
+  return (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger data-testid="class-picker" className="w-56 bg-white/5 border-white/10">
+        <SelectValue placeholder="Choose a class…" />
+      </SelectTrigger>
+      <SelectContent>
+        {expeditions.map((e) => <SelectItem key={e.expedition_id} value={e.expedition_id} data-testid={`class-opt-${e.join_code || e.expedition_id}`}>{e.name}</SelectItem>)}
+      </SelectContent>
+    </Select>
+  );
+}
+
+function SchoolPanel() {
+  const { user, refresh } = useAuth();
+  const [school, setSchool] = useState(user?.school || "");
+  const [saving, setSaving] = useState(false);
+  const save = async () => {
+    setSaving(true);
+    try {
+      await api.post("/me/school", { school: school.trim() });
+      if (refresh) await refresh();
+      toast.success(school.trim() ? "School saved — students can now rank by school." : "School cleared.");
+    } catch (e) { toast.error("Could not save your school."); }
+    finally { setSaving(false); }
+  };
+  return (
+    <div className="hq-glass rounded-2xl p-6 border-t border-t-[#34D399]/30" data-testid="school-panel">
+      <h2 className="font-display text-2xl mb-1 flex items-center gap-2"><School className="w-5 h-5 text-[#34D399]" /> Your school</h2>
+      <p className="text-sm text-muted-foreground mb-4">Set your school so Explorers can compare rankings across everyone at the same school.</p>
+      <div className="flex gap-2">
+        <Input data-testid="school-input" value={school} onChange={(e) => setSchool(e.target.value)} placeholder="e.g. Northgate Middle School" className="bg-white/5 border-white/10" />
+        <Button data-testid="school-save-btn" onClick={save} disabled={saving} className="bg-[#34D399] text-[#04121f] hover:bg-[#34D399]/90 shrink-0">{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save"}</Button>
+      </div>
+    </div>
+  );
+}
+
 
 function ExpeditionsTab({ expeditions, loading, reload }) {
   const [name, setName] = useState("");
@@ -123,6 +162,7 @@ function ExpeditionsTab({ expeditions, loading, reload }) {
           </div>
         </div>
         <RoleFixPanel />
+        <SchoolPanel />
       </div>
 
       <div className="lg:col-span-2">
@@ -255,6 +295,8 @@ function AssignmentsTab({ expeditions }) {
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [listExpId, setListExpId] = useState("");
+  useEffect(() => { if (expeditions.length && !listExpId) setListExpId(expeditions[0].expedition_id); }, [expeditions, listExpId]);
 
   const loadAssignments = useCallback(async () => {
     setLoading(true);
@@ -330,10 +372,18 @@ function AssignmentsTab({ expeditions }) {
       </div>
 
       <div className="lg:col-span-2">
-        {loading ? <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div> : (
+        {loading ? <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div> : (() => {
+          const shown = assignments.filter((a) => !listExpId || a.expedition_id === listExpId);
+          return (
           <div className="space-y-4">
-            {assignments.length === 0 && <p className="text-muted-foreground py-12 text-center">No assignments yet. Assign missions to a class to track who's finished.</p>}
-            {assignments.map((a) => {
+            {expeditions.length > 0 && (
+              <div className="flex items-center gap-3 flex-wrap">
+                <ClassPicker expeditions={expeditions} value={listExpId} onChange={setListExpId} />
+                <p className="text-sm text-muted-foreground">Showing assignments for this class.</p>
+              </div>
+            )}
+            {shown.length === 0 && <p className="text-muted-foreground py-12 text-center">No assignments for this class yet. Assign missions above to track who's finished.</p>}
+            {shown.map((a) => {
               const mids = a.mission_ids;
               return (
                 <div key={a.assignment_id} data-testid={`assignment-card-${a.assignment_id}`} className="hq-glass rounded-2xl p-5">
@@ -378,7 +428,8 @@ function AssignmentsTab({ expeditions }) {
               );
             })}
           </div>
-        )}
+          );
+        })()}
       </div>
     </div>
   );
@@ -559,18 +610,21 @@ function QuestionBankTab() {
   );
 }
 
-function TestScoresTab() {
+function TestScoresTab({ expeditions = [] }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [expId, setExpId] = useState("");
+  useEffect(() => { if (expeditions.length && !expId) setExpId(expeditions[0].expedition_id); }, [expeditions, expId]);
   useEffect(() => {
-    api.get("/assessments/reports").then((r) => setData(r.data)).finally(() => setLoading(false));
-  }, []);
+    if (!expId) { setLoading(false); return; }
+    setLoading(true);
+    api.get("/assessments/reports", { params: { expedition_id: expId } }).then((r) => setData(r.data)).finally(() => setLoading(false));
+  }, [expId]);
   const color = (s) => (s == null ? "#64748b" : s >= 90 ? "#34D399" : s >= 70 ? "#22D3EE" : "#E11D48");
   const SHORT = { docs: "Docs", sheets: "Sheets", slides: "Slides", email: "Email" };
   const label = (id) => (id === "final" ? "Final" : `${SHORT[id.split("-")[0]] || id} C${id.slice(-1)}`);
 
-  if (loading) return <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
-  if (!data || data.students.length === 0) return <p className="text-sm text-muted-foreground py-10 text-center">No Explorers have joined your Expeditions yet. Test scores will appear here once students join and take a checkpoint or the final.</p>;
+  if (expeditions.length === 0) return <p className="text-sm text-muted-foreground py-10 text-center">Create a class first to see test scores.</p>;
 
   const exportCSV = () => {
     const esc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
@@ -585,9 +639,15 @@ function TestScoresTab() {
   return (
     <div>
       <div className="flex items-start justify-between gap-4 mb-4 flex-wrap">
-        <p className="text-sm text-muted-foreground">Best checkpoint & final scores per Explorer. Blank = not attempted yet.</p>
-        <button data-testid="testscores-export-csv-btn" onClick={exportCSV} className="inline-flex items-center gap-2 shrink-0 px-3 h-9 rounded-md bg-[#22D3EE] text-[#04121f] text-sm font-medium hover:bg-[#22D3EE]/90"><Download className="w-4 h-4" /> Export CSV</button>
+        <div className="flex items-center gap-3 flex-wrap">
+          <ClassPicker expeditions={expeditions} value={expId} onChange={setExpId} />
+          <p className="text-sm text-muted-foreground">Best checkpoint & final scores per Explorer. Blank = not attempted yet.</p>
+        </div>
+        {data && data.students.length > 0 && <button data-testid="testscores-export-csv-btn" onClick={exportCSV} className="inline-flex items-center gap-2 shrink-0 px-3 h-9 rounded-md bg-[#22D3EE] text-[#04121f] text-sm font-medium hover:bg-[#22D3EE]/90"><Download className="w-4 h-4" /> Export CSV</button>}
       </div>
+      {loading ? <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
+        : !data || data.students.length === 0 ? <p className="text-sm text-muted-foreground py-10 text-center">No Explorers in this class yet, or no checkpoints taken. Scores appear once students join and test.</p>
+        : (
       <div className="overflow-x-auto hq-scrollbar">
         <table className="w-full text-sm">
           <thead>
@@ -610,21 +670,25 @@ function TestScoresTab() {
           </tbody>
         </table>
       </div>
+      )}
     </div>
   );
 }
 
-function ReportsTab() {
+function ReportsTab({ expeditions = [] }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [expId, setExpId] = useState("");
   const TRACKS = [{ id: "docs", name: "Docs" }, { id: "sheets", name: "Sheets" }, { id: "slides", name: "Slides" }, { id: "email", name: "Email" }];
 
+  useEffect(() => { if (expeditions.length && !expId) setExpId(expeditions[0].expedition_id); }, [expeditions, expId]);
   useEffect(() => {
-    api.get("/studio/reports/all").then((r) => setData(r.data)).finally(() => setLoading(false));
-  }, []);
+    if (!expId) { setLoading(false); return; }
+    setLoading(true);
+    api.get("/studio/reports/all", { params: { expedition_id: expId } }).then((r) => setData(r.data)).finally(() => setLoading(false));
+  }, [expId]);
 
-  if (loading) return <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
-  if (!data || data.students.length === 0) return <p className="text-sm text-muted-foreground py-10 text-center">No Skill Studio activity yet. Once Explorers complete missions, their grades appear here.</p>;
+  if (expeditions.length === 0) return <p className="text-sm text-muted-foreground py-10 text-center">Create a class first to see Skill Studio grades.</p>;
 
   const gradeColor = (s) => (s >= 90 ? "#34D399" : s >= 80 ? "#22D3EE" : s >= 70 ? "#FB923C" : s >= 60 ? "#F59E0B" : "#E11D48");
 
@@ -653,11 +717,17 @@ function ReportsTab() {
   return (
     <div>
       <div className="flex items-start justify-between gap-4 mb-4 flex-wrap">
-        <p className="text-sm text-muted-foreground">Skill Studio scores per Explorer. Each cell shows missions mastered / total and the average score.</p>
-        <button data-testid="reports-export-csv-btn" onClick={exportCSV} className="inline-flex items-center gap-2 shrink-0 px-3 h-9 rounded-md bg-[#22D3EE] text-[#04121f] text-sm font-medium hover:bg-[#22D3EE]/90 transition-colors">
+        <div className="flex items-center gap-3 flex-wrap">
+          <ClassPicker expeditions={expeditions} value={expId} onChange={setExpId} />
+          <p className="text-sm text-muted-foreground">Skill Studio scores per Explorer. Each cell shows missions mastered / total and the average score.</p>
+        </div>
+        {data && data.students.length > 0 && <button data-testid="reports-export-csv-btn" onClick={exportCSV} className="inline-flex items-center gap-2 shrink-0 px-3 h-9 rounded-md bg-[#22D3EE] text-[#04121f] text-sm font-medium hover:bg-[#22D3EE]/90 transition-colors">
           <Download className="w-4 h-4" /> Export CSV
-        </button>
+        </button>}
       </div>
+      {loading ? <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
+        : !data || data.students.length === 0 ? <p className="text-sm text-muted-foreground py-10 text-center">No Skill Studio activity in this class yet. Once Explorers complete missions, their grades appear here.</p>
+        : (
       <div className="overflow-x-auto hq-scrollbar">
         <table className="w-full text-sm border-collapse" data-testid="reports-table">
           <thead>
@@ -691,6 +761,7 @@ function ReportsTab() {
           </tbody>
         </table>
       </div>
+      )}
     </div>
   );
 }
