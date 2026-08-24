@@ -140,6 +140,12 @@ Gamified education platform. Stack: React + FastAPI + MongoDB. Auth: Google sign
 - ✅ Verified via curl: upload 200, metadata, public serve 200 (correct content-type/size), explorer upload 403, delete → 404, bad extension 400. Frontend screenshot: Manage panel (both options) + Office viewer rendering the uploaded deck. ⚠️ Requires **redeploy** for production.
 - Note: Cloudinary was considered for server-side pptx→image conversion but skipped (account approval takes ~3 days). Can be added later to auto-convert uploads into the native carousel.
 
+## Implemented (2026-06) — Iteration 14: Role-fix, class rename, checkpoint routing
+- ✅ **Fix mis-signup role**: Guide Console → Expeditions tab now has a "Fix account role" panel (`RoleFixPanel`) — search any user by email/name and switch Explorer⇄Guide. Backend: `GET /api/admin/users?q=` and `POST /api/admin/users/{user_id}/role` (guide-only; a guide cannot change their own role).
+- ✅ **Rename a class**: inline "Rename" (pencil) on each Expedition card opens a dialog to edit name/description; **join code stays the same**. Backend: `PATCH /api/expeditions/{id}` (guide-owner only).
+- ✅ **Block → Checkpoint routing**: In `StudioMission.jsx`, after the **last lesson of a block**, the result CTA is "Take the Checkpoint" (→ `/assessment/<cpId>`) instead of rolling into the next block's Lesson 1. Gated on the checkpoint's `unlocked` flag (refreshed after submit): if the block isn't fully passed yet, shows "Back to this block's lessons" (→ Studio hub) to avoid the locked-assessment dead-end. Guides always see the checkpoint (preview).
+- ✅ Verified: backend via curl (rename 200/empty 400/explorer 403; admin search 200/short 400/explorer 403; own-role 400; role flip+restore); testing_agent (iteration_22) confirmed all 3 frontend flows; screenshots confirmed the unlock-gating fix (fresh explorer → finish-block, guide → checkpoint). ⚠️ Requires **redeploy** for production.
+
 ## Backlog / Remaining (older)
 - P1: Repurpose Guide Review Queue to flag struggling Explorers (reflections removed).
 - P1: Guide authoring of quests. Rank-movement indicators.

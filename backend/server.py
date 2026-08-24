@@ -9,6 +9,7 @@ import json
 import logging
 import string
 import random
+import re
 from pathlib import Path
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict
@@ -104,6 +105,15 @@ class RoleUpdate(BaseModel):
 class ExpeditionCreate(BaseModel):
     name: str
     description: Optional[str] = ""
+
+
+class ExpeditionRename(BaseModel):
+    name: str
+    description: Optional[str] = None
+
+
+class AdminRoleUpdate(BaseModel):
+    role: str
 
 
 class JoinRequest(BaseModel):
@@ -251,6 +261,50 @@ async def create_expedition(payload: ExpeditionCreate, guide=Depends(require_gui
 async def list_expeditions(guide=Depends(require_guide)):
     exps = await db.expeditions.find({"guide_id": guide["user_id"]}, {"_id": 0}).sort("created_at", -1).to_list(200)
     return exps
+
+
+@api_router.patch("/expeditions/{expedition_id}")
+async def rename_expedition(expedition_id: str, payload: ExpeditionRename, guide=Depends(require_guide)):
+    exp = await db.expeditions.find_one({"expedition_id": expedition_id, "guide_id": guide["user_id"]})
+    if not exp:
+        raise HTTPException(status_code=404, detail="Expedition not found")
+    name = (payload.name or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Class name cannot be empty.")
+    updates = {"name": name}
+    if payload.description is not None:
+        updates["description"] = payload.description.strip()
+    await db.expeditions.update_one({"expedition_id": expedition_id}, {"$set": updates})
+    updated = await db.expeditions.find_one({"expedition_id": expedition_id}, {"_id": 0})
+    return updated
+
+
+# ---------------- Account role admin (Guides/Teachers can fix mis-signups) ----------------
+@api_router.get("/admin/users")
+async def admin_search_users(q: str, guide=Depends(require_guide)):
+    q = (q or "").strip()
+    if len(q) < 3:
+        raise HTTPException(status_code=400, detail="Enter at least 3 characters of the email or name.")
+    rx = {"$regex": re.escape(q), "$options": "i"}
+    users = await db.users.find(
+        {"$or": [{"email": rx}, {"name": rx}]},
+        {"_id": 0, "user_id": 1, "email": 1, "name": 1, "role": 1, "picture": 1},
+    ).limit(20).to_list(20)
+    return {"users": users}
+
+
+@api_router.post("/admin/users/{user_id}/role")
+async def admin_set_user_role(user_id: str, payload: AdminRoleUpdate, guide=Depends(require_guide)):
+    if payload.role not in ("explorer", "guide"):
+        raise HTTPException(status_code=400, detail="Invalid role")
+    if user_id == guide["user_id"]:
+        raise HTTPException(status_code=400, detail="You can't change your own role here.")
+    target = await db.users.find_one({"user_id": user_id})
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+    await db.users.update_one({"user_id": user_id}, {"$set": {"role": payload.role}})
+    updated = await db.users.find_one({"user_id": user_id}, {"_id": 0})
+    return _public_user(updated)
 
 
 @api_router.get("/expeditions/{expedition_id}")

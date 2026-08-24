@@ -11,7 +11,7 @@ import { checkTask } from "@/lib/studioGrade";
 import { exportNodeToPDF } from "@/lib/pdf";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ArrowLeft, ArrowRight, ScrollText, CheckCircle2, Circle, Loader2, Download, Gem, Anchor, ListChecks, Trophy } from "lucide-react";
+import { ArrowLeft, ArrowRight, ScrollText, CheckCircle2, Circle, Loader2, Download, Gem, Anchor, ListChecks, Trophy, ClipboardCheck } from "lucide-react";
 import { toast } from "sonner";
 
 function renderInline(text) {
@@ -53,6 +53,7 @@ export default function StudioMission() {
   const [config, setConfig] = useState(null);
   const [mission, setMission] = useState(null);
   const [nextId, setNextId] = useState(null);
+  const [nextCheckpoint, setNextCheckpoint] = useState(null);
   const [doc, setDoc] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -78,6 +79,15 @@ export default function StudioMission() {
         setDoc(freshDoc);
         const idx = missions.findIndex((x) => x.id === missionId);
         setNextId(idx >= 0 && idx < missions.length - 1 ? missions[idx + 1].id : null);
+        // If this is the last lesson of its block, route the student to that block's checkpoint.
+        try {
+          const ar = await api.get(`/assessments/track/${track}`);
+          const cps = ar.data.checkpoints || [];
+          const cp = cps.find((c) => (c.covers || []).includes(missionId));
+          const blockMissions = cp ? missions.filter((x) => cp.covers.includes(x.id)) : [];
+          const isLastOfBlock = blockMissions.length > 0 && blockMissions[blockMissions.length - 1].id === missionId;
+          setNextCheckpoint(cp && isLastOfBlock ? { id: cp.id, unlocked: !!cp.unlocked } : null);
+        } catch (e) { setNextCheckpoint(null); }
       }
       setLoading(false);
     })();
@@ -116,6 +126,14 @@ export default function StudioMission() {
       const res = await api.post(`/studio/${track}/${missionId}/submit`, { doc });
       setResult(res.data);
       if (!res.data.preview) await refresh();
+      // Refresh checkpoint unlock state — passing the block's last lesson may have just unlocked it.
+      if (nextCheckpoint) {
+        try {
+          const ar = await api.get(`/assessments/track/${track}`);
+          const cp = (ar.data.checkpoints || []).find((c) => c.id === nextCheckpoint.id);
+          if (cp) setNextCheckpoint((nc) => (nc ? { ...nc, unlocked: !!cp.unlocked } : nc));
+        } catch (e) { /* keep prior state */ }
+      }
       if (res.data.blank_send) toast.warning("That email was blank — write a real message (greeting, a few sentences, and a sign-off) to earn points.");
       else if (res.data.preview) toast.info(`Preview graded ${res.data.grade} (${res.data.score}%). Not saved.`);
       else if (res.data.mastery) toast.success(`Graded ${res.data.grade} · +${res.data.points_awarded} Horizon Points`);
@@ -231,7 +249,20 @@ export default function StudioMission() {
                   <Button data-testid="studio-result-review-btn" variant="outline" className="flex-1 border-white/15" onClick={() => setResult(null)}>Keep editing</Button>
                   <Button data-testid="studio-result-hub-btn" variant="outline" className="flex-1 border-white/15" onClick={() => navigate(`/studio/${track}`)}>Studio</Button>
                 </div>
-                {nextId ? (
+                {nextCheckpoint ? (
+                  nextCheckpoint.unlocked ? (
+                    <Button data-testid="studio-result-checkpoint-btn" className="w-full bg-[#22D3EE] text-[#04121f] hover:bg-[#67E8F9] hq-glow-teal" onClick={() => navigate(`/assessment/${nextCheckpoint.id}`)}>
+                      <ClipboardCheck className="w-4 h-4 mr-2" /> Take the Checkpoint
+                    </Button>
+                  ) : (
+                    <div className="space-y-2">
+                      <p className="text-xs text-muted-foreground text-center">Pass all lessons in this block to unlock the Checkpoint.</p>
+                      <Button data-testid="studio-result-finishblock-btn" variant="outline" className="w-full border-[#22D3EE]/40 text-[#22D3EE] hover:bg-[#22D3EE]/10" onClick={() => navigate(`/studio/${track}`)}>
+                        Back to this block's lessons <ArrowRight className="w-4 h-4 ml-2" />
+                      </Button>
+                    </div>
+                  )
+                ) : nextId ? (
                   <Button data-testid="studio-result-next-btn" className="w-full bg-primary text-primary-foreground hover:bg-[#FDBA74]" onClick={() => navigate(`/studio/${track}/${nextId}`)}>
                     Next mission <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>

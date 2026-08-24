@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Anchor, Plus, Copy, Users, ClipboardCheck, BarChart3, Trophy, Loader2, Check, Compass, BookOpen, Target, Download, ListChecks, Trash2, X as XIcon, BookMarked, Printer } from "lucide-react";
+import { Anchor, Plus, Copy, Users, ClipboardCheck, BarChart3, Trophy, Loader2, Check, Compass, BookOpen, Target, Download, ListChecks, Trash2, X as XIcon, BookMarked, Printer, Pencil, Search, UserCog } from "lucide-react";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from "recharts";
 
@@ -72,6 +72,10 @@ function ExpeditionsTab({ expeditions, loading, reload }) {
   const [desc, setDesc] = useState("");
   const [creating, setCreating] = useState(false);
   const [members, setMembers] = useState(null);
+  const [rename, setRename] = useState(null);
+  const [rName, setRName] = useState("");
+  const [rDesc, setRDesc] = useState("");
+  const [savingRename, setSavingRename] = useState(false);
 
   const create = async () => {
     if (!name.trim()) { toast.error("Give your Expedition a name."); return; }
@@ -92,17 +96,33 @@ function ExpeditionsTab({ expeditions, loading, reload }) {
     setMembers({ name: res.data.expedition.name, list: res.data.members });
   };
 
+  const openRename = (e) => { setRename(e); setRName(e.name); setRDesc(e.description || ""); };
+  const saveRename = async () => {
+    if (!rName.trim()) { toast.error("Class name cannot be empty."); return; }
+    setSavingRename(true);
+    try {
+      await api.patch(`/expeditions/${rename.expedition_id}`, { name: rName.trim(), description: rDesc });
+      toast.success("Class renamed.");
+      setRename(null);
+      await reload();
+    } catch (e) { toast.error(e?.response?.data?.detail || "Could not rename the class."); }
+    finally { setSavingRename(false); }
+  };
+
   return (
     <div className="grid gap-6 lg:grid-cols-3">
-      <div className="hq-glass rounded-2xl p-6 border-t border-t-[#22D3EE]/30 h-fit">
-        <h2 className="font-display text-2xl mb-4 flex items-center gap-2"><Plus className="w-5 h-5 text-[#22D3EE]" /> New Expedition</h2>
-        <div className="space-y-3">
-          <Input data-testid="expedition-name-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Expedition name (e.g. Period 3 Voyage)" className="bg-white/5 border-white/10" />
-          <Textarea data-testid="expedition-desc-input" value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="Description (optional)" className="bg-white/5 border-white/10" />
-          <Button data-testid="create-expedition-btn" onClick={create} disabled={creating} className="w-full bg-[#22D3EE] text-[#04121f] hover:bg-[#67E8F9]">
-            {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : "Create Expedition"}
-          </Button>
+      <div className="space-y-6 h-fit">
+        <div className="hq-glass rounded-2xl p-6 border-t border-t-[#22D3EE]/30">
+          <h2 className="font-display text-2xl mb-4 flex items-center gap-2"><Plus className="w-5 h-5 text-[#22D3EE]" /> New Expedition</h2>
+          <div className="space-y-3">
+            <Input data-testid="expedition-name-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Expedition name (e.g. Period 3 Voyage)" className="bg-white/5 border-white/10" />
+            <Textarea data-testid="expedition-desc-input" value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="Description (optional)" className="bg-white/5 border-white/10" />
+            <Button data-testid="create-expedition-btn" onClick={create} disabled={creating} className="w-full bg-[#22D3EE] text-[#04121f] hover:bg-[#67E8F9]">
+              {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : "Create Expedition"}
+            </Button>
+          </div>
         </div>
+        <RoleFixPanel />
       </div>
 
       <div className="lg:col-span-2">
@@ -123,6 +143,7 @@ function ExpeditionsTab({ expeditions, loading, reload }) {
                     <span className="font-mono-data text-lg text-primary tracking-widest">{e.join_code}</span>
                     <Copy className="w-4 h-4 text-primary" />
                   </button>
+                  <Button variant="outline" size="sm" className="border-white/15 gap-1.5" data-testid={`rename-expedition-${e.join_code}`} onClick={() => openRename(e)}><Pencil className="w-3.5 h-3.5" /> Rename</Button>
                   <Button variant="outline" size="sm" className="border-white/15" data-testid={`view-members-${e.join_code}`} onClick={() => viewMembers(e.expedition_id)}>Members</Button>
                 </div>
               </div>
@@ -145,6 +166,81 @@ function ExpeditionsTab({ expeditions, loading, reload }) {
           </div>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!rename} onOpenChange={(o) => !o && setRename(null)}>
+        <DialogContent className="hq-glass border-white/10">
+          <DialogHeader><DialogTitle className="font-display text-2xl">Rename class</DialogTitle><DialogDescription>The join code stays the same — Explorers won't need to rejoin.</DialogDescription></DialogHeader>
+          <div className="space-y-3">
+            <Input data-testid="rename-name-input" value={rName} onChange={(e) => setRName(e.target.value)} placeholder="Class name" className="bg-white/5 border-white/10" />
+            <Textarea data-testid="rename-desc-input" value={rDesc} onChange={(e) => setRDesc(e.target.value)} placeholder="Description (optional)" className="bg-white/5 border-white/10" />
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" className="border-white/15" onClick={() => setRename(null)}>Cancel</Button>
+              <Button data-testid="rename-save-btn" onClick={saveRename} disabled={savingRename} className="bg-[#22D3EE] text-[#04121f] hover:bg-[#67E8F9]">{savingRename ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save"}</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function RoleFixPanel() {
+  const { user } = useAuth();
+  const [q, setQ] = useState("");
+  const [results, setResults] = useState(null);
+  const [searching, setSearching] = useState(false);
+  const [savingId, setSavingId] = useState(null);
+
+  const search = async () => {
+    if (q.trim().length < 3) { toast.error("Type at least 3 characters of the email or name."); return; }
+    setSearching(true);
+    try {
+      const res = await api.get(`/admin/users`, { params: { q: q.trim() } });
+      setResults(res.data.users || []);
+    } catch (e) { toast.error(e?.response?.data?.detail || "Search failed."); }
+    finally { setSearching(false); }
+  };
+
+  const setRole = async (u, role) => {
+    setSavingId(u.user_id);
+    try {
+      await api.post(`/admin/users/${u.user_id}/role`, { role });
+      toast.success(`${u.name || u.email} is now ${role === "guide" ? "a Guide" : "an Explorer"}.`);
+      setResults((r) => r.map((x) => (x.user_id === u.user_id ? { ...x, role } : x)));
+    } catch (e) { toast.error(e?.response?.data?.detail || "Could not update role."); }
+    finally { setSavingId(null); }
+  };
+
+  return (
+    <div className="hq-glass rounded-2xl p-6 border-t border-t-primary/30" data-testid="role-fix-panel">
+      <h2 className="font-display text-2xl mb-1 flex items-center gap-2"><UserCog className="w-5 h-5 text-primary" /> Fix account role</h2>
+      <p className="text-sm text-muted-foreground mb-4">A student who signed up as a Guide by mistake? Find them and switch them to Explorer.</p>
+      <div className="flex gap-2">
+        <Input data-testid="role-fix-search-input" value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === "Enter" && search()} placeholder="Search email or name…" className="bg-white/5 border-white/10" />
+        <Button data-testid="role-fix-search-btn" onClick={search} disabled={searching} className="bg-primary text-primary-foreground hover:bg-[#FDBA74] shrink-0">{searching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}</Button>
+      </div>
+      {results && (
+        <div className="mt-4 space-y-2 max-h-80 overflow-y-auto hq-scrollbar">
+          {results.length === 0 && <p className="text-sm text-muted-foreground">No matching accounts.</p>}
+          {results.map((u) => (
+            <div key={u.user_id} data-testid={`role-fix-user-${u.user_id}`} className="flex items-center justify-between gap-2 p-3 rounded-lg bg-white/5">
+              <div className="min-w-0">
+                <p className="text-sm truncate">{u.name}</p>
+                <p className="text-xs text-muted-foreground truncate">{u.email}</p>
+                <span className={`text-[11px] font-mono-data uppercase tracking-wider ${u.role === "guide" ? "text-[#22D3EE]" : "text-primary"}`}>{u.role || "no role"}</span>
+              </div>
+              {u.user_id === user?.user_id ? (
+                <span className="text-[11px] text-muted-foreground shrink-0">You</span>
+              ) : (
+                <div className="flex gap-1.5 shrink-0">
+                  <Button size="sm" variant={u.role === "explorer" ? "default" : "outline"} className={u.role === "explorer" ? "bg-primary text-primary-foreground" : "border-white/15"} disabled={savingId === u.user_id} data-testid={`set-explorer-${u.user_id}`} onClick={() => setRole(u, "explorer")}>{savingId === u.user_id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Explorer"}</Button>
+                  <Button size="sm" variant={u.role === "guide" ? "default" : "outline"} className={u.role === "guide" ? "bg-[#22D3EE] text-[#04121f]" : "border-white/15"} disabled={savingId === u.user_id} data-testid={`set-guide-${u.user_id}`} onClick={() => setRole(u, "guide")}>Guide</Button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
