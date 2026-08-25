@@ -154,6 +154,13 @@ Gamified education platform. Stack: React + FastAPI + MongoDB. Auth: Google sign
 - ✅ Verified: testing_agent iteration_23 — backend 21/21 pytest, frontend 100% of flows, zero console errors. ⚠️ Requires **redeploy** for production.
 - NOTE: The **Mastery tab** still reflects the legacy CTE curriculum standards (unchanged per user's "don't change what you have done"). If they later want it to reflect Skill Studio/Checkpoint mastery, that's a follow-up.
 
+## Implemented (2026-06) — Iteration 16: Cloudinary PowerPoint → in-app slide images
+- ✅ **Teacher .pptx uploads now render as crisp slide images in the in-app carousel** (replaces the Office-viewer embed). Cloudinary does the conversion server-side (Aspose add-on), so it works on production with no server binaries.
+- ✅ **Flow**: upload `.pptx` → Cloudinary `raw` upload with `raw_convert="aspose"` (must upload from a temp file with a real extension, else "Invalid file type") → converted to a multi-page PDF `image` resource → delivered per page as `pg_N` JPGs → shown in `SlideCarousel`. Conversion is async (~5s); backend polls ~18s, frontend polls `/block-slides/{id}/pptx-status` and shows a "Converting…" state.
+- ✅ **Backend**: `cloudinary_pptx.py` (upload/resolve_pages/page_urls/destroy); `POST /block-slides/{id}/upload-pptx` now uses Cloudinary; `GET /block-slides/{id}/pptx-status`; `DELETE` destroys Cloudinary assets; `get_block_slides` lazily resolves pending conversions. `db.block_slides.pptx` = {provider:"cloudinary", public_id, filename, status, pages, version, images[]}.
+- ✅ **Env/creds**: `CLOUDINARY_CLOUD_NAME/API_KEY/API_SECRET` in backend/.env; `cloudinary==1.46.0` in requirements. Account needs the **Aspose Document Conversion (Free)** add-on + Settings→Security "Allow delivery of PDF/ZIP" (both enabled by user).
+- ✅ Verified: curl (upload → 200 ready with N image URLs, images load 200 image/jpeg, delete destroys) + full UI screenshot (guide uploads .pptx → carousel shows res.cloudinary.com slides, counter 1/8). Legacy object-storage Office-viewer path kept as fallback. ⚠️ Requires **redeploy** for production.
+
 ## Backlog / Remaining (older)
 - P1: Repurpose Guide Review Queue to flag struggling Explorers (reflections removed).
 - P1: Guide authoring of quests. Rank-movement indicators.

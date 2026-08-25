@@ -70,12 +70,24 @@ export default function StudioHub() {
     try {
       const fd = new FormData();
       fd.append("file", file);
-      await api.post(`/block-slides/${blockId}/upload-pptx`, fd, { headers: { "Content-Type": "multipart/form-data" } });
+      const res = await api.post(`/block-slides/${blockId}/upload-pptx`, fd, { headers: { "Content-Type": "multipart/form-data" } });
       await refreshBlockSlides();
       setEditingBlock(null);
-      toast.success("PowerPoint uploaded — students will see your slides.");
+      if (res.data?.pptx?.status === "ready") toast.success("PowerPoint converted — students will see your slides.");
+      else { toast.success("PowerPoint uploaded — converting slides…"); pollPptx(blockId); }
     } catch (e) { toast.error(e?.response?.data?.detail || "Upload failed. Please try again."); }
     finally { setUploadingBlock(null); }
+  };
+
+  const pollPptx = (blockId, tries = 0) => {
+    if (tries > 12) return;
+    setTimeout(async () => {
+      try {
+        const r = await api.get(`/block-slides/${blockId}/pptx-status`);
+        if (r.data?.status === "ready") { await refreshBlockSlides(); toast.success("Slides are ready!"); return; }
+      } catch (e) { /* keep trying */ }
+      pollPptx(blockId, tries + 1);
+    }, 3000);
   };
 
   const deletePptx = async (blockId) => {
@@ -237,6 +249,23 @@ export default function StudioHub() {
                           );
                         }
                         if (pptx) {
+                          if (pptx.provider === "cloudinary") {
+                            if (pptx.status === "ready" && (pptx.images || []).length) {
+                              return (
+                                <div data-testid={`slides-embed-${c.id}`}>
+                                  <SlideCarousel images={pptx.images} title={`Block ${bi + 1} teaching slides`} />
+                                  <p className="text-[11px] text-muted-foreground mt-1">Showing {isGuide ? "your uploaded" : "the class"} PowerPoint.</p>
+                                </div>
+                              );
+                            }
+                            return (
+                              <div className="aspect-video w-full rounded-lg bg-slate-900/60 border border-white/10 flex flex-col items-center justify-center gap-2 text-sm text-muted-foreground" data-testid={`slides-embed-${c.id}`}>
+                                <Loader2 className="w-6 h-6 animate-spin text-[#22D3EE]" />
+                                Converting your PowerPoint into slides…
+                              </div>
+                            );
+                          }
+                          // legacy object-storage upload → Office viewer
                           const fileUrl = `${BACKEND}/api/decks/pptx/${c.id}.pptx?v=${pptx.version}`;
                           const officeSrc = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl)}`;
                           return (

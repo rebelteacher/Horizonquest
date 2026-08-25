@@ -21,6 +21,8 @@ import curriculum
 import skillstudio
 import assessments
 import objstore
+import cloudinary_pptx
+import asyncio
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -923,19 +925,40 @@ _PPTX_EXTS = (".pptx", ".ppt")
 
 
 def _block_slide_public(r):
-    """Shape a db.block_slides row for the frontend."""
-    pptx = r.get("pptx")
-    return {
-        "embed_url": r.get("embed_url", ""),
-        "pptx": {"filename": pptx["filename"], "version": pptx["version"]} if pptx else None,
-    }
+    """Sync shape — used only for the PUT response (embed_url path)."""
+    return {"embed_url": r.get("embed_url", ""), "pptx": None}
+
+
+async def _pptx_public(row):
+    pptx = row.get("pptx")
+    if not pptx:
+        return None
+    if pptx.get("provider") == "cloudinary":
+        status = pptx.get("status")
+        images = pptx.get("images") or []
+        if status != "ready":
+            resolved = await run_in_threadpool(cloudinary_pptx.resolve_pages, pptx["public_id"])
+            if resolved:
+                pages, version = resolved
+                images = await run_in_threadpool(cloudinary_pptx.page_urls, pptx["public_id"], pages, version)
+                await db.block_slides.update_one(
+                    {"block_id": row["block_id"]},
+                    {"$set": {"pptx.status": "ready", "pptx.pages": pages, "pptx.version": version, "pptx.images": images}})
+                status = "ready"
+        return {"provider": "cloudinary", "filename": pptx.get("filename"), "status": status, "images": images}
+    # legacy object-storage upload (Office viewer path)
+    return {"provider": "objstore", "filename": pptx.get("filename"), "version": pptx.get("version"), "status": "ready"}
+
+
+async def _block_row_public(row):
+    return {"embed_url": row.get("embed_url", ""), "pptx": await _pptx_public(row)}
 
 
 @api_router.get("/block-slides/{track_id}")
 async def get_block_slides(track_id: str, user=Depends(get_current_user)):
     block_ids = assessments.TRACK_CHECKPOINTS.get(track_id, [])
     rows = await db.block_slides.find({"block_id": {"$in": block_ids}}, {"_id": 0}).to_list(50)
-    return {r["block_id"]: _block_slide_public(r) for r in rows}
+    return {r["block_id"]: await _block_row_public(r) for r in rows}
 
 
 @api_router.put("/block-slides/{block_id}")
@@ -957,6 +980,8 @@ async def set_block_slides(block_id: str, payload: BlockSlides, guide=Depends(re
 async def upload_block_pptx(block_id: str, file: UploadFile = File(...), guide=Depends(require_guide)):
     if not assessments.assessment_meta(block_id):
         raise HTTPException(status_code=404, detail="Unknown block")
+    if not cloudinary_pptx.is_configured():
+        raise HTTPException(status_code=400, detail="PowerPoint uploads aren't configured on the server.")
     fname = (file.filename or "deck.pptx").strip()
     if not fname.lower().endswith(_PPTX_EXTS):
         raise HTTPException(status_code=400, detail="Please upload a PowerPoint file (.pptx or .ppt).")
@@ -965,34 +990,68 @@ async def upload_block_pptx(block_id: str, file: UploadFile = File(...), guide=D
         raise HTTPException(status_code=400, detail="The file is empty.")
     if len(data) > 40 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="File is too large (max 40 MB).")
-    version = uuid.uuid4().hex[:12]
-    storage_path = f"horizonquest/decks/{block_id}/{version}.pptx"
-    await run_in_threadpool(objstore.put_object, storage_path, data, PPTX_CT)
+
+    try:
+        ext = "." + fname.rsplit(".", 1)[-1].lower() if "." in fname else ".pptx"
+        up = await run_in_threadpool(cloudinary_pptx.upload_pptx, data, block_id, ext)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Could not convert the PowerPoint: {str(e)[:140]}")
+    public_id = up["public_id"]
+
+    # Poll a short while for Aspose conversion; if not done, frontend polls the status endpoint.
+    images, pages, version, status = [], None, None, "processing"
+    for _ in range(6):
+        await asyncio.sleep(3)
+        resolved = await run_in_threadpool(cloudinary_pptx.resolve_pages, public_id)
+        if resolved:
+            pages, version = resolved
+            images = await run_in_threadpool(cloudinary_pptx.page_urls, public_id, pages, version)
+            status = "ready"
+            break
+
+    prev = await db.block_slides.find_one({"block_id": block_id})
+    prev_pptx = (prev or {}).get("pptx") or {}
+    if prev_pptx.get("provider") == "cloudinary" and prev_pptx.get("public_id") and prev_pptx["public_id"] != public_id:
+        await run_in_threadpool(cloudinary_pptx.destroy, prev_pptx["public_id"])
+
     await db.block_slides.update_one(
         {"block_id": block_id},
         {"$set": {"block_id": block_id,
-                  "pptx": {"storage_path": storage_path, "filename": fname, "version": version,
+                  "pptx": {"provider": "cloudinary", "public_id": public_id, "filename": fname,
+                           "status": status, "pages": pages, "version": version, "images": images,
                            "uploaded_at": now_utc().isoformat(), "uploaded_by": guide["user_id"]}}},
         upsert=True,
     )
-    return {"ok": True, "block_id": block_id, "pptx": {"filename": fname, "version": version}}
+    return {"ok": True, "block_id": block_id, "pptx": {"filename": fname, "status": status, "images": images}}
+
+
+@api_router.get("/block-slides/{block_id}/pptx-status")
+async def block_pptx_status(block_id: str, user=Depends(get_current_user)):
+    row = await db.block_slides.find_one({"block_id": block_id})
+    if not row or not row.get("pptx"):
+        return {"status": "none", "images": []}
+    shaped = await _pptx_public(row)
+    return {"status": shaped.get("status"), "images": shaped.get("images", [])}
 
 
 @api_router.delete("/block-slides/{block_id}/pptx")
 async def delete_block_pptx(block_id: str, guide=Depends(require_guide)):
+    row = await db.block_slides.find_one({"block_id": block_id})
+    pptx = (row or {}).get("pptx") or {}
+    if pptx.get("provider") == "cloudinary" and pptx.get("public_id"):
+        await run_in_threadpool(cloudinary_pptx.destroy, pptx["public_id"])
     await db.block_slides.update_one({"block_id": block_id}, {"$unset": {"pptx": ""}})
     return {"ok": True}
 
 
 @api_router.get("/decks/pptx/{fname}")
 async def serve_block_pptx(fname: str):
-    """Public: serves an uploaded PowerPoint so the Office viewer + download link can fetch it.
-    fname is '<block_id>.pptx' so the URL ends in a real extension."""
+    """Legacy: serves an object-storage .pptx for the old Office-viewer path."""
     block_id = fname.rsplit(".", 1)[0]
     row = await db.block_slides.find_one({"block_id": block_id})
-    if not row or not row.get("pptx"):
+    pptx = (row or {}).get("pptx") or {}
+    if not pptx.get("storage_path"):
         raise HTTPException(status_code=404, detail="No PowerPoint uploaded for this block")
-    pptx = row["pptx"]
     data, ct = await run_in_threadpool(objstore.get_object, pptx["storage_path"])
     return Response(
         content=data, media_type=PPTX_CT,
