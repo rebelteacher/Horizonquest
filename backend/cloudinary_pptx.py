@@ -71,8 +71,8 @@ def page_urls(public_id: str, pages: int, version) -> list:
     urls = []
     for n in range(1, int(pages) + 1):
         url, _ = cloudinary.utils.cloudinary_url(
-            public_id, resource_type="image", format="jpg",
-            page=n, quality="auto", version=version, secure=True,
+            public_id, resource_type="image",
+            page=n, quality="auto", fetch_format="auto", version=version, secure=True,
         )
         urls.append(url)
     return urls

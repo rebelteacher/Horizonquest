@@ -10,6 +10,12 @@ export const SlideCarousel = ({ images = [], title = "Teaching slides", deckUrl 
 
   useEffect(() => { setI(0); }, [images]);
   useEffect(() => {
+    // Preload neighbouring slides so navigation feels instant.
+    [i + 1, i - 1].forEach((n) => {
+      if (n >= 0 && n < total) { const img = new Image(); img.src = images[n]; }
+    });
+  }, [i, images, total]);
+  useEffect(() => {
     if (!full) return;
     const onKey = (e) => {
       if (e.key === "ArrowRight") go(1);
