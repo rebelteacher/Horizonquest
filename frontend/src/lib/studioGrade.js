@@ -8,6 +8,27 @@ const LIST_TYPES = ["paragraph", "bullet", "number", "heading"];
 export function checkTask(check, doc) {
   const k = check.kind;
   try {
+    // ---- block-task "apply a skill at least N times" counters (mirror of backend _check_one) ----
+    if (k === "fmt_count") {
+      const blocks = doc.blocks || [];
+      const attrs = check.attrs;
+      const values = check.values;
+      const hasNe = Object.prototype.hasOwnProperty.call(check, "not_equals");
+      let n = 0;
+      for (const b of blocks) {
+        const fmt = b.fmt || {};
+        if (attrs) { if (attrs.some((a) => fmt[a] === (check.equals !== undefined ? check.equals : true))) n += 1; }
+        else if (values != null) { if (values.includes(fmt[check.attr])) n += 1; }
+        else if (hasNe) { if (fmt[check.attr] !== check.not_equals) n += 1; }
+        else if (fmt[check.attr] === check.equals) n += 1;
+      }
+      return n >= check.min;
+    }
+    if (k === "type_count") {
+      const types = check.types || [check.equals];
+      const n = (doc.blocks || []).filter((b) => types.includes(b.type)).length;
+      return n >= check.min;
+    }
     if (k === "fmt") { const b = getBlock(doc, check.block); return !!b && b.fmt?.[check.attr] === check.equals; }
     if (k === "fmt_all") { const bs = (doc.blocks || []).filter((b) => LIST_TYPES.includes(b.type)); return bs.length > 0 && bs.every((b) => b.fmt?.[check.attr] === check.equals); }
     if (k === "fmt_multi") { return check.blocks.every((id) => getBlock(doc, id)?.fmt?.[check.attr] === check.equals); }

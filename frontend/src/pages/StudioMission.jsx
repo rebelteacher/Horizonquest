@@ -12,7 +12,7 @@ import { findBoundaryIndex } from "@/components/studio/Squiggly";
 import { exportNodeToPDF } from "@/lib/pdf";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ArrowLeft, ArrowRight, ScrollText, CheckCircle2, Circle, Loader2, Download, Gem, Anchor, ListChecks, Trophy, ClipboardCheck, SpellCheck, AlertTriangle, Wand2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, ScrollText, CheckCircle2, Circle, XCircle, Loader2, Download, Gem, Anchor, ListChecks, Trophy, ClipboardCheck, SpellCheck, AlertTriangle, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 
 function renderInline(text) {
@@ -349,12 +349,18 @@ export default function StudioMission() {
                   <div key={t.id} data-testid={`studio-task-${t.id}`} className="flex items-start gap-2.5">
                     {t.passed
                       ? <CheckCircle2 data-testid={`studio-task-${t.id}-done`} className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
-                      : <Circle className="w-5 h-5 text-slate-500 shrink-0 mt-0.5" />}
-                    <span className={`text-sm ${t.passed ? "text-emerald-300 line-through/0" : "text-slate-300"}`}>{t.label}</span>
+                      : result && !result.preview
+                        ? <XCircle data-testid={`studio-task-${t.id}-missing`} className="w-5 h-5 text-[#F43F5E] shrink-0 mt-0.5" />
+                        : <Circle className="w-5 h-5 text-slate-500 shrink-0 mt-0.5" />}
+                    <span className={`text-sm ${t.passed ? "text-emerald-300" : result && !result.preview ? "text-[#fda4af]" : "text-slate-300"}`}>{t.label}</span>
                   </div>
                 ))}
               </div>
-              {allDone && <p className="mt-4 text-sm text-emerald-300">All tasks complete — submit for your grade!</p>}
+              {allDone
+                ? <p className="mt-4 text-sm text-emerald-300">All tasks complete — submit for your grade!</p>
+                : result && !result.preview
+                  ? <p className="mt-4 text-sm text-[#fda4af]">Red items still need work — fix them and submit again to raise your grade.</p>
+                  : null}
             </div>
           </div>
         </div>
