@@ -766,11 +766,19 @@ async def get_track_assessments(track_id: str, user=Depends(get_current_user)):
     out = []
     for m in metas:
         summ = await _assessment_summary(user["user_id"], m["id"])
-        missing = [mid for mid in m["covers"] if mid not in passed_missions]
+        required = list(m["covers"])
+        bt = skillstudio.block_task_for_cp(m["id"])
+        if bt:
+            required.append(bt["id"])
+        missing = [mid for mid in required if mid not in passed_missions]
         unlocked = len(missing) == 0 or user.get("role") != "explorer"
+        reason = None
+        if not unlocked:
+            reason = f"Finish the {len(m['covers'])} lessons" + (" and the Block Task" if bt and bt["id"] in missing else "") + " in this block first"
         out.append({**m, **summ,
                     "unlocked": unlocked,
-                    "locked_reason": None if unlocked else f"Finish the {len(m['covers'])} lessons in this block first"})
+                    "block_task_id": bt["id"] if bt else None,
+                    "locked_reason": reason})
     return {"checkpoints": out}
 
 
@@ -790,8 +798,12 @@ async def start_assessment(assessment_id: str, user=Depends(get_current_user)):
         if meta["kind"] == "checkpoint":
             prog = await db.studio_progress.find({"user_id": user["user_id"]}, {"_id": 0, "mission_id": 1, "score": 1}).to_list(500)
             passed_missions = {p["mission_id"] for p in prog if p.get("score", 0) >= 60}
-            if any(mid not in passed_missions for mid in meta["covers"]):
-                raise HTTPException(status_code=403, detail="Finish the lessons in this block before taking the checkpoint")
+            required = list(meta["covers"])
+            bt = skillstudio.block_task_for_cp(assessment_id)
+            if bt:
+                required.append(bt["id"])
+            if any(mid not in passed_missions for mid in required):
+                raise HTTPException(status_code=403, detail="Finish the lessons and the Block Task in this block before taking the checkpoint")
         completed = await db.assessment_attempts.count_documents(
             {"user_id": user["user_id"], "assessment_id": assessment_id, "status": "completed"})
         if completed >= meta["max_attempts"]:

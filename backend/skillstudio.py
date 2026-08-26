@@ -1175,7 +1175,160 @@ def _pad_inboxes(target=10):
 
 _pad_inboxes()
 
+# ------------------------------ BLOCK TASKS (cumulative, before each checkpoint) ------------------------------
+# One hands-on task per block: ~80% of that block's skills + ~20% review of earlier blocks.
+_B1_LINES = [
+    "Study Guide: The Solar System", "The Sun is the star at the center of our solar system.",
+    "Mercury is the smallest planet and the closest to the Sun.", "Venus is the hottest planet because of its thick atmosphere.",
+    "Earth is the only planet known to support life.", "Mars is called the Red Planet because of its rusty soil.",
+    "Jupiter is the largest planet in the solar system.", "Saturn is famous for its bright, icy rings.",
+    "Uranus rotates on its side as it orbits the Sun.", "Neptune is the farthest planet and very windy.",
+    "A comet is a ball of ice and dust with a glowing tail.", "The Moon orbits Earth about once every 27 days.",
+    "Key term: an orbit is the path one object takes around another.",
+]
+_B2_LINES = [
+    "Science Club Open House", "All Explorers and families are welcome!",
+    "Join us after school in Room 210 for a night of discovery.", "Here is what you can look forward to:",
+    "Build and launch a paper rocket", "Watch a safe chemistry color-change demo",
+    "Meet the Science Club officers and mentors", "Enjoy free snacks and door prizes",
+    "Take home a mini experiment kit", "Space is limited this year.",
+    "Please arrive by 3:15 so we can start on time.", "Parking is available in the west lot.",
+    "RSVP here to save your spot",
+]
+_B3_LINES = [
+    "Book Report: Hatchet", "By Gary Paulsen",
+    "I recieve a lot of enjoyment from this exciting survival story.",
+    "The main character must learn to live in a seperate, wild place.",
+    "Add a 3x3 table below to compare the setting, characters, and theme.",
+    "Finish by proofreading and exporting your report to PDF.",
+]
+
+DOCS_BLOCK_TASKS = [
+    {
+        "id": "docs-task1", "track": "docs", "order": 4.5, "is_block_task": True, "block_cp": "docs-cp1",
+        "title": "Block 1 Task · Format a Study Guide",
+        "chunk": "Apply Block 1 many times · Emphasis, Fonts, Size & Color",
+        "instruction": [
+            "## Block Task — real practice",
+            "Format this study guide using **Block 1** skills, and use each skill **many times** — that repetition is how it sticks.",
+            "You must pass this task to unlock the Checkpoint.",
+        ],
+        "doc": _doc([_b(f"b{i}", t) for i, t in enumerate(_B1_LINES, 1)]),
+        "tasks": [
+            _t("t1", "Use bold, italic, or underline on at least 10 lines", {"kind": "fmt_count", "attrs": ["bold", "italic", "underline"], "equals": True, "min": 10}),
+            _t("t2", "Change the font (not Arial) on at least 10 lines", {"kind": "fmt_count", "attr": "fontFamily", "not_equals": "Arial", "min": 10}),
+            _t("t3", "Change the font size on at least 6 lines", {"kind": "fmt_count", "attr": "fontSize", "not_equals": 11, "min": 6}),
+            _t("t4", "Add text color to at least 4 lines", {"kind": "fmt_count", "attr": "color", "not_equals": "#0f172a", "min": 4}),
+        ],
+        "points": 150,
+    },
+    {
+        "id": "docs-task2", "track": "docs", "order": 8.5, "is_block_task": True, "block_cp": "docs-cp2",
+        "title": "Block 2 Task · Build an Event Flyer",
+        "chunk": "Apply Block 2 many times · Alignment, Spacing, Lists & Links (+ review)",
+        "instruction": [
+            "## Block Task — real practice",
+            "Use **Block 2** skills repeatedly — **alignment**, **line spacing**, **lists**, and a **hyperlink**. A few steps **review Block 1**.",
+            "You must pass this task to unlock the Checkpoint.",
+        ],
+        "doc": _doc([_b(f"b{i}", t) for i, t in enumerate(_B2_LINES, 1)]),
+        "tasks": [
+            _t("t1", "Align at least 10 lines (center, right, or justify)", {"kind": "fmt_count", "attr": "align", "not_equals": "left", "min": 10}),
+            _t("t2", "Change line spacing on at least 8 lines", {"kind": "fmt_count", "attr": "lineSpacing", "not_equals": 1.0, "min": 8}),
+            _t("t3", "Turn at least 8 lines into list items (bulleted or numbered)", {"kind": "type_count", "types": ["bullet", "number"], "min": 8}),
+            _t("t4", "Add a hyperlink on the RSVP line", {"kind": "link", "block": f"b{len(_B2_LINES)}"}),
+            _t("t5", "Review: use bold/italic/underline on at least 4 lines", {"kind": "fmt_count", "attrs": ["bold", "italic", "underline"], "equals": True, "min": 4}),
+            _t("t6", "Review: add text color to at least 2 lines", {"kind": "fmt_count", "attr": "color", "not_equals": "#0f172a", "min": 2}),
+        ],
+        "points": 150,
+    },
+    {
+        "id": "docs-task3", "track": "docs", "order": 12.5, "is_block_task": True, "block_cp": "docs-cp3",
+        "title": "Block 3 Task · Finish a Book Report",
+        "chunk": "Apply Block 3 · Find & Replace, Tables, Headers/Footers, Export (+ review)",
+        "instruction": [
+            "## Block Task — real practice",
+            "Use **Block 3** skills — **find & replace**, **tables**, **headers/footers with page numbers**, and **export to PDF**. A few steps **review earlier blocks**.",
+            "You must pass this task to unlock the Checkpoint.",
+        ],
+        "doc": _doc([_b(f"b{i}", t) for i, t in enumerate(_B3_LINES, 1)]),
+        "tasks": [
+            _t("t1", "Fix the spelling: replace 'recieve' with 'receive'", {"kind": "text_replaced", "block": "b3", "remove": "recieve", "add": "receive"}),
+            _t("t2", "Fix the spelling: replace 'seperate' with 'separate'", {"kind": "text_replaced", "block": "b4", "remove": "seperate", "add": "separate"}),
+            _t("t3", "Insert a 3-column, 3-row table", {"kind": "table", "cols": 3, "rows": 3}),
+            _t("t4", "Type a heading in the first table cell", {"kind": "table_cell_filled", "row": 0, "col": 0}),
+            _t("t5", "Add a header that says 'Book Report'", {"kind": "header_contains", "value": "Book Report"}),
+            _t("t6", "Add page numbers in the footer", {"kind": "footer_pagenum"}),
+            _t("t7", "Export the finished report to PDF", {"kind": "exported"}),
+            _t("t8", "Review: align at least 3 lines (center the title, etc.)", {"kind": "fmt_count", "attr": "align", "not_equals": "left", "min": 3}),
+            _t("t9", "Review: use bold/italic/underline on at least 3 lines", {"kind": "fmt_count", "attrs": ["bold", "italic", "underline"], "equals": True, "min": 3}),
+        ],
+        "points": 150,
+    },
+]
+
+# ------------------------------ SKILL DRILLS (single-skill repetition) ------------------------------
+_DRILL_LINES = [
+    "Practice line one: read carefully.", "Practice line two: apply the skill.",
+    "Practice line three: keep going.", "Practice line four: build the habit.",
+    "Practice line five: almost warmed up.", "Practice line six: nice work.",
+    "Practice line seven: stay consistent.", "Practice line eight: looking good.",
+    "Practice line nine: keep it up.", "Practice line ten: you're getting fluent.",
+    "Practice line eleven: one more push.", "Practice line twelve: finish strong.",
+]
+
+
+def _drill(did, cp, order, title, chunk, instruction, tasks):
+    return {"id": did, "track": "docs", "order": order, "is_drill": True, "block_cp": cp,
+            "title": title, "chunk": chunk, "instruction": ["## Skill Drill", instruction, "Repetition builds fluency — apply the skill on as many lines as asked."],
+            "doc": _doc([_b(f"b{i}", t) for i, t in enumerate(_DRILL_LINES, 1)]), "tasks": tasks, "points": 80}
+
+
+DOCS_DRILLS = [
+    _drill("docs-d1", "docs-cp1", 4.1, "Emphasis Drill", "B / I / U repetition",
+           "Use **bold, italic, or underline** on at least 10 lines.",
+           [_t("t1", "Use bold/italic/underline on at least 10 lines", {"kind": "fmt_count", "attrs": ["bold", "italic", "underline"], "equals": True, "min": 10})]),
+    _drill("docs-d2", "docs-cp1", 4.2, "Font Family Drill", "Typeface repetition",
+           "Change the **font** (to anything but Arial) on at least 10 lines.",
+           [_t("t1", "Change the font on at least 10 lines", {"kind": "fmt_count", "attr": "fontFamily", "not_equals": "Arial", "min": 10})]),
+    _drill("docs-d3", "docs-cp1", 4.3, "Font Size Drill", "Point size repetition",
+           "Change the **font size** on at least 10 lines.",
+           [_t("t1", "Change the font size on at least 10 lines", {"kind": "fmt_count", "attr": "fontSize", "not_equals": 11, "min": 10})]),
+    _drill("docs-d4", "docs-cp1", 4.4, "Text Color Drill", "Color repetition",
+           "Add **text color** to at least 8 lines.",
+           [_t("t1", "Add text color to at least 8 lines", {"kind": "fmt_count", "attr": "color", "not_equals": "#0f172a", "min": 8})]),
+    _drill("docs-d5", "docs-cp2", 8.1, "Alignment Drill", "Align repetition",
+           "**Align** at least 10 lines (center, right, or justify).",
+           [_t("t1", "Align at least 10 lines", {"kind": "fmt_count", "attr": "align", "not_equals": "left", "min": 10})]),
+    _drill("docs-d6", "docs-cp2", 8.2, "Line Spacing Drill", "Spacing repetition",
+           "Change the **line spacing** on at least 8 lines.",
+           [_t("t1", "Change line spacing on at least 8 lines", {"kind": "fmt_count", "attr": "lineSpacing", "not_equals": 1.0, "min": 8})]),
+    _drill("docs-d7", "docs-cp2", 8.3, "Lists Drill", "List repetition",
+           "Turn at least 10 lines into **list items** (bulleted or numbered).",
+           [_t("t1", "Turn at least 10 lines into list items", {"kind": "type_count", "types": ["bullet", "number"], "min": 10})]),
+]
+
+BLOCK_TASKS = {"docs": DOCS_BLOCK_TASKS}
+DRILLS = {"docs": DOCS_DRILLS}
+ALL_BLOCK_TASKS = [t for tasks in BLOCK_TASKS.values() for t in tasks]
+ALL_DRILLS = [d for ds in DRILLS.values() for d in ds]
+BLOCK_TASK_BY_CP = {t["block_cp"]: t for t in ALL_BLOCK_TASKS}
+
 MISSION_INDEX = {m["id"]: m for track in MISSIONS.values() for m in track}
+MISSION_INDEX.update({t["id"]: t for t in ALL_BLOCK_TASKS})
+MISSION_INDEX.update({d["id"]: d for d in ALL_DRILLS})
+
+
+def block_tasks_for(track_id):
+    return BLOCK_TASKS.get(track_id, [])
+
+
+def drills_for(track_id):
+    return DRILLS.get(track_id, [])
+
+
+def block_task_for_cp(cp_id):
+    return BLOCK_TASK_BY_CP.get(cp_id)
 
 
 # ------------------------------ GRADING ------------------------------
@@ -1196,6 +1349,31 @@ def _first_table(doc):
 def _check_one(check, doc):
     kind = check.get("kind")
     try:
+        if kind == "fmt_count":
+            # Count blocks whose formatting matches; used for "apply this skill at least N times".
+            blocks = doc.get("blocks", [])
+            attrs = check.get("attrs")
+            values = check.get("values")
+            has_ne = "not_equals" in check
+            n = 0
+            for b in blocks:
+                fmt = b.get("fmt", {})
+                if attrs:
+                    if any(fmt.get(a) == check.get("equals", True) for a in attrs):
+                        n += 1
+                elif values is not None:
+                    if fmt.get(check["attr"]) in values:
+                        n += 1
+                elif has_ne:
+                    if fmt.get(check["attr"]) != check["not_equals"]:
+                        n += 1
+                else:
+                    if fmt.get(check["attr"]) == check.get("equals"):
+                        n += 1
+            return n >= check["min"]
+        if kind == "type_count":
+            n = sum(1 for b in doc.get("blocks", []) if b.get("type") in (check.get("types") or [check.get("equals")]))
+            return n >= check["min"]
         if kind == "fmt":
             b = _get_block(doc, check["block"])
             return bool(b) and b.get("fmt", {}).get(check["attr"]) == check["equals"]
@@ -1413,4 +1591,5 @@ def public_track(track_id):
     track = TRACKS.get(track_id)
     if not track:
         return None
-    return {"track": track, "config": TRACK_CONFIG.get(track_id, {}), "missions": MISSIONS.get(track_id, [])}
+    return {"track": track, "config": TRACK_CONFIG.get(track_id, {}), "missions": MISSIONS.get(track_id, []),
+            "block_tasks": BLOCK_TASKS.get(track_id, []), "drills": DRILLS.get(track_id, [])}

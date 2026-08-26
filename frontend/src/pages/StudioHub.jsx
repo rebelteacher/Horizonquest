@@ -6,7 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import AppNav from "@/components/AppNav";
 import { SlideCarousel } from "@/components/studio/SlideCarousel";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, FileText, CheckCircle2, Loader2, ArrowRight, Award, Sparkles, GraduationCap, ClipboardCheck, Lock, Trophy, Presentation, Upload, ExternalLink, Trash2 } from "lucide-react";
+import { ArrowLeft, FileText, CheckCircle2, Loader2, ArrowRight, Award, Sparkles, GraduationCap, ClipboardCheck, Lock, Trophy, Presentation, Upload, ExternalLink, Trash2, Target } from "lucide-react";
 
 const GRADE_COLOR = { A: "#34D399", B: "#22D3EE", C: "#FB923C", D: "#F59E0B", F: "#E11D48" };
 const BACKEND = process.env.REACT_APP_BACKEND_URL;
@@ -102,6 +102,8 @@ export default function StudioHub() {
 
   const missions = [...data.missions].sort((a, b) => a.order - b.order);
   const progress = data.progress || {};
+  const blockTasks = data.block_tasks || [];
+  const drills = data.drills || [];
   const mastered = missions.filter((m) => progress[m.id]?.mastery).length;
   const firstUndone = missions.find((m) => !progress[m.id]?.mastery) || missions[0];
 
@@ -293,6 +295,51 @@ export default function StudioHub() {
                     </div>
 
                     <div className="grid gap-3 sm:grid-cols-2">{b.missions.map((m, i) => missionCard(m, i))}</div>
+
+                    {(() => {
+                      const blockDrills = drills.filter((d) => d.block_cp === c.id);
+                      if (!blockDrills.length) return null;
+                      return (
+                        <div className="hq-glass rounded-2xl p-4 mt-4 border border-white/10" data-testid={`drills-${c.id}`}>
+                          <p className="text-sm font-medium flex items-center gap-2 mb-2"><Target className="w-4 h-4 text-[#34D399]" /> Skill Drills <span className="text-xs text-muted-foreground font-normal">· extra repetition practice</span></p>
+                          <div className="flex flex-wrap gap-2">
+                            {blockDrills.map((d) => {
+                              const dp = progress[d.id];
+                              const done = (dp?.score ?? 0) >= 60;
+                              return (
+                                <button key={d.id} data-testid={`drill-${d.id}`} onClick={() => navigate(`/studio/${track}/${d.id}`)}
+                                  className={`inline-flex items-center gap-2 h-8 px-3 rounded-full text-xs border transition-colors ${done ? "border-[#34D399]/50 bg-[#34D399]/10 text-[#34D399]" : "border-white/15 hover:bg-white/5"}`}>
+                                  {done ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Target className="w-3.5 h-3.5" />} {d.title}{dp?.score != null ? ` · ${dp.score}%` : ""}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {(() => {
+                      const task = blockTasks.find((t) => t.block_cp === c.id);
+                      if (!task) return null;
+                      const tp = progress[task.id];
+                      const done = (tp?.score ?? 0) >= 60;
+                      return (
+                        <div className={`hq-glass rounded-2xl p-5 mt-4 border ${done ? "border-[#a5b4fc]/50" : "border-[#a5b4fc]/25"}`} data-testid={`blocktask-card-${task.id}`}>
+                          <div className="flex items-center justify-between gap-3 flex-wrap">
+                            <div className="min-w-0">
+                              <h3 className="font-display text-lg flex items-center gap-2"><ClipboardCheck className="w-4 h-4 text-[#a5b4fc]" /> {task.title}</h3>
+                              <p className="text-xs text-muted-foreground mt-1">Applied task using this block's skills{bi > 0 ? " + review" : ""}. {done ? "Passed ✓" : "Required before the Checkpoint."}</p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              {tp?.score != null && <span className="font-display text-2xl" style={{ color: done ? "#a5b4fc" : "#FB923C" }} data-testid={`blocktask-score-${task.id}`}>{tp.score}%</span>}
+                              <Button data-testid={`blocktask-start-${task.id}`} onClick={() => navigate(`/studio/${track}/${task.id}`)} className="bg-[#a5b4fc] text-[#04121f] hover:bg-[#c7d2fe]">
+                                {done ? "Redo Task" : "Start Task"}
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     <div className={`hq-glass rounded-2xl p-5 mt-4 border ${c.passed ? "border-[#34D399]/40" : "border-white/10"}`} data-testid={`checkpoint-card-${c.id}`}>
                       <div className="flex items-center justify-between gap-3 flex-wrap">

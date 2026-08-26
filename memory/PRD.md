@@ -161,6 +161,15 @@ Gamified education platform. Stack: React + FastAPI + MongoDB. Auth: Google sign
 - ✅ **Env/creds**: `CLOUDINARY_CLOUD_NAME/API_KEY/API_SECRET` in backend/.env; `cloudinary==1.46.0` in requirements. Account needs the **Aspose Document Conversion (Free)** add-on + Settings→Security "Allow delivery of PDF/ZIP" (both enabled by user).
 - ✅ Verified: curl (upload → 200 ready with N image URLs, images load 200 image/jpeg, delete destroys) + full UI screenshot (guide uploads .pptx → carousel shows res.cloudinary.com slides, counter 1/8). Legacy object-storage Office-viewer path kept as fallback. ⚠️ Requires **redeploy** for production.
 
+## Implemented (2026-06) — Iteration 17: Block Tasks + Skill Drills (Word Processing model)
+- ✅ **Block Task per block (Docs)**: one cumulative, hands-on, auto-graded task before each checkpoint that applies the block's skills **repeatedly** (e.g. "use bold/italic/underline on ≥10 lines", "change the font on ≥10 lines", "change size on ≥6", "color ≥4") + **review** of earlier blocks (80/20). `docs-task1/2/3`, 150 pts, awards points + mastery.
+- ✅ **Checkpoint gating**: the block task is now **required to unlock the checkpoint** (backend `get_track_assessments` + `start_assessment`); lock reason reads "Finish the N lessons and the Block Task…". Returns `block_task_id`.
+- ✅ **Skill Drills (Docs)**: 7 single-skill repetition drills (`docs-d1..d7`: Emphasis, Font Family, Font Size, Color, Alignment, Line Spacing, Lists), 80 pts each, optional extra practice shown as chips per block.
+- ✅ **New grader checks**: `fmt_count` (count blocks matching a format; supports `attrs` any-of, `values`, `not_equals`, `min`) and `type_count` — power the "apply a skill ≥N times" requirement.
+- ✅ **Frontend**: StudioHub renders Skill Drills row + Block Task card (Start/Redo, score, required-before-checkpoint) between missions and checkpoint; StudioMission loads block tasks/drills and, after the last lesson, routes to the Block Task → then the checkpoint. New response fields on `/studio/{track}`: `block_tasks`, `drills`.
+- ✅ Verified: unit grading (task1 correct→100/4, d5→100), UI screenshot (Block 1: 4 skills → 4 drill chips → Block Task card → Checkpoint), explorer gating curl (locked until block task passed). Frontend compiles.
+- ⏳ **Scope**: built for **Word Processing (docs)** only as the model per user; roll out to Email/Sheets/Slides after review. ⚠️ Requires **redeploy** for production.
+
 ## Backlog / Remaining (older)
 - P1: Repurpose Guide Review Queue to flag struggling Explorers (reflections removed).
 - P1: Guide authoring of quests. Rank-movement indicators.

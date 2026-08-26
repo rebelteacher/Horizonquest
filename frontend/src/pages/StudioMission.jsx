@@ -54,6 +54,7 @@ export default function StudioMission() {
   const [mission, setMission] = useState(null);
   const [nextId, setNextId] = useState(null);
   const [nextCheckpoint, setNextCheckpoint] = useState(null);
+  const [nextTask, setNextTask] = useState(null);
   const [doc, setDoc] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -65,7 +66,9 @@ export default function StudioMission() {
       const res = await api.get(`/studio/${track}`);
       setConfig(res.data.config);
       const missions = res.data.missions.sort((a, b) => a.order - b.order);
-      const m = missions.find((x) => x.id === missionId);
+      const blockTasks = res.data.block_tasks || [];
+      const drills = res.data.drills || [];
+      const m = missions.find((x) => x.id === missionId) || blockTasks.find((x) => x.id === missionId) || drills.find((x) => x.id === missionId);
       setMission(m || null);
       if (m) {
         let freshDoc = JSON.parse(JSON.stringify(m.doc));
@@ -78,15 +81,25 @@ export default function StudioMission() {
         }
         setDoc(freshDoc);
         const idx = missions.findIndex((x) => x.id === missionId);
-        setNextId(idx >= 0 && idx < missions.length - 1 ? missions[idx + 1].id : null);
-        // If this is the last lesson of its block, route the student to that block's checkpoint.
+        setNextId(!m.is_block_task && idx >= 0 && idx < missions.length - 1 ? missions[idx + 1].id : null);
+        // Route to the block's checkpoint after the block task, or after the last lesson of the block.
         try {
           const ar = await api.get(`/assessments/track/${track}`);
           const cps = ar.data.checkpoints || [];
-          const cp = cps.find((c) => (c.covers || []).includes(missionId));
-          const blockMissions = cp ? missions.filter((x) => cp.covers.includes(x.id)) : [];
-          const isLastOfBlock = blockMissions.length > 0 && blockMissions[blockMissions.length - 1].id === missionId;
-          setNextCheckpoint(cp && isLastOfBlock ? { id: cp.id, unlocked: !!cp.unlocked } : null);
+          if (m.is_block_task) {
+            const cp = cps.find((c) => c.id === m.block_cp);
+            setNextCheckpoint(cp ? { id: cp.id, unlocked: !!cp.unlocked } : null);
+          } else {
+            const cp = cps.find((c) => (c.covers || []).includes(missionId));
+            const blockMissions = cp ? missions.filter((x) => cp.covers.includes(x.id)) : [];
+            const isLastOfBlock = blockMissions.length > 0 && blockMissions[blockMissions.length - 1].id === missionId;
+            // After the last lesson, send them to the Block Task if one exists, else the checkpoint.
+            if (cp && isLastOfBlock) {
+              const bt = blockTasks.find((t) => t.block_cp === cp.id);
+              if (bt) setNextTask({ id: bt.id, title: bt.title });
+              else setNextCheckpoint({ id: cp.id, unlocked: !!cp.unlocked });
+            }
+          }
         } catch (e) { setNextCheckpoint(null); }
       }
       setLoading(false);
@@ -249,7 +262,11 @@ export default function StudioMission() {
                   <Button data-testid="studio-result-review-btn" variant="outline" className="flex-1 border-white/15" onClick={() => setResult(null)}>Keep editing</Button>
                   <Button data-testid="studio-result-hub-btn" variant="outline" className="flex-1 border-white/15" onClick={() => navigate(`/studio/${track}`)}>Studio</Button>
                 </div>
-                {nextCheckpoint ? (
+                {nextTask ? (
+                  <Button data-testid="studio-result-blocktask-btn" className="w-full bg-[#a5b4fc] text-[#04121f] hover:bg-[#c7d2fe]" onClick={() => navigate(`/studio/${track}/${nextTask.id}`)}>
+                    <ClipboardCheck className="w-4 h-4 mr-2" /> Start the Block Task
+                  </Button>
+                ) : nextCheckpoint ? (
                   nextCheckpoint.unlocked ? (
                     <Button data-testid="studio-result-checkpoint-btn" className="w-full bg-[#22D3EE] text-[#04121f] hover:bg-[#67E8F9] hq-glow-teal" onClick={() => navigate(`/assessment/${nextCheckpoint.id}`)}>
                       <ClipboardCheck className="w-4 h-4 mr-2" /> Take the Checkpoint
