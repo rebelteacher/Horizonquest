@@ -144,8 +144,11 @@ class TestSkillStudioEmail:
         r_g = requests.get(f"{API}/studio/reports/all", headers=GH, timeout=15)
         assert r_g.status_code == 200
         body = r_g.json()
-        assert "totals" in body and "students" in body
-        assert body["totals"]["email"] == 12
+        # Response shape is now per-block: {block_meta, students} (no 'totals' aggregate).
+        assert "block_meta" in body and "students" in body
+        assert "totals" not in body
+        assert len(body["block_meta"]["email"]) == 3
+        assert all(b["lessons_total"] > 0 for b in body["block_meta"]["email"])
         r_e = requests.get(f"{API}/studio/reports/all", headers=EH, timeout=15)
         assert r_e.status_code == 403
 

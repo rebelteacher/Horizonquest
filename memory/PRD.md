@@ -188,6 +188,14 @@ Gamified education platform. Stack: React + FastAPI + MongoDB. Auth: Google sign
 - ✅ Reports (Lessons/Drills/Block Tasks) and Test Scores (Block Task columns) already span all tracks, so Email is covered with no further changes.
 - ✅ Verified: grading unit tests (task1 100, d3 100), Email hub screenshot shows drills + Block Task card + Checkpoint. ⚠️ Requires redeploy for production. Sheets & Slides tracks still pending.
 
+## Reworked (2026-06) — Iteration 23: Block-structured gradebook + Excel export
+- ✅ **Reports are now organized BY BLOCK.** Each track has 3 blocks (one per checkpoint); each block shows `Lessons Avg%` · `Skills Avg%` · `Block Task%` · `Checkpoint%`. Block membership derives from `CHECKPOINTS[cp]['covers']` (lessons) + drills/block-task filtered by `block_cp`; checkpoint = student's BEST completed attempt.
+- ✅ **Fixed the two production complaints:** (1) CSV fractions like "10/14" were being auto-converted by Excel into dates ("14-Oct") — export is now a real **.xlsx** (openpyxl) with integer cells (numFmt `0`), merged 3-row headers (Track → Block → L/S/T/C), and frozen panes; no fraction strings exist to coerce. (2) "1 of 3 tasks = 100%" — tasks/checkpoints are no longer aggregated per track; each block shows its OWN single Task%/Checkpoint% (blank if not attempted), so partial completion is transparent.
+- ✅ On-screen Reports table rewritten to a compact per-track L/S/T/C grid (B1/B2/B3 rows, grade-colored numbers, "—" = not started); Export button now downloads the .xlsx via a cookie-authenticated anchor.
+- ✅ New endpoint `GET /api/studio/reports/export.xlsx` (guide-only); `GET /api/studio/reports/all` response shape changed to `{block_meta, students[].tracks[t].blocks[]}`.
+- ✅ Verified: backend 9/9 new tests (`tests/test_reports_blocks.py`) + curl; frontend iteration_28 all pass (per-block table, authenticated Excel download, class filter, writing flag, gate toggle, no console errors). Averaging rule: Lessons%/Skills% = average of COMPLETED items (blank until 1 attempted); Task%/Checkpoint% = single value, blank if not attempted.
+- ⚠️ NOTE: Sheets & Slides tracks have no drills/block tasks yet → their Skills%/Block Task% columns are always blank until those roll out. ⚠️ Production-affecting — requires redeploy.
+
 ## Fixed (2026-06) — Iteration 22: Skill Studio task-checklist grading bugs
 - 🐞 **Root cause (recurring):** the frontend live task-checker `studioGrade.js` was missing several check `kind`s that the curriculum uses, so those tasks could never tick → "Your Tasks" stuck at 0/N, drills felt uncompletable / unrecorded.
 - ✅ Added missing kinds to `studioGrade.js` (exact mirror of backend `skillstudio._check_one`, parity-verified): `fmt_count`, `type_count` (Docs Block Tasks), `opened_count`, `sent_count` (Email drills/Block Tasks), `table_cells_filled` (Docs tables).

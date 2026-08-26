@@ -23,6 +23,7 @@ import assessments
 import objstore
 import cloudinary_pptx
 import asyncio
+import io
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -693,17 +694,37 @@ async def studio_track(track_id: str, user=Depends(get_current_user)):
     return {**data, "progress": progress}
 
 
+def _block_meta():
+    """Per-track block structure: each block = one checkpoint's lessons (covers) + its drills + its block task."""
+    tracks = ["docs", "sheets", "slides", "email"]
+    meta = {}
+    for t in tracks:
+        cps = assessments.TRACK_CHECKPOINTS.get(t, [])
+        drills = skillstudio.drills_for(t)
+        tasks = skillstudio.block_tasks_for(t)
+        blocks = []
+        for i, cid in enumerate(cps):
+            cp = assessments.CHECKPOINTS.get(cid, {})
+            task_ids = [b["id"] for b in tasks if b.get("block_cp") == cid]
+            blocks.append({
+                "index": i + 1, "cp": cid,
+                "lessons": list(cp.get("covers", [])),
+                "drills": [d["id"] for d in drills if d.get("block_cp") == cid],
+                "task": task_ids[0] if task_ids else None,
+            })
+        meta[t] = blocks
+    return meta
+
+
 @api_router.get("/studio/reports/all")
 async def studio_reports(expedition_id: Optional[str] = None, guide=Depends(get_current_user)):
     if guide.get("role") != "guide":
         raise HTTPException(status_code=403, detail="Guides only")
     tracks = ["docs", "sheets", "slides", "email"]
-    totals = {t: {"lessons": len(skillstudio.MISSIONS.get(t, [])),
-                  "drills": len(skillstudio.drills_for(t)),
-                  "tasks": len(skillstudio.block_tasks_for(t))} for t in tracks}
-    id_sets = {t: ({m["id"] for m in skillstudio.MISSIONS.get(t, [])},
-                   {d["id"] for d in skillstudio.drills_for(t)},
-                   {b["id"] for b in skillstudio.block_tasks_for(t)}) for t in tracks}
+    block_meta = _block_meta()
+    # Lightweight meta the frontend uses to render columns even for students with no progress.
+    meta_out = {t: [{"index": b["index"], "cp": b["cp"], "lessons_total": len(b["lessons"]),
+                     "skills_total": len(b["drills"]), "has_task": bool(b["task"])} for b in block_meta[t]] for t in tracks}
     exps = await db.expeditions.find({"guide_id": guide["user_id"]}, {"_id": 0, "expedition_id": 1}).to_list(200)
     my_exp_ids = [e["expedition_id"] for e in exps]
     if expedition_id:
@@ -718,29 +739,142 @@ async def studio_reports(expedition_id: Optional[str] = None, guide=Depends(get_
     rows = []
     for ex in explorers:
         prog = await db.studio_progress.find({"user_id": ex["user_id"]}, {"_id": 0}).to_list(500)
-        if not prog:
+        cp_attempts = await db.assessment_attempts.find(
+            {"user_id": ex["user_id"], "status": "completed"}, {"_id": 0, "assessment_id": 1, "score": 1, "passed": 1}
+        ).to_list(1000)
+        best_cp = {}
+        for a in cp_attempts:
+            cid, sc = a.get("assessment_id"), a.get("score", 0)
+            if cid not in best_cp or sc > best_cp[cid]["score"]:
+                best_cp[cid] = {"score": sc, "passed": bool(a.get("passed"))}
+        if not prog and not best_cp:
             continue
-        def _avg(items):
-            return round(sum(p.get("score", 0) for p in items) / len(items)) if items else None
+
+        def _grp_avg(rows_present):
+            # Average of COMPLETED items in the group; blank until at least one is attempted.
+            if not rows_present:
+                return None
+            return round(sum(p.get("score", 0) for p in rows_present) / len(rows_present))
+
         by_track = {}
         for t in tracks:
             tp = [p for p in prog if p.get("track") == t]
-            if not tp:
+            has_cp = any(cid in best_cp for cid in assessments.TRACK_CHECKPOINTS.get(t, []))
+            if not tp and not has_cp:
                 continue
-            lids, dids, tids = id_sets[t]
-            lessons = [p for p in tp if p["mission_id"] in lids]
-            drills = [p for p in tp if p["mission_id"] in dids]
-            tasks = [p for p in tp if p["mission_id"] in tids]
-            by_track[t] = {
-                "lessons": {"mastered": sum(1 for p in lessons if p.get("mastery")), "total": totals[t]["lessons"], "avg": _avg(lessons)},
-                "drills": {"done": sum(1 for p in drills if p.get("score", 0) >= 60), "total": totals[t]["drills"], "avg": _avg(drills)},
-                "tasks": {"passed": sum(1 for p in tasks if p.get("score", 0) >= 60), "total": totals[t]["tasks"], "avg": _avg(tasks)},
-                "writing_flag": any(p.get("unresolved_writing", 0) > 0 for p in tp),
-            }
+            pbid = {p["mission_id"]: p for p in tp}
+            blocks = []
+            for bm in block_meta[t]:
+                lrows = [pbid[i] for i in bm["lessons"] if i in pbid]
+                drows = [pbid[i] for i in bm["drills"] if i in pbid]
+                task_score = round(pbid[bm["task"]].get("score", 0)) if (bm["task"] and bm["task"] in pbid) else None
+                cpb = best_cp.get(bm["cp"])
+                blocks.append({
+                    "index": bm["index"],
+                    "lessons": {"avg": _grp_avg(lrows), "done": len(lrows), "total": len(bm["lessons"])},
+                    "skills": {"avg": _grp_avg(drows), "done": len(drows), "total": len(bm["drills"])},
+                    "task": {"score": task_score, "has": bool(bm["task"])},
+                    "checkpoint": {"score": round(cpb["score"]) if cpb else None, "passed": bool(cpb and cpb["passed"])},
+                })
+            by_track[t] = {"blocks": blocks, "writing_flag": any(p.get("unresolved_writing", 0) > 0 for p in tp)}
         last = max((p.get("updated_at", "") for p in prog), default="")
         rows.append({"user_id": ex["user_id"], "name": ex.get("name", ""), "email": ex.get("email", ""), "tracks": by_track, "last_active": last})
-    rows.sort(key=lambda r: r["name"].lower())
-    return {"totals": totals, "students": rows}
+    rows.sort(key=lambda r: (r["name"] or r["email"]).lower())
+    return {"block_meta": meta_out, "students": rows}
+
+
+TRACK_LABELS = {"docs": "Docs", "sheets": "Sheets", "slides": "Slides", "email": "Email"}
+
+
+@api_router.get("/studio/reports/export.xlsx")
+async def studio_reports_xlsx(expedition_id: Optional[str] = None, guide=Depends(get_current_user)):
+    if guide.get("role") != "guide":
+        raise HTTPException(status_code=403, detail="Guides only")
+    report = await studio_reports(expedition_id=expedition_id, guide=guide)
+    meta, students = report["block_meta"], report["students"]
+    tracks = ["docs", "sheets", "slides", "email"]
+
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+    from openpyxl.utils import get_column_letter
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Gradebook"
+
+    thin = Side(style="thin", color="D9D9D9")
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+    center = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    left = Alignment(horizontal="left", vertical="center")
+    track_fill = PatternFill("solid", fgColor="1E293B")
+    block_fill = PatternFill("solid", fgColor="334155")
+    sub_fill = PatternFill("solid", fgColor="475569")
+    white = Font(color="FFFFFF", bold=True)
+    sub_cols = ["Lessons %", "Skills %", "Block Task %", "Checkpoint %"]
+
+    # Row1 track, Row2 block, Row3 sub-columns; A/B = Explorer/Email spanning rows 1-3.
+    ws.cell(row=1, column=1, value="Explorer"); ws.cell(row=1, column=2, value="Email")
+    ws.merge_cells("A1:A3"); ws.merge_cells("B1:B3")
+    col = 3
+    for t in tracks:
+        blocks = meta[t]
+        t_start = col
+        for b in blocks:
+            b_start = col
+            ws.cell(row=2, column=col, value=f"Block {b['index']}")
+            for j, sc in enumerate(sub_cols):
+                c = ws.cell(row=3, column=col + j, value=sc)
+                c.fill = sub_fill; c.font = white; c.alignment = center; c.border = border
+            ws.merge_cells(start_row=2, start_column=b_start, end_row=2, end_column=b_start + 3)
+            bc = ws.cell(row=2, column=b_start); bc.fill = block_fill; bc.font = white; bc.alignment = center; bc.border = border
+            col += 4
+        ws.cell(row=1, column=t_start, value=TRACK_LABELS[t])
+        ws.merge_cells(start_row=1, start_column=t_start, end_row=1, end_column=col - 1)
+        tc = ws.cell(row=1, column=t_start); tc.fill = track_fill; tc.font = white; tc.alignment = center; tc.border = border
+
+    for cellref in ("A1", "B1"):
+        ws[cellref].fill = track_fill; ws[cellref].font = white; ws[cellref].alignment = center
+
+    r = 4
+    for s in students:
+        ws.cell(row=r, column=1, value=s.get("name") or s.get("email")).alignment = left
+        ws.cell(row=r, column=2, value=s.get("email")).alignment = left
+        col = 3
+        for t in tracks:
+            tr = s.get("tracks", {}).get(t)
+            bmap = {b["index"]: b for b in (tr["blocks"] if tr else [])}
+            for bmeta in meta[t]:
+                b = bmap.get(bmeta["index"])
+                vals = [
+                    b["lessons"]["avg"] if b else None,
+                    b["skills"]["avg"] if b else None,
+                    b["task"]["score"] if b else None,
+                    b["checkpoint"]["score"] if b else None,
+                ]
+                for j, v in enumerate(vals):
+                    c = ws.cell(row=r, column=col + j, value=(v if v is not None else None))
+                    c.alignment = center; c.border = border
+                    if v is not None:
+                        c.number_format = "0"
+                col += 4
+        r += 1
+
+    ws.freeze_panes = "C4"
+    ws.column_dimensions["A"].width = 22
+    ws.column_dimensions["B"].width = 26
+    for ci in range(3, col):
+        ws.column_dimensions[get_column_letter(ci)].width = 12
+    ws.row_dimensions[3].height = 30
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    fname = f"horizonquest-gradebook-{datetime.now(timezone.utc).date().isoformat()}.xlsx"
+    return StreamingResponse(
+        buf,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{fname}"'},
+    )
 
 
 # ---------------- Skill Studio: Drafts (save an unfinished email) ----------------

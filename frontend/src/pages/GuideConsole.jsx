@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, Fragment } from "react";
 import { Link } from "react-router-dom";
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
@@ -704,32 +704,19 @@ function ReportsTab({ expeditions = [] }) {
 
   const gradeColor = (s) => (s >= 90 ? "#34D399" : s >= 80 ? "#22D3EE" : s >= 70 ? "#FB923C" : s >= 60 ? "#F59E0B" : "#E11D48");
 
-  const exportCSV = () => {
-    const esc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-    const header = ["Explorer", "Email"];
-    TRACKS.forEach((t) => { header.push(`${t.name} Lessons Mastered`, `${t.name} Lessons Avg%`, `${t.name} Drills Done`, `${t.name} Drills Avg%`, `${t.name} Block Tasks Passed`, `${t.name} Block Tasks Avg%`); });
-    const rows = [header.map(esc).join(",")];
-    data.students.forEach((s) => {
-      const row = [s.name || s.email, s.email];
-      TRACKS.forEach((t) => {
-        const tr = s.tracks[t.id];
-        const tot = data.totals[t.id];
-        if (tr) row.push(`${tr.lessons.mastered}/${tr.lessons.total}`, tr.lessons.avg ?? "", `${tr.drills.done}/${tr.drills.total}`, tr.drills.avg ?? "", `${tr.tasks.passed}/${tr.tasks.total}`, tr.tasks.avg ?? "");
-        else row.push(`0/${tot.lessons}`, "", `0/${tot.drills}`, "", `0/${tot.tasks}`, "");
-      });
-      rows.push(row.map(esc).join(","));
-    });
-    const blob = new Blob([rows.join("\n")], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
+  const exportXlsx = () => {
+    const base = api.defaults.baseURL;
+    const url = `${base}/studio/reports/export.xlsx${expId ? `?expedition_id=${encodeURIComponent(expId)}` : ""}`;
     const a = document.createElement("a");
     a.href = url;
-    a.download = `skill-studio-grades-${new Date().toISOString().slice(0, 10)}.csv`;
-    document.body.appendChild(a); a.click(); a.remove();
-    URL.revokeObjectURL(url);
+    a.download = "";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
   };
 
-  const statLine = (label, done, total, avg, color) => (
-    <p className="text-[11px] leading-tight"><span className="text-muted-foreground">{label} </span><span style={{ color }}>{done}/{total}</span>{avg != null && <span className="text-slate-400"> · {avg}%</span>}</p>
+  const cell = (v, title) => (
+    <span title={title} className="text-center font-mono-data" style={{ color: v == null ? "#475569" : gradeColor(v) }}>{v == null ? "—" : v}</span>
   );
 
   return (
@@ -745,12 +732,12 @@ function ReportsTab({ expeditions = [] }) {
         <Switch data-testid="writing-gate-toggle" checked={gate} onCheckedChange={toggleGate} />
       </div>
       <div className="flex items-start justify-between gap-4 mb-4 flex-wrap">
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-3 flex-wrap max-w-3xl">
           <ClassPicker expeditions={expeditions} value={expId} onChange={setExpId} />
-          <p className="text-sm text-muted-foreground">Skill Studio grades per Explorer — <span className="text-slate-300">Lessons</span> (daily), <span className="text-[#34D399]">Drills</span> (practice) & <span className="text-[#a5b4fc]">Block Tasks</span> (the skills assessment before each checkpoint). Shows completed/total · average.</p>
+          <p className="text-sm text-muted-foreground">Grades by <span className="text-slate-200">Block</span> (each block = its lessons, skills, Block Task, and Checkpoint). <span className="font-mono-data text-slate-300">L</span> Lessons avg · <span className="font-mono-data text-slate-300">S</span> Skills avg · <span className="font-mono-data text-slate-300">T</span> Block Task · <span className="font-mono-data text-slate-300">C</span> Checkpoint. Numbers are %; <span className="text-slate-500">—</span> means not started.</p>
         </div>
-        {data && data.students.length > 0 && <button data-testid="reports-export-csv-btn" onClick={exportCSV} className="inline-flex items-center gap-2 shrink-0 px-3 h-9 rounded-md bg-[#22D3EE] text-[#04121f] text-sm font-medium hover:bg-[#22D3EE]/90 transition-colors">
-          <Download className="w-4 h-4" /> Export CSV
+        {data && data.students.length > 0 && <button data-testid="reports-export-xlsx-btn" onClick={exportXlsx} className="inline-flex items-center gap-2 shrink-0 px-3 h-9 rounded-md bg-[#22D3EE] text-[#04121f] text-sm font-medium hover:bg-[#22D3EE]/90 transition-colors">
+          <Download className="w-4 h-4" /> Export Excel
         </button>}
       </div>
       {loading ? <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
@@ -760,29 +747,43 @@ function ReportsTab({ expeditions = [] }) {
         <table className="w-full text-sm border-collapse" data-testid="reports-table">
           <thead>
             <tr className="text-left text-xs uppercase tracking-widest text-muted-foreground">
-              <th className="py-2 pr-4">Explorer</th>
+              <th className="py-2 pr-4 sticky left-0 bg-[#0A1128]">Explorer</th>
               {TRACKS.map((t) => <th key={t.id} className="py-2 px-3 text-center">{t.name}</th>)}
             </tr>
           </thead>
           <tbody>
             {data.students.map((s) => (
-              <tr key={s.user_id} data-testid={`report-row-${s.user_id}`} className="border-t border-white/10">
-                <td className="py-2.5 pr-4">
+              <tr key={s.user_id} data-testid={`report-row-${s.user_id}`} className="border-t border-white/10 align-top">
+                <td className="py-2.5 pr-4 sticky left-0 bg-[#0A1128]">
                   <p className="text-slate-200">{s.name || s.email}</p>
                   <p className="text-xs text-muted-foreground">{s.email}</p>
                 </td>
                 {TRACKS.map((t) => {
                   const tr = s.tracks[t.id];
+                  const meta = (data.block_meta && data.block_meta[t.id]) || [];
+                  const bmap = {};
+                  (tr ? tr.blocks : []).forEach((b) => { bmap[b.index] = b; });
                   return (
-                    <td key={t.id} className="py-2.5 px-3 text-center align-top">
+                    <td key={t.id} className="py-2.5 px-3 align-top">
                       {tr ? (
-                        <div className="inline-block text-left space-y-0.5">
-                          {statLine("Lessons", tr.lessons.mastered, tr.lessons.total, tr.lessons.avg, gradeColor(tr.lessons.avg ?? 0))}
-                          {statLine("Drills", tr.drills.done, tr.drills.total, tr.drills.avg, "#34D399")}
-                          {statLine("Block Tasks", tr.tasks.passed, tr.tasks.total, tr.tasks.avg, "#a5b4fc")}
-                          {tr.writing_flag && <p data-testid={`writing-flag-${s.user_id}-${t.id}`} className="text-[10px] leading-tight text-[#E11D48] flex items-center gap-1" title="Submitted with unresolved writing issues"><Flag className="w-3 h-3" /> Writing issues</p>}
+                        <div className="inline-grid gap-x-2.5 gap-y-0.5 text-[11px] leading-snug" style={{ gridTemplateColumns: "auto repeat(4, 30px)" }}>
+                          <span />
+                          {["L", "S", "T", "C"].map((h) => <span key={h} className="text-center text-slate-500 text-[9px] uppercase">{h}</span>)}
+                          {meta.map((m) => {
+                            const b = bmap[m.index] || {};
+                            return (
+                              <Fragment key={m.index}>
+                                <span className="text-slate-500 font-mono-data pr-1">B{m.index}</span>
+                                {cell(b.lessons?.avg ?? null, `Lessons ${b.lessons?.done ?? 0}/${m.lessons_total} done`)}
+                                {cell(b.skills?.avg ?? null, `Skills ${b.skills?.done ?? 0}/${m.skills_total} done`)}
+                                {cell(m.has_task ? (b.task?.score ?? null) : null, "Block Task")}
+                                {cell(b.checkpoint?.score ?? null, b.checkpoint?.passed ? "Checkpoint · passed" : "Checkpoint")}
+                              </Fragment>
+                            );
+                          })}
                         </div>
                       ) : <span className="text-slate-600">—</span>}
+                      {tr && tr.writing_flag && <p data-testid={`writing-flag-${s.user_id}-${t.id}`} className="mt-1 text-[10px] leading-tight text-[#E11D48] flex items-center gap-1" title="Submitted with unresolved writing issues"><Flag className="w-3 h-3" /> Writing issues</p>}
                     </td>
                   );
                 })}

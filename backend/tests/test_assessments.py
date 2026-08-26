@@ -55,7 +55,8 @@ def hdr(tok):
 
 
 def unlock_cp1(mongo, uid):
-    for mid in CP1_COVERS:
+    # The checkpoint gate requires the block's lessons AND its Block Task to be passed.
+    for mid in list(CP1_COVERS) + ["email-task1"]:
         mongo.studio_progress.update_one({"user_id": uid, "mission_id": mid},
                                          {"$set": {"score": 100, "track": "email"}}, upsert=True)
 
@@ -110,9 +111,14 @@ class TestUnlockGate:
 class TestRandomization:
     def test_two_starts_differ(self, mongo, qa_explorer):
         unlock_cp1(mongo, qa_explorer["uid"])
+        mongo.assessment_attempts.delete_many({"user_id": qa_explorer["uid"]})
         a = start(qa_explorer["token"])
+        assert a.status_code == 200, a.text
+        # An unsubmitted attempt is intentionally reused, so submit A before drawing B.
+        aid = a.json()["attempt_id"]
+        submit(qa_explorer["token"], aid, answer_all(mongo, aid, correct=False))
         b = start(qa_explorer["token"])
-        assert a.status_code == 200 and b.status_code == 200
+        assert b.status_code == 200, b.text
         qa, qb = a.json()["questions"], b.json()["questions"]
         assert len(qa) == 20 and len(qb) == 20
         for q in qa + qb:
@@ -266,8 +272,10 @@ class TestGradebook:
         r = requests.get(f"{BASE_URL}/assessments/reports", headers=hdr(GUIDE_TOK), timeout=30)
         assert r.status_code == 200, r.text
         d = r.json()
-        assert len(d["columns"]) == 13
-        assert [c["id"] for c in d["columns"]][-1] == "final"
+        col_ids = [c["id"] for c in d["columns"]]
+        # 4 tracks x 3 checkpoints + the final, followed by the Block Task columns.
+        assert col_ids[:13] == [f"{t}-cp{i}" for t in ("docs", "sheets", "slides", "email") for i in (1, 2, 3)] + ["final"], col_ids
+        assert "final" in col_ids
         row = next((s for s in d["students"] if s["user_id"] == uid), None)
         assert row is not None, "explorer missing from guide gradebook"
         assert row["scores"][CP1] == 100

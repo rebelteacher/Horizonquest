@@ -1,0 +1,48 @@
+{
+  "summary": "Tested the BY-BLOCK Skill Studio gradebook rework end-to-end on the preview URL. BACKEND: new pytest suite /app/backend/tests/test_reports_blocks.py (9 tests, 9 passed) covers GET /api/studio/reports/all new shape ({block_meta, students}; 'totals' removed; 3 blocks/track; lessons/skills {avg,done,total} with avg=null when done=0; task.score single value; checkpoint = BEST completed attempt), guide-only 403 for explorer, 401 unauth, 404 on foreign expedition_id, and GET /api/studio/reports/export.xlsx (content-type spreadsheetml, Content-Disposition attachment, PK magic, freeze_panes='C4', row1 merged Docs/Sheets/Slides/Email, row2 'Block 1/2/3' merged across 4 cols each (verified all 12 merge ranges), row3 = repeating Lessons %/Skills %/Block Task %/Checkpoint % x12, data from row4). CRITICAL DATE-CORRUPTION FIX CONFIRMED: every grade cell is a real int (0-100) or blank — zero string cells, so Excel can no longer read '10/14' as 14-Oct. Seeded two email-cp1 attempts for em-exp (84 passed, 52 failed) and confirmed the report shows the BEST (84) — then removed the seed. Verified full row em-exp Email B1 = L75 / S— / T100 / C84 in both JSON, the on-screen table and the browser-downloaded xlsx (columns AM-AP), so the old '1 of 3 tasks = 100%' aggregation is gone: each block shows its own single Block Task% and Checkpoint%. FRONTEND: /guide > Reports as em-guide renders reports-table with per-track L/S/T/C grids, B1/B2/B3 rows, grade-colored numbers and '—' for not-started, matching the API exactly; writing-flag-em-exp-docs renders; writing-gate-toggle flips true->false->true with toast and persists; ClassPicker works (1 class); reports-export-xlsx-btn triggers a REAL download (horizonquest-gradebook-2026-08-26.xlsx, 6297 bytes, opened with openpyxl - headers+numeric cells verified) and a cookie-authenticated fetch of the endpoint returns 200 with the xlsx content-type; Test Scores / Review Queue / Mastery / Curriculum tabs still load; ZERO console errors on desktop (1920x1080) and tablet (768x1024).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/studio/reports/all + export.xlsx", "issue": "Sheets and Slides tracks have NO drills and NO block task in the curriculum (skills_total=0, has_task=false for all 3 blocks), so their Skills % and Block Task % columns are structurally always blank — 12 permanently-empty columns in the xlsx and 6 empty cells per student on screen. Either populate those tracks or suppress/label the impossible columns."},
+      {"endpoint": "/api/leaderboard (pre-existing, unrelated)", "issue": "backend_test.py::TestLeaderboardTabs::test_metrics expects metric 'territory' but API returns 'overall'; test_leaderboard_invalid_expedition_404 gets 200 instead of 404 for an unknown expedition_id — an invalid expedition should 404."},
+      {"endpoint": "/api/studio/reports/all (writing_flag semantics)", "issue": "writing_flag is a TRACK-level any(), so it can never clear while any other mission in that track still has unresolved_writing>0 (em-exp docs-m2 = 6). test_writing_coach::test_resubmit_clean_clears_flag fails for this reason. If per-mission clearing is intended, expose per-mission flags."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "ReportsTab.exportXlsx", "issue": "LOW: uses window.open(url) for an attachment response, which leaves a stray blank tab open (observed popup with url ':') and is vulnerable to popup blockers. Prefer a hidden <a download> or an axios blob + URL.createObjectURL download.", "selector": "[data-testid='reports-export-xlsx-btn']", "priority": "LOW"},
+      {"component": "ReportsTab", "issue": "LOW: dead code — statLine() helper is defined but no longer used after the per-block rewrite; remove it.", "selector": "n/a", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Guide Console > Reports", "issues": ["Pre-existing lint errors in GuideConsole.jsx (react/no-unescaped-entities at lines 212 and 385).", "The L/S/T/C grid uses 9px slate-500 header letters and 11px values — legible at 1920 and 768 but close to the minimum for a teacher scanning a class; the legend line above is the only key (no per-column tooltip on the header letters, only on the values)."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_reports_blocks.py", "/app/test_reports/pytest/pytest_results.xml", "/app/test_reports/pytest/ui_export.xlsx"],
+  "action_items": [
+    "Optional LOW: replace window.open in exportXlsx with a hidden anchor/blob download so no blank tab is left and popup blockers can't break it.",
+    "Optional LOW: delete the now-unused statLine() helper in ReportsTab.",
+    "Decide what to do about Sheets/Slides having no drills/block tasks — their Skills %/Block Task % columns are always blank in the new gradebook and the xlsx.",
+    "Pre-existing (not from this change): /api/leaderboard invalid expedition_id returns 200 instead of 404; leaderboard metric key is 'overall' not 'territory'; test_new_features::test_points_events_logged and several test_skillstudio_email/docs/sheets/slides expectations (task counts 5 vs 4, guide submit now 200 instead of 403, email-m4 grade B vs A) are stale or real regressions worth a look."
+  ],
+  "critical_code_review_comments": [
+    "server.py studio_reports_xlsx calls studio_reports() directly and re-derives everything — good (single source of truth, no drift between screen and export).",
+    "_grp_avg's `total` parameter is unused (avg is over completed items only) — harmless but drop the arg or use it, otherwise it reads like a denominator bug.",
+    "openpyxl imports are function-local inside the xlsx route; fine for cold-start cost but move to module scope for consistency (openpyxl==3.1.5 is pinned and installed).",
+    "The xlsx writes bare integers with no numFmt — correct for the reported bug (no date coercion). Consider numFmt '0' explicitly so a stray float never renders as 84.00000001.",
+    "server.py is 1694 lines — past the 700-line guideline; the Skill Studio reports/export block is a natural candidate for its own router module."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_reports_blocks.py (new)",
+    "/app/backend/tests/seed_checkpoint_attempt.py (new helper: attempts a real checkpoint start/submit for em-exp; gated 403 by design)",
+    "/app/backend/tests/test_skillstudio_email.py (test_140: stale 'totals'/totals.email==12 expectation updated to the new block_meta shape)",
+    "/app/backend/tests/test_assessments.py (unlock_cp1 now also passes email-task1 since the checkpoint gate requires the Block Task; TestGradebook column assertion made structural instead of the stale magic 13; TestRandomization now submits attempt A before drawing B because an in_progress attempt is intentionally reused)"
+  ],
+  "success_rate": {"backend": "100% on the block-gradebook feature (9/9 new tests; 4 stale tests in existing suites fixed). Full suite: 254/279 before, ~262/279 after — remaining failures are pre-existing/data-polluted and unrelated to this change.", "frontend": "100% (per-block table, export download+auth, class picker, writing flag, writing-gate toggle, tab regression, no console errors)"},
+  "seed_data_creation": "Inserted then DELETED two completed email-cp1 assessment_attempts for em-exp (scores 84 passed / 52 failed) to prove Checkpoint% shows the best attempt. No other data created; em-fresh's studio_progress was reset by the existing test suites' own teardown, so it no longer appears in the report (expected, API and UI agree).",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "Guide em-guide / em_guide_tok, Explorer em-exp / em_exp_tok (cookie session_token httpOnly+secure+sameSite None, or Authorization: Bearer).",
+  "context_for_next_testing_agent": "Repro: playwright add_cookies session_token=em_guide_tok on https://explorer-journey-4.preview.emergentagent.com, goto /guide, click role=tab 'Reports', wait for [data-testid=reports-table]. Download test: page.expect_download() around clicking [data-testid=reports-export-xlsx-btn]; verify with openpyxl (freeze C4, row3 = Lessons %/Skills %/Block Task %/Checkpoint % x12, all data cells int or None). Backend suite: pytest tests/test_reports_blocks.py (pytest.ini already runs xdist; do NOT pass -n). To get a non-null Checkpoint% you must insert an assessment_attempts doc via mongosh (the /assessments/<cp>/start endpoint correctly 403s until the block's lessons AND block task are passed). Known-remaining unrelated failures: test_writing_coach::test_resubmit_clean_clears_flag (em-exp docs-m2 unresolved_writing=6), test_rank_scopes::test_explorer_scopes (em-exp is now in expedition exp_61e14d36b5eb), and the stale test_skillstudio_email/docs/sheets/slides + backend_test leaderboard expectations.",
+  "rca_of_the_issue": "Both reported production bugs are fixed at the source. (1) Date corruption: the export is now a real .xlsx written by openpyxl with ws.cell(value=<int|None>), so no '10/14'-style fraction strings exist for Excel to coerce into dates — verified cell-by-cell on the file the browser actually downloaded. (2) '1 of 3 tasks = 100%': the response no longer aggregates tasks per track; block_meta pins each block to a checkpoint (CHECKPOINTS[cp]['covers'] for lessons, drills/block task filtered by block_cp) and each block emits its own single task.score and checkpoint.score, blank when unattempted, while Lessons%/Skills% average only completed items. em-exp Email now reads B1 L75/T100/C84, B2 L100/T100/C—, B3 L100/T—/C— instead of one misleading 100%."
+}
