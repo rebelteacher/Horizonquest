@@ -1,7 +1,8 @@
 import { useRef, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
-import { Inbox, Send, FileText, Trash2, Search, Reply, ReplyAll, Forward, Paperclip, Bold, List, PenSquare, X, Star, Square, GripVertical, ArrowLeft, Save } from "lucide-react";
+import { Inbox, Send, FileText, Trash2, Search, Reply, ReplyAll, Forward, Paperclip, Bold, List, PenSquare, X, Star, Square, GripVertical, ArrowLeft, Save, SpellCheck, Loader2 } from "lucide-react";
+import { SquigglyBackdrop, SquigglyText } from "./Squiggly";
 
 const FOLDERS = [
   { id: "inbox", name: "Inbox", icon: Inbox },
@@ -17,7 +18,7 @@ const studentPortion = (body) => {
 };
 const snippetOf = (m) => (m.body || "").replace(/\s*\n+\s*/g, " ").trim().slice(0, 80);
 
-export default function EmailClientCore({ doc, setDoc, config }) {
+export default function EmailClientCore({ doc, setDoc, config, proofread, readingIssues = [] }) {
   const messages = doc.messages || [];
   const [folder, setFolder] = useState("inbox");
   const [openId, setOpenId] = useState(null);
@@ -26,8 +27,30 @@ export default function EmailClientCore({ doc, setDoc, config }) {
   const [attachOpen, setAttachOpen] = useState(false);
   const [pos, setPos] = useState({ x: null, y: null });
   const [drag, setDrag] = useState(null);
+  const [bodyIssues, setBodyIssues] = useState([]);
+  const [checking, setChecking] = useState(false);
   const bodyRef = useRef(null);
   const panelRef = useRef(null);
+
+  const checkWriting = async () => {
+    if (!proofread) return;
+    const text = studentPortion(compose.body || "");
+    if (text.split(/\s+/).filter(Boolean).length < 3) {
+      toast.info("Write a few sentences first, then I can check your writing.");
+      return;
+    }
+    setChecking(true);
+    try {
+      const issues = await proofread(text);
+      setBodyIssues(issues);
+      if (!issues.length) toast.success("Nice writing — no spelling or grammar issues found! ⚓");
+      else toast.warning(`Found ${issues.length} thing${issues.length > 1 ? "s" : ""} to fix — see the red underlines below.`);
+    } catch (e) {
+      toast.error("The Writing Coach was unavailable. Try again in a moment.");
+    } finally {
+      setChecking(false);
+    }
+  };
 
   const open = messages.find((m) => m.id === openId);
   const picked = doc.picked || [];
@@ -215,7 +238,11 @@ export default function EmailClientCore({ doc, setDoc, config }) {
               </div>
               {open.bcc?.length ? <p className="text-[11px] text-slate-500 mt-1 italic">Bcc is a hidden copy — normally only the sender can see it.</p> : null}
               {open.attachments?.length ? <div className="mt-2 flex flex-wrap gap-2">{open.attachments.map((a, i) => <span key={i} className="inline-flex items-center gap-1 text-xs bg-white/5 rounded px-2 py-1 text-slate-300"><Paperclip className="w-3 h-3" />{a.name}</span>)}</div> : null}
-              <div className="mt-3 text-slate-200 text-sm whitespace-pre-wrap leading-relaxed">{open.body}</div>
+              <div className="mt-3 text-slate-200 text-sm whitespace-pre-wrap leading-relaxed">
+                {open.folder === "sent" && readingIssues.length > 0
+                  ? <SquigglyText value={open.body} issues={readingIssues} />
+                  : open.body}
+              </div>
               {open.folder === "inbox" && (
                 <div className="flex flex-wrap gap-2 mt-5">
                   <Btn testid="email-reply-btn" onClick={() => startCompose("reply")} icon={Reply} label="Reply" />
@@ -252,8 +279,16 @@ export default function EmailClientCore({ doc, setDoc, config }) {
               <button data-testid="email-fmt-bold" title="Bold" onClick={() => insertAtCursor(null, ["**", "**"])} className="w-8 h-8 flex items-center justify-center text-slate-200 hover:bg-white/10 rounded"><Bold className="w-4 h-4" /></button>
               <button data-testid="email-fmt-bullets" title="Bullet list" onClick={() => insertAtCursor("\n• ")} className="w-8 h-8 flex items-center justify-center text-slate-200 hover:bg-white/10 rounded"><List className="w-4 h-4" /></button>
               <button data-testid="email-fmt-signature" title="Insert signature" onClick={() => setC({ body: compose.body + config.signature })} className="px-2 h-8 text-xs text-slate-200 hover:bg-white/10 rounded">Signature</button>
+              {proofread && (
+                <button data-testid="email-check-writing-btn" title="Check my writing" onClick={checkWriting} disabled={checking} className="ml-1 inline-flex items-center gap-1.5 px-2 h-8 text-xs text-[#a5b4fc] hover:bg-[#818CF8]/15 rounded disabled:opacity-50">
+                  {checking ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <SpellCheck className="w-3.5 h-3.5" />} Check my writing
+                </button>
+              )}
             </div>
-            <textarea ref={bodyRef} data-testid="email-body" value={compose.body} onChange={(e) => setC({ body: e.target.value })} rows={7} placeholder="Write your message…" className="w-full rounded-md bg-slate-800 border border-slate-600 px-2 py-2 text-sm text-white placeholder:text-slate-400 outline-none resize-none focus:border-[#818CF8]" />
+            <div className="relative rounded-md bg-slate-800 border border-slate-600 focus-within:border-[#818CF8]">
+              {bodyIssues.length > 0 && <SquigglyBackdrop value={compose.body} issues={bodyIssues} className="px-2 py-2 text-sm leading-normal text-white" />}
+              <textarea ref={bodyRef} data-testid="email-body" value={compose.body} onChange={(e) => setC({ body: e.target.value })} rows={7} placeholder="Write your message…" className="relative w-full rounded-md bg-transparent px-2 py-2 text-sm text-white placeholder:text-slate-400 outline-none resize-none" />
+            </div>
             {compose.attachments.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {compose.attachments.map((a, i) => <span key={i} className="inline-flex items-center gap-1 text-xs bg-[#818CF8]/15 text-[#a5b4fc] rounded px-2 py-1">{a.name}<button data-testid={`email-att-remove-${i}`} onClick={() => setC({ attachments: compose.attachments.filter((_, x) => x !== i) })}><X className="w-3 h-3" /></button></span>)}

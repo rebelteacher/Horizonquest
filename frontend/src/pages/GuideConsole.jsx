@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Anchor, Plus, Copy, Users, ClipboardCheck, BarChart3, Trophy, Loader2, Check, Compass, BookOpen, Target, Download, ListChecks, Trash2, X as XIcon, BookMarked, Printer, Pencil, Search, UserCog, School } from "lucide-react";
+import { Anchor, Plus, Copy, Users, ClipboardCheck, BarChart3, Trophy, Loader2, Check, Compass, BookOpen, Target, Download, ListChecks, Trash2, X as XIcon, BookMarked, Printer, Pencil, Search, UserCog, School, Flag, SpellCheck } from "lucide-react";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from "recharts";
 
@@ -679,14 +679,26 @@ function ReportsTab({ expeditions = [] }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [expId, setExpId] = useState("");
+  const [gate, setGate] = useState(true);
+  const gateTouched = useRef(false);
   const TRACKS = [{ id: "docs", name: "Docs" }, { id: "sheets", name: "Sheets" }, { id: "slides", name: "Slides" }, { id: "email", name: "Email" }];
 
   useEffect(() => { if (expeditions.length && !expId) setExpId(expeditions[0].expedition_id); }, [expeditions, expId]);
+  useEffect(() => { api.get("/studio/writing-gate").then((r) => { if (!gateTouched.current) setGate(r.data.gate !== false); }).catch(() => {}); }, []);
   useEffect(() => {
     if (!expId) { setLoading(false); return; }
     setLoading(true);
     api.get("/studio/reports/all", { params: { expedition_id: expId } }).then((r) => setData(r.data)).finally(() => setLoading(false));
   }, [expId]);
+
+  const toggleGate = async (val) => {
+    gateTouched.current = true;
+    setGate(val);
+    try {
+      await api.put("/studio/writing-gate", { gate: val });
+      toast.success(val ? "Students must fix writing before submitting." : "Writing hard-halt turned off — students can submit anyway.");
+    } catch (e) { setGate(!val); toast.error("Could not update the setting."); }
+  };
 
   if (expeditions.length === 0) return <p className="text-sm text-muted-foreground py-10 text-center">Create a class first to see Skill Studio grades.</p>;
 
@@ -722,6 +734,16 @@ function ReportsTab({ expeditions = [] }) {
 
   return (
     <div>
+      <div className="hq-glass rounded-2xl p-4 mb-4 flex items-center justify-between gap-4 flex-wrap border-t border-t-[#818CF8]/30">
+        <div className="flex items-start gap-3">
+          <SpellCheck className="w-5 h-5 text-[#a5b4fc] mt-0.5 shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-slate-100">Writing hard-halt (Docs &amp; Email)</p>
+            <p className="text-xs text-muted-foreground max-w-md">When ON, the AI Writing Coach blocks a student from submitting until spelling, grammar, capitalization &amp; punctuation are fixed. Turn OFF to let them submit anyway — those submissions get a red flag below.</p>
+          </div>
+        </div>
+        <Switch data-testid="writing-gate-toggle" checked={gate} onCheckedChange={toggleGate} />
+      </div>
       <div className="flex items-start justify-between gap-4 mb-4 flex-wrap">
         <div className="flex items-center gap-3 flex-wrap">
           <ClassPicker expeditions={expeditions} value={expId} onChange={setExpId} />
@@ -758,6 +780,7 @@ function ReportsTab({ expeditions = [] }) {
                           {statLine("Lessons", tr.lessons.mastered, tr.lessons.total, tr.lessons.avg, gradeColor(tr.lessons.avg ?? 0))}
                           {statLine("Drills", tr.drills.done, tr.drills.total, tr.drills.avg, "#34D399")}
                           {statLine("Block Tasks", tr.tasks.passed, tr.tasks.total, tr.tasks.avg, "#a5b4fc")}
+                          {tr.writing_flag && <p data-testid={`writing-flag-${s.user_id}-${t.id}`} className="text-[10px] leading-tight text-[#E11D48] flex items-center gap-1" title="Submitted with unresolved writing issues"><Flag className="w-3 h-3" /> Writing issues</p>}
                         </div>
                       ) : <span className="text-slate-600">—</span>}
                     </td>

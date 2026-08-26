@@ -1,0 +1,63 @@
+{
+  "summary": "Tested the new AI Writing Coach feature end-to-end. Backend: created /app/backend/tests/test_writing_coach.py (15 pytest cases) covering POST /api/ai/proofread (messy/clean/empty/invalid/auth, exact-substring guarantee, punctuation+capitalization detection), GET/PUT /api/studio/writing-gate (route ordering vs /studio/{track_id}, guide-only 403, explorer inheritance, 422 validation) and submit->reports writing_flag lifecycle (set + clear). All 15 passed. Frontend (Playwright, explorer em-exp / guide em-guide): Docs check-writing dialog + squigglies, Docs HARD HALT (blocks submit, halt note visible, no grade dialog; grades after fixes), Email compose check-writing + squigglies, Email HARD HALT + reading-pane squigglies, guide gate toggle ON/OFF with persistence, gate-OFF submit proceeds and shows red 'Writing issues' flag (writing-flag-em-exp-docs) in Guide Reports, and guide grade-preview correctly bypasses the writing gate (no check-writing buttons for guides). One real functional defect found: Apply fix / Apply all fixes replaces the wrong text when the flagged substring also occurs earlier in the document.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "StudioMission.applyIssueToDoc / applyAllFixes (Docs)",
+        "issue": "Apply fix replaces the FIRST block whose text .includes(issue.text), not the block/offset the issue actually came from. Reproduced: left starter blocks untouched, typed 'i dont like it' into the LAST block, ran Submit (gate ON) -> Apply all fixes. Result: block 1 'My First Document' was corrupted to 'My FIrst Document' while the real error stayed as 'i don't like it'. Re-submitting then halts again (now flagging 'FIrst'), so the student is bounced repeatedly AND the mission's graded text (task 'Bold the title line (My First Document)') is damaged. Root cause: getDocText() joins header + all blocks into one string so per-issue character offsets are lost; applyIssueToDoc then does a blind first-match .replace(). Fix: proofread per block (or carry the joined-text offset and map back to block+index) and use word-boundary matching.",
+        "selector": "[data-testid='studio-block-*'], Apply all fixes",
+        "priority": "HIGH"
+      },
+      {
+        "component": "DocEditorCore squiggly filter + Squiggly.computeSegments",
+        "issue": "Issues are matched with plain substring .includes(), so a short flagged token underlines letters inside unrelated words/blocks. Reproduced: issue text 'i' produced squigglies in 'A quick tour of the editor' and 'Click any line above...' (3 squigglies for 1 issue). Needs word-boundary/offset-aware matching.",
+        "selector": ".hq-squiggly",
+        "priority": "MEDIUM"
+      },
+      {
+        "component": "GuideConsole ReportsTab writing-gate-toggle",
+        "issue": "Possible race observed once: the mount GET /studio/writing-gate resolved after an early toggle click and reset the Switch back to ON while the backend had persisted OFF (toast said 'turned off', switch still data-state=checked). Not reproducible after reload. Suggest ignoring the stale GET (or disabling the toggle until loaded).",
+        "selector": "[data-testid='writing-gate-toggle']",
+        "priority": "LOW"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Studio Docs mission (Writing Coach)",
+        "issues": [
+          "The checker proofreads the mission's seeded starter text (header + all pre-filled blocks), not just what the student wrote, so with hard-halt ON a student can be blocked by curriculum text they never typed. Consider limiting the check to student-edited content."
+        ]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_writing_coach.py",
+    "/app/test_reports/pytest/test_writing_coach.xml"
+  ],
+  "action_items": [
+    "Fix apply-fix targeting: proofread per block (or map joined-text offsets back to block + char index) so Apply fix / Apply all edits the exact occurrence; add word-boundary matching to avoid corrupting unrelated words (HIGH — corrupts graded mission text and creates a repeat hard-halt loop).",
+    "Make computeSegments / DocEditorCore issue filtering offset- or word-boundary-based so short tokens ('i', 'no') stop underlining letters inside unrelated words.",
+    "Guard the ReportsTab gate Switch against the stale initial GET overwriting a just-toggled value."
+  ],
+  "critical_code_review_comments": [
+    "StudioMission.getDocText() flattens header + blocks (and table cells) into one string, discarding the mapping needed by applyIssueToDoc — this is the root cause of the wrong-block replacement.",
+    "applyIssueToDoc uses String.replace(issue.text, suggestion) on the first matching field; use an index-based splice on the known block/offset instead.",
+    "applyFix drops issues by object identity (arr.filter(i => i !== issue)); works today because review.issues and docIssues share objects, but is fragile — prefer a stable issue id/index.",
+    "Backend /api/ai/proofread correctly validates that each issue.text is a verbatim substring and fails open on LLM errors — good. Gate route is declared before /studio/{track_id}, verified not shadowed."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_writing_coach.py"
+  ],
+  "success_rate": {"backend": "100% (15/15)", "frontend": "~85% (all gate/halt/flag flows pass; apply-fix targeting defective)"},
+  "seed_data_creation": "Added em-exp to em-guide's expedition exp_61e14d36b5eb (name 'Em Explorer', email em.exp@test.com) so gate inheritance + reports flag are verifiable. Left one deliberate flagged submission: studio_progress em-exp/docs-m2 unresolved_writing=6 (drives the red 'Writing issues' flag in Guide Reports). writing_gate setting for em-guide restored to ON (true).",
+  "should_call_test_agent_after_fix": true,
+  "should_main_agent_self_test": false,
+  "test_credentials": "Explorer em-exp/em_exp_tok, Guide em-guide/em_guide_tok, Fresh em-fresh/em_fresh_tok (cookie session_token or Bearer)",
+  "context_for_next_testing_agent": "Backend suite: pytest /app/backend/tests/test_writing_coach.py (15 pass, ~17s, live Claude). Frontend flows verified via cookie injection on https://explorer-journey-4.preview.emergentagent.com: /studio/docs/docs-m1 (check + hard halt + apply all + grade), /studio/email/email-m3 (compose check, send, hard halt, sent-pane squigglies), /guide > Reports (writing-gate-toggle, writing-flag-em-exp-docs). Retest focus after fix: apply-fix must edit only the flagged occurrence — repro is to type errors ONLY in the last block and leave the seeded 'My First Document' first block untouched, then Apply all.",
+  "rca_of_the_issue": "StudioMission concatenates the header and every block into a single string for proofreading, so the returned issues carry only a text snippet with no position. applyIssueToDoc then searches blocks in order and rewrites the first field containing that snippet, so a snippet that also appears earlier (e.g. the letter 'i' inside 'First') is replaced in the wrong place, leaving the actual error unfixed and mutating graded starter text. The same substring-only matching in Squiggly.computeSegments / DocEditorCore causes false-positive underlines."
+}

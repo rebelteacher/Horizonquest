@@ -3,20 +3,24 @@ import {
   Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, AlignJustify,
   List, ListOrdered, Link2, Table2, Hash, Search,
 } from "lucide-react";
+import { SquigglyBackdrop } from "./Squiggly";
 
-function AutoTextarea({ value, onChange, style, onFocus, testid, placeholder }) {
+function AutoTextarea({ value, onChange, style, onFocus, testid, placeholder, issues }) {
   const ref = useRef(null);
   useEffect(() => {
     const el = ref.current;
     if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; }
   }, [value, style.fontSize, style.fontFamily, style.lineHeight]);
   return (
-    <textarea
-      ref={ref} data-testid={testid} rows={1} value={value} placeholder={placeholder}
-      onFocus={onFocus} onChange={(e) => onChange(e.target.value)}
-      style={style}
-      className="w-full bg-transparent resize-none outline-none border-none overflow-hidden placeholder:text-slate-400"
-    />
+    <div className="relative flex-1 min-w-0">
+      {issues && issues.length > 0 && <SquigglyBackdrop value={value} issues={issues} style={style} />}
+      <textarea
+        ref={ref} data-testid={testid} rows={1} value={value} placeholder={placeholder}
+        onFocus={onFocus} onChange={(e) => onChange(e.target.value)}
+        style={style}
+        className="relative w-full bg-transparent resize-none outline-none border-none overflow-hidden placeholder:text-slate-400"
+      />
+    </div>
   );
 }
 
@@ -31,7 +35,7 @@ const TBtn = ({ active, onClick, title, testid, children, disabled }) => (
   </button>
 );
 
-export default function DocEditorCore({ doc, setDoc, config, pageRef }) {
+export default function DocEditorCore({ doc, setDoc, config, pageRef, issues }) {
   const [selectedId, setSelectedId] = useState(doc.blocks[0]?.id || null);
   const [menu, setMenu] = useState(null); // 'color' | 'symbol' | 'table' | 'find'
   const [findText, setFindText] = useState("");
@@ -258,6 +262,7 @@ export default function DocEditorCore({ doc, setDoc, config, pageRef }) {
                   onChange={(t) => setText(b.id, t)}
                   onFocus={() => setSelectedId(b.id)}
                   style={blockStyle(b)}
+                  issues={(issues || []).filter((iss) => iss.blockId === b.id)}
                 />
               </div>
             );

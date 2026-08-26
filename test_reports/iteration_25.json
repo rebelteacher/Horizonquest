@@ -1,0 +1,31 @@
+{
+  "summary": "Retest of AI Writing Coach frontend fixes from iteration_24. HIGH apply-fix corruption bug is FIXED: with only the last docs block edited ('i dont like it'), Submit (gate ON) hard-halted, 'Apply all fixes' changed ONLY that block to \"I don't like it\" while block1 stayed exactly 'My First Document' and block2 untouched; resubmit then graded (F, tasks incomplete) with no re-halt. MEDIUM over-highlight bug is FIXED: 'Check my writing' produced exactly 2 .hq-squiggly spans ('i','dont') scoped to the edited block — no underlines inside 'First'/'Click'. Email flow (email-m3) verified: compose squigglies (3), send -> Submit hard-halt with 6 issues, per-issue Apply fix correctly rewrote the sent body ('hello ms rivera' -> 'Hello Ms. Rivera'), sent reading pane showed 2 remaining squigglies. Guide gate toggle (writing-gate-toggle) toggled ON->OFF instantly, did NOT flip back after 3s (stale-GET race gone) and persisted across reload; red flag writing-flag-em-exp-docs visible in Reports. Gate OFF let the explorer submit dirty writing (grade dialog + 'Submitted with 2 unresolved writing issues' toast). Backend pytest test_writing_coach.py: 15/15 after clearing leftover seed data (see minor note).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/studio/reports/all", "issue": "Not a product bug: test_resubmit_clean_clears_flag initially failed because writing_flag is aggregated per TRACK (any mission with unresolved_writing>0) and the iteration_24 seed left docs-m2 unresolved_writing=6. After zeroing docs-m2 the test passes; suite is 15/15. Consider making the test self-contained (clear other missions of the track first)."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Studio Docs mission (Writing Coach)", "issues": ["Still open from iteration_24 (informational): the checker proofreads seeded starter blocks too, so a student can be halted by curriculum text they never typed (did not reproduce a halt from starter text in this run — seeded docs-m1 text is clean)."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_writing_coach.py", "/app/test_reports/pytest/test_writing_coach_25.xml"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Fixes look correct: StudioMission.proofreadDoc proofreads per block and tags blockId; applyIssueToDoc only mutates the block whose id === issue.blockId using findBoundaryIndex-based replaceOnce; DocEditorCore filters issues by blockId. No further changes needed for these two defects.",
+    "Overlapping LLM issues (e.g. 'hello ms rivera', 'ms rivera', 'hello ms rivera i') mean after applying one fix the overlapping siblings silently no-op / their squigglies disappear. That is the documented safe behavior, but 'Apply all fixes' can therefore leave nested duplicates unresolved (student may need a second pass). Optional improvement: dedupe/merge overlapping issue ranges before showing them.",
+    "applyFix still drops issues by object identity (arr.filter(i => i !== issue)); works but a stable id would be safer (carried over from iteration_24)."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100% (15/15)", "frontend": "100% of retested flows (apply-fix targeting, squiggly boundaries, docs check, email halt/apply, gate toggle persistence, gate-OFF submit + red flag)"},
+  "seed_data_creation": "Deleted em-exp's email-m3 draft to get a clean compose (recreated by the test send). Restored guide em-guide writing_gate = true (ON). Left studio_progress em-exp/docs-m2 unresolved_writing=6 so the red 'Writing issues' flag in Guide Reports stays reproducible; docs-m1 unresolved_writing=0.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": false,
+  "test_credentials": "Explorer em-exp/em_exp_tok, Guide em-guide/em_guide_tok, Fresh em-fresh/em_fresh_tok (cookie session_token httpOnly/secure/sameSite None or Bearer)",
+  "context_for_next_testing_agent": "Writing Coach is now green end-to-end. Repro used: cookie-inject em_exp_tok on https://explorer-journey-4.preview.emergentagent.com -> /studio/docs/docs-m1, fill last textarea[data-testid^='studio-block-'] with 'i dont like it', studio-submit-btn -> studio-writing-halt-note -> writing-apply-all-btn. Guide: /guide -> Reports tab -> writing-gate-toggle (remember to leave it ON). Backend pytest suite must have only one docs mission flagged per track when asserting writing_flag clearing. Also noted a pre-existing React hydration console warning from the injected instrumentation wrapper inside <option> in DocEditorCore's line-spacing select (dev-tooling only, harmless).",
+  "rca_of_the_issue": "Previous root cause (joined-document proofread losing per-block offsets) is resolved by per-block proofreading + blockId-scoped, word-boundary single-occurrence replacement. The one backend test failure this run was stale seed data (docs-m2 unresolved_writing=6) making the track-level writing_flag stay true, not an API defect."
+}

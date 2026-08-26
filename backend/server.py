@@ -550,6 +550,7 @@ async def complete_challenge(challenge_id: str, explorer=Depends(require_explore
 
 class MissionSubmit(BaseModel):
     doc: Dict
+    writing_issues: Optional[int] = 0
 
 
 async def grade_email_ai(mission, doc):
@@ -588,6 +589,95 @@ async def grade_email_ai(mission, doc):
     dim_map = {"tone": bool(data.get("tone_ok")), "etiquette": bool(data.get("etiquette_ok")), "grammar": bool(data.get("grammar_ok"))}
     results = [{"id": t["id"], "passed": dim_map.get(t["check"]["dim"], False)} for t in ai_tasks]
     return results, str(data.get("feedback", "")), str(data.get("rating", ""))
+
+
+# ---------------- AI Writing Coach (spelling / grammar / capitalization / punctuation) ----------------
+class ProofreadRequest(BaseModel):
+    text: str
+
+
+@api_router.post("/ai/proofread")
+async def ai_proofread(payload: ProofreadRequest, user=Depends(get_current_user)):
+    """Proofread a student's writing with Claude. Returns a list of issues (with the exact substring,
+    a kid-friendly explanation, and a suggested fix) plus a fully corrected version.
+    Fail-open: an AI hiccup returns no issues so it can never wrongly block a student."""
+    text = (payload.text or "").strip()
+    if not text:
+        return {"issues": [], "corrected": ""}
+    from emergentintegrations.llm.chat import LlmChat, UserMessage
+    system_message = (
+        "You are a warm, encouraging writing coach for 7th-grade students. Proofread the student's "
+        "writing for SPELLING, GRAMMAR, CAPITALIZATION, and PUNCTUATION mistakes only. "
+        "Return STRICT JSON only, no prose, in exactly this shape: "
+        '{"issues": [{"text": "<the exact incorrect substring copied verbatim from the writing>", '
+        '"type": "spelling|grammar|capitalization|punctuation", '
+        '"message": "<one short, kid-friendly sentence explaining what is wrong>", '
+        '"suggestion": "<the corrected version of just that substring>"}], '
+        '"corrected": "<the entire text rewritten correctly>"}. '
+        "Rules: copy each \"text\" EXACTLY as it appears in the writing (same letters, case, and spacing) "
+        "so it can be located in the original. Flag genuine mistakes only \u2014 never nitpick style, word "
+        "choice, or voice. Keep each substring short (a word or short phrase). If the writing is already "
+        "correct, return an empty issues list. Always be positive and age-appropriate."
+    )
+    try:
+        chat = LlmChat(api_key=EMERGENT_LLM_KEY, session_id=f"proofread_{user['user_id']}", system_message=system_message).with_model("anthropic", "claude-sonnet-4-6")
+        raw = await chat.send_message(UserMessage(text=text))
+        js = raw[raw.find("{"): raw.rfind("}") + 1]
+        data = json.loads(js)
+    except Exception as e:
+        logger.error(f"Proofread error: {e}")
+        return {"issues": [], "corrected": text, "unavailable": True}
+    issues = []
+    for it in (data.get("issues") or []):
+        t = str(it.get("text", ""))
+        if t and t in text:
+            issues.append({
+                "text": t,
+                "type": str(it.get("type", "grammar")),
+                "message": str(it.get("message", "")),
+                "suggestion": str(it.get("suggestion", "")),
+            })
+    return {"issues": issues, "corrected": str(data.get("corrected", text))}
+
+
+# ---------------- Writing gate (Guide toggles the hard-halt on submit) ----------------
+class WritingGate(BaseModel):
+    gate: bool
+
+
+async def _guide_id_for(user):
+    if user.get("role") == "guide":
+        return user["user_id"]
+    ids = user.get("expedition_ids", [])
+    if ids:
+        exp = await db.expeditions.find_one({"expedition_id": {"$in": ids}}, {"_id": 0, "guide_id": 1})
+        if exp:
+            return exp.get("guide_id")
+    return None
+
+
+@api_router.get("/studio/writing-gate")
+async def get_writing_gate(user=Depends(get_current_user)):
+    """Effective writing gate for the caller. Explorers inherit their guide's setting. Default ON."""
+    gid = await _guide_id_for(user)
+    gate = True
+    if gid:
+        row = await db.settings.find_one({"key": "writing_gate", "guide_id": gid}, {"_id": 0})
+        if row is not None:
+            gate = bool(row.get("gate", True))
+    return {"gate": gate}
+
+
+@api_router.put("/studio/writing-gate")
+async def set_writing_gate(payload: WritingGate, guide=Depends(require_guide)):
+    await db.settings.update_one(
+        {"key": "writing_gate", "guide_id": guide["user_id"]},
+        {"$set": {"key": "writing_gate", "guide_id": guide["user_id"],
+                  "gate": bool(payload.gate), "updated_at": now_utc().isoformat()}},
+        upsert=True,
+    )
+    return {"gate": bool(payload.gate)}
+
 
 
 # ---------------- Skill Studio (guided, auto-graded missions) ----------------
@@ -645,6 +735,7 @@ async def studio_reports(expedition_id: Optional[str] = None, guide=Depends(get_
                 "lessons": {"mastered": sum(1 for p in lessons if p.get("mastery")), "total": totals[t]["lessons"], "avg": _avg(lessons)},
                 "drills": {"done": sum(1 for p in drills if p.get("score", 0) >= 60), "total": totals[t]["drills"], "avg": _avg(drills)},
                 "tasks": {"passed": sum(1 for p in tasks if p.get("score", 0) >= 60), "total": totals[t]["tasks"], "avg": _avg(tasks)},
+                "writing_flag": any(p.get("unresolved_writing", 0) > 0 for p in tp),
             }
         last = max((p.get("updated_at", "") for p in prog), default="")
         rows.append({"user_id": ex["user_id"], "name": ex.get("name", ""), "email": ex.get("email", ""), "tracks": by_track, "last_active": last})
@@ -1209,6 +1300,7 @@ async def studio_submit(track_id: str, mission_id: str, payload: MissionSubmit, 
             "user_id": user["user_id"], "track": track_id, "mission_id": mission_id,
             "score": best_score, "last_score": score,
             "grade": best_grade, "points_earned": final_points, "mastery": sticky_mastery,
+            "unresolved_writing": int(payload.writing_issues or 0),
             "updated_at": now_utc().isoformat(),
         }}, upsert=True,
     )

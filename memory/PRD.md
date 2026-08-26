@@ -188,6 +188,15 @@ Gamified education platform. Stack: React + FastAPI + MongoDB. Auth: Google sign
 - ✅ Reports (Lessons/Drills/Block Tasks) and Test Scores (Block Task columns) already span all tracks, so Email is covered with no further changes.
 - ✅ Verified: grading unit tests (task1 100, d3 100), Email hub screenshot shows drills + Block Task card + Checkpoint. ⚠️ Requires redeploy for production. Sheets & Slides tracks still pending.
 
+## Implemented (2026-06) — Iteration 21: AI Writing Coach (spelling/grammar for Docs & Email)
+- ✅ **AI Writing Coach** on the Skill Studio **Docs** and **Email** tracks — powered by Claude (`claude-sonnet-4-6`) via the Emergent LLM key. Flags **spelling, grammar, capitalization & punctuation**.
+- ✅ **Red squiggly underlines**: a transparent-text backdrop layer behind each textarea (CSS `.hq-squiggly`, wavy red) draws underlines under flagged words. Docs is proofread **per block** so each issue carries a `blockId`; matching/fixes use **word-boundary, single-occurrence** replacement (`findBoundaryIndex`/`replaceOnce` in `Squiggly.jsx`) — no cross-block corruption, no over-highlighting short tokens.
+- ✅ **"Check my writing"** button in Docs action row (`studio-check-writing-btn`) and in the Email compose toolbar (`email-check-writing-btn`); opens a **Writing Coach dialog** listing each issue (type badge, problem, suggestion) with **Apply fix** / **Apply all fixes**.
+- ✅ **Hard-halt on submit** (user choice): a student cannot submit a Docs/Email mission while writing issues exist (auto-checks on Submit; blocking dialog + `studio-writing-halt-note`). **Guide override**: class-level toggle in Guide Console → Reports (`writing-gate-toggle`) turns the hard-halt off.
+- ✅ **Reports flag**: submitting with the gate OFF records `unresolved_writing` on `studio_progress`; Guide Reports shows a red **"Writing issues"** flag per track (`writing-flag-<userId>-<track>`).
+- ✅ Backend: `POST /api/ai/proofread` (verbatim-substring guarantee, fail-open on LLM error), `GET/PUT /api/studio/writing-gate` (declared before `/studio/{track_id}`; explorers inherit their guide's setting; guide-only PUT), `writing_issues` field on submit → reports `writing_flag`.
+- ✅ Verified: backend pytest 15/15 (`/app/backend/tests/test_writing_coach.py`); frontend iteration_25 all flows pass (apply-fix targeting, boundary squigglies, docs/email halt + apply, gate toggle persistence, gate-OFF submit + red flag). ⚠️ Requires redeploy for production.
+
 ## Backlog / Remaining (older)
 - P1: Repurpose Guide Review Queue to flag struggling Explorers (reflections removed).
 - P1: Guide authoring of quests. Rank-movement indicators.

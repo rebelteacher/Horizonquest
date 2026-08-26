@@ -8,10 +8,11 @@ import SheetEditorCore from "@/components/studio/SheetEditorCore";
 import SlideEditorCore from "@/components/studio/SlideEditorCore";
 import EmailClientCore from "@/components/studio/EmailClientCore";
 import { checkTask } from "@/lib/studioGrade";
+import { findBoundaryIndex } from "@/components/studio/Squiggly";
 import { exportNodeToPDF } from "@/lib/pdf";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ArrowLeft, ArrowRight, ScrollText, CheckCircle2, Circle, Loader2, Download, Gem, Anchor, ListChecks, Trophy, ClipboardCheck } from "lucide-react";
+import { ArrowLeft, ArrowRight, ScrollText, CheckCircle2, Circle, Loader2, Download, Gem, Anchor, ListChecks, Trophy, ClipboardCheck, SpellCheck, AlertTriangle, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 
 function renderInline(text) {
@@ -59,9 +60,16 @@ export default function StudioMission() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
+  const [gate, setGate] = useState(true);
+  const [checking, setChecking] = useState(false);
+  const [docIssues, setDocIssues] = useState([]);
+  const [emailIssues, setEmailIssues] = useState([]);
+  const [review, setReview] = useState(null); // { issues, blocking }
+  const writable = track === "docs" || track === "email";
 
   useEffect(() => {
-    setLoading(true); setResult(null);
+    setLoading(true); setResult(null); setDocIssues([]); setEmailIssues([]); setReview(null);
+    api.get("/studio/writing-gate").then((r) => setGate(r.data.gate !== false)).catch(() => setGate(true));
     (async () => {
       const res = await api.get(`/studio/${track}`);
       setConfig(res.data.config);
@@ -133,13 +141,114 @@ export default function StudioMission() {
     }
   };
 
-  const submit = async () => {
+  const proofread = async (text) => {
+    if (!text || !text.trim()) return [];
+    const res = await api.post("/ai/proofread", { text });
+    return res.data.issues || [];
+  };
+
+  // Docs is proofread per block so every issue is tied to its exact block (blockId).
+  const getDocSegments = () => (doc.blocks || [])
+    .filter((b) => b.type !== "table" && (b.text || "").trim())
+    .map((b) => ({ id: b.id, text: b.text }));
+
+  const proofreadDoc = async () => {
+    const segs = getDocSegments();
+    const lists = await Promise.all(segs.map(async (s) => {
+      try {
+        const res = await api.post("/ai/proofread", { text: s.text });
+        return (res.data.issues || []).map((i) => ({ ...i, blockId: s.id }));
+      } catch (e) { return []; }
+    }));
+    return lists.flat();
+  };
+
+  const getLatestSent = () => {
+    const sent = (doc.messages || []).filter((m) => m.folder === "sent");
+    const m = sent[sent.length - 1];
+    if (!m) return { body: "", msgId: null };
+    return { body: m.bodyStudent != null ? m.bodyStudent : (m.body || ""), msgId: m.id };
+  };
+
+  const proofreadEmail = async () => {
+    const { body } = getLatestSent();
+    if (!body.trim()) return [];
+    const issues = await proofread(body);
+    return issues.map((i) => ({ ...i, blockId: "__email__" }));
+  };
+
+  const runIssueCheck = () => (track === "docs" ? proofreadDoc() : proofreadEmail());
+  const hasCheckText = () => (track === "docs" ? getDocSegments().length > 0 : !!getLatestSent().body.trim());
+
+  const replaceOnce = (str, needle, repl) => {
+    const idx = findBoundaryIndex(str, needle);
+    if (idx < 0) return { str, done: false };
+    return { str: str.slice(0, idx) + repl + str.slice(idx + needle.length), done: true };
+  };
+
+  const applyIssueToDoc = (d, issue) => {
+    if (!issue.suggestion) return d;
+    if (track === "docs") {
+      return {
+        ...d,
+        blocks: (d.blocks || []).map((b) => {
+          if (b.id !== issue.blockId || b.type === "table") return b;
+          const { str, done } = replaceOnce(b.text || "", issue.text, issue.suggestion);
+          return done ? { ...b, text: str } : b;
+        }),
+      };
+    }
+    const { msgId } = getLatestSent();
+    return {
+      ...d,
+      messages: (d.messages || []).map((m) => {
+        if (m.id !== msgId) return m;
+        const nb = replaceOnce(m.body || "", issue.text, issue.suggestion);
+        const ns = replaceOnce(m.bodyStudent != null ? m.bodyStudent : (m.body || ""), issue.text, issue.suggestion);
+        return { ...m, body: nb.str, bodyStudent: ns.str };
+      }),
+    };
+  };
+
+  const applyFix = (issue) => {
+    setDoc((d) => applyIssueToDoc(d, issue));
+    const drop = (arr) => arr.filter((i) => i !== issue);
+    if (track === "docs") setDocIssues(drop); else setEmailIssues(drop);
+    setReview((r) => (r ? { ...r, issues: drop(r.issues) } : r));
+  };
+
+  const applyAllFixes = () => {
+    const issues = (review?.issues || []).filter((i) => i.suggestion);
+    setDoc((d) => issues.reduce((acc, iss) => applyIssueToDoc(acc, iss), d));
+    if (track === "docs") setDocIssues([]); else setEmailIssues([]);
+    setReview(null);
+    toast.success("Applied the suggested fixes — give it one more read! ⚓");
+  };
+
+  const runCheck = async () => {
+    if (!hasCheckText()) {
+      toast.info(track === "email" ? "Send your email first, then I can check the writing." : "Write something first, then I can check it.");
+      return;
+    }
+    setChecking(true);
+    try {
+      const issues = await runIssueCheck();
+      if (track === "docs") setDocIssues(issues); else setEmailIssues(issues);
+      if (!issues.length) toast.success("Nice writing — no spelling or grammar issues found! ⚓");
+      else { setReview({ issues, blocking: false }); toast.warning(`Found ${issues.length} thing${issues.length > 1 ? "s" : ""} to fix.`); }
+    } catch (e) {
+      toast.error("The Writing Coach was unavailable. Try again in a moment.");
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  const doSubmit = async (writingCount = 0) => {
     setSubmitting(true);
     try {
-      const res = await api.post(`/studio/${track}/${missionId}/submit`, { doc });
+      const res = await api.post(`/studio/${track}/${missionId}/submit`, { doc, writing_issues: writingCount });
       setResult(res.data);
       if (!res.data.preview) await refresh();
-      // Refresh checkpoint unlock state — passing the block's last lesson may have just unlocked it.
       if (nextCheckpoint) {
         try {
           const ar = await api.get(`/assessments/track/${track}`);
@@ -156,6 +265,28 @@ export default function StudioMission() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const submit = async () => {
+    // AI writing gate for Docs & Email — auto-check before grading.
+    if (writable && !isGuide && hasCheckText()) {
+      setChecking(true);
+      let issues = [];
+      try { issues = await runIssueCheck(); } catch (e) { issues = []; }
+      setChecking(false);
+      if (track === "docs") setDocIssues(issues); else setEmailIssues(issues);
+      if (issues.length) {
+        if (gate) {
+          setReview({ issues, blocking: true });
+          toast.error(`Fix ${issues.length} writing issue${issues.length > 1 ? "s" : ""} before submitting.`);
+          return;
+        }
+        toast.warning(`Submitted with ${issues.length} unresolved writing issue${issues.length > 1 ? "s" : ""} — flagged for your teacher.`);
+        await doSubmit(issues.length);
+        return;
+      }
+    }
+    await doSubmit(0);
   };
 
   if (loading) return (<div className="min-h-screen"><AppNav /><div className="flex justify-center py-40"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div></div>);
@@ -180,16 +311,21 @@ export default function StudioMission() {
               : track === "slides"
                 ? <SlideEditorCore doc={doc} setDoc={setDoc} config={config} pageRef={pageRef} />
                 : track === "email"
-                  ? <EmailClientCore doc={doc} setDoc={setDoc} config={config} />
-                  : <DocEditorCore doc={doc} setDoc={setDoc} config={config} pageRef={pageRef} />}
+                  ? <EmailClientCore doc={doc} setDoc={setDoc} config={config} proofread={isGuide ? null : proofread} readingIssues={emailIssues} />
+                  : <DocEditorCore doc={doc} setDoc={setDoc} config={config} pageRef={pageRef} issues={docIssues} />}
             <div className="flex flex-wrap gap-3 mt-4">
               {track !== "email" && (
                 <Button data-testid="studio-export-btn" variant="outline" className="border-white/15" onClick={doExport}>
                   <Download className="w-4 h-4 mr-2" /> Export PDF
                 </Button>
               )}
-              <Button data-testid="studio-submit-btn" onClick={submit} disabled={submitting} className="bg-primary text-primary-foreground hover:bg-[#FDBA74]">
-                {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Submit for a grade{allDone ? " ✓" : ""}</>}
+              {track === "docs" && !isGuide && (
+                <Button data-testid="studio-check-writing-btn" variant="outline" className="border-[#818CF8]/40 text-[#a5b4fc] hover:bg-[#818CF8]/10" onClick={runCheck} disabled={checking}>
+                  {checking ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <SpellCheck className="w-4 h-4 mr-2" />} Check my writing
+                </Button>
+              )}
+              <Button data-testid="studio-submit-btn" onClick={submit} disabled={submitting || checking} className="bg-primary text-primary-foreground hover:bg-[#FDBA74]">
+                {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : checking ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Checking…</> : <>Submit for a grade{allDone ? " ✓" : ""}</>}
               </Button>
             </div>
           </div>
@@ -288,6 +424,60 @@ export default function StudioMission() {
                     <Trophy className="w-4 h-4 mr-2" /> See rankings
                   </Button>
                 )}
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* AI Writing Coach review dialog */}
+      <Dialog open={!!review} onOpenChange={(o) => !o && setReview(null)}>
+        <DialogContent className="hq-glass border-white/10 max-w-lg">
+          {review && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="font-display text-2xl flex items-center gap-2">
+                  <SpellCheck className="w-5 h-5 text-[#a5b4fc]" /> Writing Coach
+                </DialogTitle>
+                <DialogDescription>
+                  {review.blocking
+                    ? `Fix these ${review.issues.length} thing${review.issues.length > 1 ? "s" : ""} before you can submit. Tap "Apply fix" or edit it yourself.`
+                    : `Found ${review.issues.length} thing${review.issues.length > 1 ? "s" : ""} to review. Red underlines mark them in your work.`}
+                </DialogDescription>
+              </DialogHeader>
+              {review.blocking && (
+                <div data-testid="studio-writing-halt-note" className="flex items-start gap-2 rounded-lg border border-[#E11D48]/40 bg-[#E11D48]/10 p-3 text-sm text-[#fecdd3]">
+                  <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+                  <span>Your teacher requires clean writing before submitting. Fix each item, then submit again.</span>
+                </div>
+              )}
+              <div className="max-h-72 overflow-y-auto hq-scrollbar space-y-2.5 pr-1">
+                {review.issues.length === 0 && <p className="text-sm text-emerald-300 py-4 text-center">All fixed — submit when you're ready! ⚓</p>}
+                {review.issues.map((iss, i) => (
+                  <div key={i} data-testid={`writing-issue-${i}`} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <span className="text-[10px] uppercase tracking-widest font-mono-data px-1.5 py-0.5 rounded bg-[#E11D48]/15 text-[#fb7185]">{iss.type}</span>
+                      <span className="text-sm text-white line-through decoration-[#E11D48]/70">{iss.text}</span>
+                      {iss.suggestion && <><ArrowRight className="w-3.5 h-3.5 text-slate-500" /><span className="text-sm text-emerald-300 font-medium">{iss.suggestion}</span></>}
+                    </div>
+                    <p className="text-xs text-slate-400">{iss.message}</p>
+                    {iss.suggestion && (
+                      <button data-testid={`writing-apply-${i}`} onClick={() => applyFix(iss)} className="mt-2 inline-flex items-center gap-1.5 text-xs text-[#22D3EE] hover:underline">
+                        <Wand2 className="w-3.5 h-3.5" /> Apply fix
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-3 pt-1">
+                {review.issues.some((i) => i.suggestion) && (
+                  <Button data-testid="writing-apply-all-btn" onClick={applyAllFixes} className="flex-1 bg-[#a5b4fc] text-[#04121f] hover:bg-[#c7d2fe]">
+                    <Wand2 className="w-4 h-4 mr-2" /> Apply all fixes
+                  </Button>
+                )}
+                <Button data-testid="writing-close-btn" variant="outline" className="flex-1 border-white/15" onClick={() => setReview(null)}>
+                  {review.blocking ? "I'll fix these" : "Done"}
+                </Button>
               </div>
             </>
           )}
