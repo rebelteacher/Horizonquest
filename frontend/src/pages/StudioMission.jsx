@@ -60,6 +60,7 @@ export default function StudioMission() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
+  const [hasSubmitted, setHasSubmitted] = useState(false);
   const [gate, setGate] = useState(true);
   const [checking, setChecking] = useState(false);
   const [docIssues, setDocIssues] = useState([]);
@@ -68,7 +69,7 @@ export default function StudioMission() {
   const writable = track === "docs" || track === "email";
 
   useEffect(() => {
-    setLoading(true); setResult(null); setDocIssues([]); setEmailIssues([]); setReview(null);
+    setLoading(true); setResult(null); setHasSubmitted(false); setDocIssues([]); setEmailIssues([]); setReview(null);
     api.get("/studio/writing-gate").then((r) => setGate(r.data.gate !== false)).catch(() => setGate(true));
     (async () => {
       const res = await api.get(`/studio/${track}`);
@@ -124,11 +125,12 @@ export default function StudioMission() {
 
   const taskStatus = useMemo(() => {
     if (!mission || !doc) return [];
-    return mission.tasks.map((t) => ({ ...t, passed: checkTask(t.check, doc) }));
+    return mission.tasks.map((t) => ({ ...t, ai: t.check.kind === "ai", passed: checkTask(t.check, doc) }));
   }, [mission, doc]);
 
-  const passedCount = taskStatus.filter((t) => t.passed).length;
-  const allDone = mission && passedCount === mission.tasks.length;
+  const detTasks = taskStatus.filter((t) => !t.ai);
+  const passedCount = detTasks.filter((t) => t.passed).length;
+  const allDone = mission && detTasks.length > 0 && passedCount === detTasks.length;
 
   const doExport = async () => {
     if (!pageRef.current) return;
@@ -248,7 +250,7 @@ export default function StudioMission() {
     try {
       const res = await api.post(`/studio/${track}/${missionId}/submit`, { doc, writing_issues: writingCount });
       setResult(res.data);
-      if (!res.data.preview) await refresh();
+      if (!res.data.preview) { setHasSubmitted(true); await refresh(); }
       if (nextCheckpoint) {
         try {
           const ar = await api.get(`/assessments/track/${track}`);
@@ -342,23 +344,27 @@ export default function StudioMission() {
             <div className="hq-glass rounded-2xl p-5">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="font-display text-xl flex items-center gap-2"><ListChecks className="w-4 h-4 text-primary" /> Your Tasks</h2>
-                <span className="font-mono-data text-sm text-muted-foreground">{passedCount}/{mission.tasks.length}</span>
+                <span className="font-mono-data text-sm text-muted-foreground">{passedCount}/{detTasks.length}</span>
               </div>
               <div className="space-y-2.5">
                 {taskStatus.map((t) => (
                   <div key={t.id} data-testid={`studio-task-${t.id}`} className="flex items-start gap-2.5">
-                    {t.passed
-                      ? <CheckCircle2 data-testid={`studio-task-${t.id}-done`} className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
-                      : result && !result.preview
-                        ? <XCircle data-testid={`studio-task-${t.id}-missing`} className="w-5 h-5 text-[#F43F5E] shrink-0 mt-0.5" />
-                        : <Circle className="w-5 h-5 text-slate-500 shrink-0 mt-0.5" />}
-                    <span className={`text-sm ${t.passed ? "text-emerald-300" : result && !result.preview ? "text-[#fda4af]" : "text-slate-300"}`}>{t.label}</span>
+                    {t.ai
+                      ? <Wand2 data-testid={`studio-task-${t.id}-ai`} className="w-5 h-5 text-[#a5b4fc] shrink-0 mt-0.5" />
+                      : t.passed
+                        ? <CheckCircle2 data-testid={`studio-task-${t.id}-done`} className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+                        : hasSubmitted
+                          ? <XCircle data-testid={`studio-task-${t.id}-missing`} className="w-5 h-5 text-[#F43F5E] shrink-0 mt-0.5" />
+                          : <Circle className="w-5 h-5 text-slate-500 shrink-0 mt-0.5" />}
+                    <span className={`text-sm ${t.ai ? "text-slate-300" : t.passed ? "text-emerald-300" : hasSubmitted ? "text-[#fda4af]" : "text-slate-300"}`}>
+                      {t.label}{t.ai && <span className="text-[#a5b4fc]/80"> · AI-graded on submit</span>}
+                    </span>
                   </div>
                 ))}
               </div>
               {allDone
                 ? <p className="mt-4 text-sm text-emerald-300">All tasks complete — submit for your grade!</p>
-                : result && !result.preview
+                : hasSubmitted
                   ? <p className="mt-4 text-sm text-[#fda4af]">Red items still need work — fix them and submit again to raise your grade.</p>
                   : null}
             </div>

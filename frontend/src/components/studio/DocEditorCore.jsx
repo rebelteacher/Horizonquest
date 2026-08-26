@@ -38,6 +38,7 @@ const TBtn = ({ active, onClick, title, testid, children, disabled }) => (
 export default function DocEditorCore({ doc, setDoc, config, pageRef, issues }) {
   const [selectedId, setSelectedId] = useState(doc.blocks[0]?.id || null);
   const [menu, setMenu] = useState(null); // 'color' | 'symbol' | 'table' | 'find'
+  const [tblHover, setTblHover] = useState(null);
   const [findText, setFindText] = useState("");
   const [replaceText, setReplaceText] = useState("");
   const selected = doc.blocks.find((b) => b.id === selectedId);
@@ -183,14 +184,19 @@ export default function DocEditorCore({ doc, setDoc, config, pageRef, issues }) 
           <TBtn testid="studio-table" title="Insert table" active={menu === "table"} onClick={() => setMenu(menu === "table" ? null : "table")}><Table2 className="w-4 h-4" /></TBtn>
           {menu === "table" && (
             <div className="absolute z-30 top-11 left-0 bg-white border border-slate-300 rounded-lg p-3 shadow-xl">
-              <p className="text-xs text-slate-600 mb-2">Insert table</p>
-              <div className="flex flex-wrap gap-1.5">
-                {[[3, 2], [2, 3], [3, 3], [4, 2], [2, 2]].map(([c, r]) => (
-                  <button key={`${c}x${r}`} data-testid={`studio-table-${c}x${r}`} onClick={() => insertTable(c, r)}
-                    className="px-2.5 py-1.5 rounded bg-slate-100 hover:bg-[#22D3EE] hover:text-[#04121f] text-slate-700 text-xs font-mono">
-                    {c}×{r}
-                  </button>
-                ))}
+              <p className="text-xs text-slate-600 mb-2 h-4 leading-4 whitespace-nowrap">{tblHover ? `${tblHover.c} × ${tblHover.r} table` : "Table size"}</p>
+              <div className="grid gap-1" style={{ gridTemplateColumns: "repeat(6, 1fr)" }} onMouseLeave={() => setTblHover(null)}>
+                {Array.from({ length: 6 }).map((_, ri) =>
+                  Array.from({ length: 6 }).map((__, ci) => {
+                    const c = ci + 1, r = ri + 1;
+                    const on = tblHover && c <= tblHover.c && r <= tblHover.r;
+                    return (
+                      <button key={`${c}x${r}`} data-testid={`studio-table-${c}x${r}`}
+                        onMouseEnter={() => setTblHover({ c, r })} onClick={() => insertTable(c, r)}
+                        className={`w-5 h-5 rounded-sm border transition-colors ${on ? "bg-[#22D3EE] border-[#22D3EE]" : "bg-slate-100 border-slate-300 hover:border-[#22D3EE]"}`} />
+                    );
+                  })
+                )}
               </div>
             </div>
           )}

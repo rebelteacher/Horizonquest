@@ -1,0 +1,30 @@
+{
+  "summary": "Frontend retest of the 3 items from iteration_26 + live-ticking regression. ALL THREE FIXES VERIFIED. (1) HIGH — docs-d9 Tables Drill: reset em-exp's docs-d9 studio_progress+draft first; insert-table picker is now a 6x6 size grid (36 cells, testids studio-table-CxR), studio-table-4x3 exists, clicking it inserts a table with exactly 4 cols x 3 rows, studio-task-t1-done turns green immediately; filling cells ticked t2 (table_cells_filled min 8) at exactly the 8th cell; Submit -> grade A, 'Score 100% · 2/2 tasks', +80 HP, +1 Mark; DB studio_progress shows score 100, grade A, mastery true, points_earned 80 (no more 50%/F cap). (2) MEDIUM — docs-d10 with unmet tasks: Submit (F) then 'Keep editing' (studio-result-review-btn) -> both studio-task-t1-missing and studio-task-t2-missing red X remain and the 'Red items still need work…' hint persists; navigating to another mission (docs-m1) correctly resets to 0 red X (hasSubmitted reset). (3) LOW — email-task1 inbox badge: email-inbox-unread = 12 initially in cyan rgb(34,211,238), decrements 11/10/9…1 as emails are read and disappears at 0; Sent/Drafts/Trash show no badge. (4) Regression — opened_count ticks t1 at exactly 8 reads and t3 at 10 reads, search ticks t2, counter 3/3; email-m10 renders 3 neutral studio-task-<id>-ai markers with 'AI-graded on submit' and the denominator excludes them (0/4 of 7 tasks).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "DocEditorCore table size picker", "issue": "LOW/NEW: the picker's caption placeholder 'Insert table (columns × rows)' wraps to 2 lines in the ~140px popover, but on first hover it collapses to the 1-line 'C × R table', shifting the whole 6x6 grid up ~16px. Result: the very first hover/click after opening the picker lands one ROW lower than intended (hovering the 4x3 cell showed '4 × 4 table' and highlighted 4x4). Give the caption a fixed min-height (or shorten it) so the grid never moves.", "selector": "[data-testid^='studio-table-']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Docs mission (DocEditorCore)", "issues": ["Pre-existing React dev warning still present: '<span> cannot be a child of <option>' from the line-spacing select (studio-spacing) — dev instrumentation wrapper, cosmetic but noisy in console."]}
+    ]
+  },
+  "test_report_links": ["/app/test_reports/iteration_26.json"],
+  "action_items": [
+    "LOW: add a min-height / shorter caption to the table-size picker so the 6x6 grid doesn't shift on first hover (off-by-one-row misclick risk).",
+    "Carry-over housekeeping (not retested here): stale expectations in tests/test_skillstudio_email.py and test_skillstudio.py::test_100_guide_403_on_submit; AppNav points refresh ordering (nav briefly showed 918 vs DB 910 during the count-up animation — likely just the animated counter, not a bug)."
+  ],
+  "critical_code_review_comments": [
+    "hasSubmitted in StudioMission.jsx correctly decouples failure feedback from the transient result dialog and resets on mission change — good.",
+    "EmailClientCore folder badge is now inbox-unread only; consider showing unread for other folders too if messages there can ever be unread (currently always 0)."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "not tested this iteration", "frontend": "100% (4/4 scenarios: HIGH table fix, MEDIUM red-X persistence, LOW unread badge, live-ticking + ai-marker regression)"},
+  "seed_data_creation": "Deleted em-exp's docs-d9 studio_progress (was F/50) and docs-d9 + email-task1 studio_drafts to start fresh. Testing re-recorded docs-d9 as A/100 (mastery) and docs-d10 as F/0 for em-exp; email-task1 read-state re-marked.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "Explorer em-exp / em_exp_tok, Guide em-guide / em_guide_tok (cookie session_token httpOnly+secure+sameSite None, or Bearer).",
+  "context_for_next_testing_agent": "Repro: playwright add_cookies session_token=em_exp_tok on https://explorer-journey-4.preview.emergentagent.com. docs-d9: click studio-table -> click studio-table-4x3 -> fill studio-cell-<row>-<col> inputs (8 needed) -> studio-submit-btn -> studio-result-grade. Red-X persistence: docs-d10 -> submit -> studio-result-review-btn -> studio-task-tN-missing must remain. Email badge: email-inbox-unread on /studio/email/email-task1 (delete the studio_drafts row for a fresh unread state). Only open item is the LOW picker layout-shift.",
+  "rca_of_the_issue": "All three iteration_26 defects are fixed at the source: 6x6 size grid in DocEditorCore (studio-table-CxR for 1..6), hasSubmitted flag in StudioMission, unread-only inbox badge in EmailClientCore. The one new nit is a CSS layout shift: the picker caption changes line count between placeholder and hover state, moving the grid and making the first pointer position resolve to the row below."
+}

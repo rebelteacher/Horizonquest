@@ -188,6 +188,15 @@ Gamified education platform. Stack: React + FastAPI + MongoDB. Auth: Google sign
 - ✅ Reports (Lessons/Drills/Block Tasks) and Test Scores (Block Task columns) already span all tracks, so Email is covered with no further changes.
 - ✅ Verified: grading unit tests (task1 100, d3 100), Email hub screenshot shows drills + Block Task card + Checkpoint. ⚠️ Requires redeploy for production. Sheets & Slides tracks still pending.
 
+## Fixed (2026-06) — Iteration 22: Skill Studio task-checklist grading bugs
+- 🐞 **Root cause (recurring):** the frontend live task-checker `studioGrade.js` was missing several check `kind`s that the curriculum uses, so those tasks could never tick → "Your Tasks" stuck at 0/N, drills felt uncompletable / unrecorded.
+- ✅ Added missing kinds to `studioGrade.js` (exact mirror of backend `skillstudio._check_one`, parity-verified): `fmt_count`, `type_count` (Docs Block Tasks), `opened_count`, `sent_count` (Email drills/Block Tasks), `table_cells_filled` (Docs tables).
+- ✅ Email read-state now clearly visible: opened rows dim + lose a cyan unread dot; inbox folder badge shows **unread count** (cyan) instead of total.
+- ✅ Docs insert-table picker replaced with a **6×6 size grid** (`studio-table-CxR`) — previously only 5 fixed sizes, so the "4×3 table" drill (docs-d9) was **impossible**; caption pinned to fixed height (no first-hover off-by-one).
+- ✅ Post-submit feedback: unmet deterministic tasks show a **red ✗** (driven by a `hasSubmitted` flag so it persists after closing the result dialog); `ai`-kind tasks show a neutral "AI-graded on submit" marker and are excluded from the completion count.
+- ✅ Guard test `backend/tests/test_grade_kind_parity.py` fails if backend ever adds a kind the frontend mirror lacks (prevents recurrence).
+- ✅ Verified: iteration_26 (main fix, 100%) + iteration_27 (4/4 scenarios: 4×3 table, red-X persistence, unread badge, live-ticking + ai-marker). ⚠️ Production-affecting — requires redeploy.
+
 ## Implemented (2026-06) — Iteration 21: AI Writing Coach (spelling/grammar for Docs & Email)
 - ✅ **AI Writing Coach** on the Skill Studio **Docs** and **Email** tracks — powered by Claude (`claude-sonnet-4-6`) via the Emergent LLM key. Flags **spelling, grammar, capitalization & punctuation**.
 - ✅ **Red squiggly underlines**: a transparent-text backdrop layer behind each textarea (CSS `.hq-squiggly`, wavy red) draws underlines under flagged words. Docs is proofread **per block** so each issue carries a `blockId`; matching/fixes use **word-boundary, single-occurrence** replacement (`findBoundaryIndex`/`replaceOnce` in `Squiggly.jsx`) — no cross-block corruption, no over-highlighting short tokens.

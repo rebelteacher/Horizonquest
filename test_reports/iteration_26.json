@@ -1,0 +1,45 @@
+{
+  "summary": "Frontend retest of the studioGrade.js live-checker fix (opened_count / sent_count / table_cells_filled), email read-state visual, and 'ai'-kind task marker. ALL reported bugs are FIXED: (1) email-task1 'Triage Your Inbox' — each opened inbox row visibly switches to read (cyan email-unread-dot-<id> removed, row gets opacity-60/slate-400); Your Tasks ticked live: t1 green at exactly 8 reads, t2 green on typing in email-search, t3 green at 10 reads; Submit -> A, 'Score 100% · 3/3 tasks', +150 HP, +1 Mark. (2) RECORDED: hub card blocktask-card-email-task1 shows 'Passed ✓ / 100%' and guide /api/studio/reports/all shows email tasks passed 2/3 for em-exp. (3) email-task2: sent_count(min 3) stayed unticked at 1 and 2 sends and ticked at the 3rd (reply/forward/compose), opened_count(min 2) pre-satisfied t6 correctly, submit A 6/6. (4) table_cells_filled ticked live at exactly the 8th cell (docs-d9 t2). (5) email-m10 'ai' tasks t2/t3/t4 render the neutral Wand2 marker (studio-task-tN-ai) + 'AI-graded on submit' label, are excluded from the denominator (counter 0/4 -> 4/4 for 7 total tasks), show NO red X after submit, and AI Coach feedback panel rendered with grade A (+90 HP). (6) Regression: after a real submit, unmet deterministic tasks DO show studio-task-<id>-missing red X. NEW HIGH bug found: docs-d9 Tables Drill task t1 requires a 4-col x 3-row table but the insert-table picker only offers 3x2/2x3/3x3/4x2/2x2 — the drill can never be passed (caps at 50%, grade F).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/studio/{track}/{mission}/submit", "issue": "Response returns sticky best_score with the CURRENT passed/total, so the dialog can read 'Score 50% · 0/2 tasks' (confusing to students). Consider showing last_score alongside, or labelling it 'Best score'."},
+      {"endpoint": "pytest tests/test_skillstudio_email.py", "issue": "11 stale-expectation failures (curriculum grew 12 -> 14 email missions and several missions gained t5/t6 tasks; guides now get a 200 grade-preview instead of 403). Not regressions of this fix — but the file no longer has regression value until expectations are refreshed."},
+      {"endpoint": "pytest tests/test_skillstudio.py::test_100_guide_403_on_submit", "issue": "Stale: guide submit now intentionally returns 200 with preview:true. 24/25 otherwise pass."},
+      {"endpoint": "pytest tests/test_writing_coach.py::test_resubmit_clean_clears_flag", "issue": "Fails when another docs mission still carries an unresolved_writing flag for the same user (test-data sensitive, already noted in iteration_25). 14/15 pass."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "DocEditorCore insert-table menu vs docs-d9 Tables Drill", "issue": "Task t1 'Insert a table with 4 columns and 3 rows' is unattainable — the picker only offers studio-table-3x2, 2x3, 3x3, 4x2, 2x2. Drill maxes at 1/2 tasks -> 50% -> grade F, can never be mastered (same class of bug as the one just fixed). Add a 4x3 option (ideally a small size grid) or change the task to 4x2.", "selector": "[data-testid^='studio-table-']", "priority": "HIGH"},
+      {"component": "StudioMission Your Tasks panel", "issue": "Red X markers (studio-task-<id>-missing) are tied to `result` state, so clicking 'Keep editing' (setResult(null)) instantly wipes them and the 'Red items still need work' hint — the student loses the failure feedback exactly when they go to fix it. Track a separate `submitted` flag instead.", "selector": "[data-testid='studio-result-review-btn']", "priority": "MEDIUM"},
+      {"component": "EmailClientCore folder list", "issue": "Folder badge shows TOTAL messages, not unread — Inbox still reads '12' after 10 emails were read, which contradicts the new read/unread visual and the task counter.", "selector": "[data-testid='email-folder-inbox']", "priority": "LOW"},
+      {"component": "AppNav horizon points", "issue": "Observed stale value after a submit on docs-d9 (nav showed 740 before the award and 700 after, while DB/user was 740). Reproduced once only; verify refresh() ordering after doSubmit.", "selector": "[data-testid='nav-points']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Docs mission (DocEditorCore)", "issues": ["Pre-existing React console warning: '<span> cannot be a child of <option>' from the line-spacing select (dev instrumentation, already noted in iteration_25)."]},
+      {"screen": "Mission Graded dialog", "issues": ["Score line mixes sticky best score with current task count (e.g. 'Score 50% · 0/2 tasks')."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_skillstudio.py", "/app/backend/tests/test_skillstudio_email.py", "/app/test_reports/pytest/iter26.xml"],
+  "action_items": [
+    "HIGH: add a 4x3 (4-col x 3-row) option to the Docs insert-table picker so docs-d9 t1 is achievable (or retarget the task to an offered size).",
+    "MEDIUM: keep red X task markers visible after the result dialog is closed (separate `submitted` state instead of `result`).",
+    "LOW: make the email folder badge an unread count (or drop it) so it matches the new read-state visual.",
+    "LOW: refresh AppNav points after submit (verify await refresh() ordering).",
+    "Housekeeping: refresh stale expectations in tests/test_skillstudio_email.py (14 missions, extra t5/t6 tasks, guide preview 200) and test_skillstudio.py::test_100_guide_403_on_submit."
+  ],
+  "critical_code_review_comments": [
+    "studioGrade.js now mirrors backend _check_one for opened_count/sent_count/table_cells_filled — verified live in the UI for all three kinds. Any future backend check kind must be added here too; consider generating/sharing the kind list or adding a parity unit test so the 'task can never tick' class of bug cannot recur.",
+    "StudioMission.jsx couples post-submit failure feedback to the transient `result` dialog state; use a dedicated `hasSubmitted` flag."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "89% (65/73 across skillstudio/email/writing-coach; all 8 failures are stale expectations or test-data sensitivity, none caused by this fix)", "frontend": "100% of the requested fix scenarios passed (6/6); 1 new unrelated HIGH bug found (docs-d9 4x3 table unattainable)"},
+  "seed_data_creation": "No new users created. Extended expires_at on all rows in test_database.user_sessions by 30 days (several QA sessions incl. studio_fresh_tok/qa_ui_guide_tok had expired on 2026-08-11, causing blanket 401s in pytest). em-exp now has passes on email-task1 (A/100%), email-task2 (A/100%), email-m10 (A/100%) and an F record on docs-d9.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "Explorer em-exp / em_exp_tok, Guide em-guide / em_guide_tok (cookie session_token or Bearer). All sessions re-extended.",
+  "context_for_next_testing_agent": "Repro used: playwright add_cookies session_token=em_exp_tok on https://explorer-journey-4.preview.emergentagent.com, then /studio/email/email-task1 -> click [data-testid='email-item-inN'] then [data-testid='email-reading-back'] (must click email-folder-inbox after each send in email-task2, since sending switches to Sent). Live task markers: studio-task-<id>-done / -missing / -ai; counter is passedCount/detTasks (excludes ai). Guide recording check: GET /api/studio/reports/all with em_guide_tok (note: /api/studio/reports?track=... does NOT exist -> 'Track not found'). Remaining open items: docs-d9 4x3 table option, red-X persistence after closing the dialog, stale email pytest expectations.",
+  "rca_of_the_issue": "Original bug: studioGrade.js (client mirror of backend skillstudio._check_one) lacked opened_count/sent_count/table_cells_filled, so those tasks always evaluated false -> checklist stuck at 0/N and the mission never looked completable/recordable. Fix verified end-to-end: all three kinds now tick live, submissions grade 100% and are persisted in studio_progress + surfaced on the hub and guide reports. New unrelated blocker with the same symptom: docs-d9 t1 (table cols=4 rows=3) can never be satisfied because the UI cannot create a 4x3 table."
+}

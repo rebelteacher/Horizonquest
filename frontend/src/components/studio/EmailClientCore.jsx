@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
-import { Inbox, Send, FileText, Trash2, Search, Reply, ReplyAll, Forward, Paperclip, Bold, List, PenSquare, X, Star, Square, GripVertical, ArrowLeft, Save, SpellCheck, Loader2 } from "lucide-react";
+import { Inbox, Send, FileText, Trash2, Search, Reply, ReplyAll, Forward, Paperclip, Bold, List, PenSquare, X, Star, GripVertical, ArrowLeft, Save, SpellCheck, Loader2 } from "lucide-react";
 import { SquigglyBackdrop, SquigglyText } from "./Squiggly";
 
 const FOLDERS = [
@@ -188,11 +188,11 @@ export default function EmailClientCore({ doc, setDoc, config, proofread, readin
         {/* folders */}
         <div className="w-28 sm:w-32 shrink-0 border-r border-white/10 py-2">
           {FOLDERS.map((f) => {
-            const n = messages.filter((m) => m.folder === f.id).length;
+            const unreadN = f.id === "inbox" ? messages.filter((m) => m.folder === "inbox" && !m.read).length : 0;
             return (
               <button key={f.id} data-testid={`email-folder-${f.id}`} onClick={() => { setFolder(f.id); setOpenId(null); }}
                 className={`w-full flex items-center gap-2 px-3 py-2 text-sm ${folder === f.id ? "bg-[#818CF8]/15 text-[#a5b4fc] border-r-2 border-[#818CF8]" : "text-slate-300 hover:bg-white/5"}`}>
-                <f.icon className="w-4 h-4" /> {f.name}{n ? <span className="ml-auto text-xs opacity-60">{n}</span> : null}
+                <f.icon className="w-4 h-4" /> {f.name}{unreadN ? <span data-testid="email-inbox-unread" className="ml-auto text-xs font-semibold text-[#22D3EE]">{unreadN}</span> : null}
               </button>
             );
           })}
@@ -206,15 +206,15 @@ export default function EmailClientCore({ doc, setDoc, config, proofread, readin
               const unread = !m.read && m.folder === "inbox";
               return (
                 <button key={m.id} data-testid={`email-item-${m.id}`} onClick={() => openMsg(m)}
-                  className={`w-full text-left pl-2 pr-3 py-2.5 flex items-center gap-2 ${openId === m.id ? "bg-white/[0.06]" : unread ? "bg-white/[0.02] hover:bg-white/[0.05]" : "hover:bg-white/[0.03]"}`}>
-                  <Square className="w-4 h-4 text-slate-600 shrink-0 hidden sm:block" />
+                  className={`w-full text-left pl-2 pr-3 py-2.5 flex items-center gap-2 transition-colors duration-200 ${openId === m.id ? "bg-white/[0.06]" : unread ? "bg-white/[0.02] hover:bg-white/[0.05]" : "opacity-60 hover:bg-white/[0.03] hover:opacity-90"}`}>
+                  <span className={`w-2 h-2 rounded-full shrink-0 ${unread ? "bg-[#22D3EE]" : "bg-transparent"}`} data-testid={unread ? `email-unread-dot-${m.id}` : undefined} />
                   <Star className={`w-4 h-4 shrink-0 hidden sm:block ${unread ? "text-slate-500" : "text-slate-700"}`} />
-                  <span className={`w-24 sm:w-36 shrink-0 truncate text-sm ${unread ? "text-white font-semibold" : "text-slate-300"}`}>
+                  <span className={`w-24 sm:w-36 shrink-0 truncate text-sm ${unread ? "text-white font-semibold" : "text-slate-400"}`}>
                     {m.folder === "sent" ? `To: ${(m.to || []).join(", ")}` : m.fromName}
                   </span>
                   <span className="flex-1 min-w-0 truncate text-sm">
                     {m.external && <span className="text-[10px] font-bold text-amber-400/90 mr-1 align-middle">[EXTERNAL]</span>}
-                    <span className={unread ? "text-white font-semibold" : "text-slate-300"}>{m.subject}</span>
+                    <span className={unread ? "text-white font-semibold" : "text-slate-400"}>{m.subject}</span>
                     <span className="text-slate-500"> — {snippetOf(m)}</span>
                   </span>
                   <span className={`shrink-0 text-xs ml-1 ${unread ? "text-white font-semibold" : "text-slate-500"}`}>{m.date || ""}</span>

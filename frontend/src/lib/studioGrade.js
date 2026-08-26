@@ -42,6 +42,7 @@ export function checkTask(check, doc) {
     if (k === "footer_pagenum") { return !!doc.footerPageNumber; }
     if (k === "table") { const t = firstTable(doc); return !!t && t.cols === check.cols && t.rows === check.rows; }
     if (k === "table_cell_filled") { const t = firstTable(doc); if (!t) return false; const cells = t.cells || []; const { row, col } = check; return row < cells.length && col < cells[row].length && !!(cells[row][col] || "").trim(); }
+    if (k === "table_cells_filled") { const t = firstTable(doc); if (!t) return false; const cells = t.cells || []; const n = cells.reduce((a, r) => a + r.filter((c) => (c || "").trim()).length, 0); return n >= check.min; }
     if (k === "exported") { return !!doc.exported; }
     // ---- sheets kinds ----
     if (k === "cell_text" || k === "cell_formula" || k === "cell_value" || k === "sorted") {
@@ -86,6 +87,8 @@ export function checkTask(check, doc) {
     }
     // ---- email kinds ----
     if (k === "picked") return (doc.picked || []).includes(check.field);
+    if (k === "opened_count") return (doc.messages || []).filter((m) => m.folder === "inbox" && m.read).length >= check.min;
+    if (k === "sent_count") { const sk = check.sentKind; return (doc.messages || []).filter((m) => m.folder === "sent" && (sk == null || m.kind === sk)).length >= check.min; }
     if (k === "email_opened") return (doc.messages || []).some((m) => m.id === check.id && m.read);
     if (k === "searched") return !!doc.searched;
     if (["sent_exists", "subject_prefix", "subject_nonempty", "subject_and_to", "to_includes", "cc_includes", "bcc_includes", "cc_min", "has_greeting", "has_signoff", "has_greeting_signoff", "has_attachment", "body_min_words", "formatting"].includes(k)) {
