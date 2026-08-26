@@ -170,6 +170,11 @@ Gamified education platform. Stack: React + FastAPI + MongoDB. Auth: Google sign
 - ✅ Verified: unit grading (task1 correct→100/4, d5→100), UI screenshot (Block 1: 4 skills → 4 drill chips → Block Task card → Checkpoint), explorer gating curl (locked until block task passed). Frontend compiles.
 - ⏳ **Scope**: built for **Word Processing (docs)** only as the model per user; roll out to Email/Sheets/Slides after review. ⚠️ Requires **redeploy** for production.
 
+## Implemented (2026-06) — Iteration 18: Docs drill coverage complete
+- ✅ Added 3 Block-3 Skill Drills: **Find & Replace Drill** (`docs-d8`, fix 6 misspellings), **Tables Drill** (`docs-d9`, insert 4×3 table + fill ≥8 cells), **Headers & Footers Drill** (`docs-d10`, header title + footer page numbers). Docs now has **10 drills across all 3 blocks**.
+- ✅ New grader check `table_cells_filled` (count non-empty table cells ≥ min).
+- ✅ Verified: all 3 drills grade 100 on correct submissions; StudioHub Block 3 shows the 3 drill chips + Block Task + Checkpoint. ⚠️ Requires redeploy for production.
+
 ## Backlog / Remaining (older)
 - P1: Repurpose Guide Review Queue to flag struggling Explorers (reflections removed).
 - P1: Guide authoring of quests. Rank-movement indicators.

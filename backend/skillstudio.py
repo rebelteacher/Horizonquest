@@ -1306,6 +1306,57 @@ DOCS_DRILLS = [
     _drill("docs-d7", "docs-cp2", 8.3, "Lists Drill", "List repetition",
            "Turn at least 10 lines into **list items** (bulleted or numbered).",
            [_t("t1", "Turn at least 10 lines into list items", {"kind": "type_count", "types": ["bullet", "number"], "min": 10})]),
+    {
+        "id": "docs-d8", "track": "docs", "order": 12.1, "is_drill": True, "block_cp": "docs-cp3",
+        "title": "Find & Replace Drill", "chunk": "Fix repeated misspellings",
+        "instruction": ["## Skill Drill", "Use **Find & Replace** to correct every misspelling below.", "Repetition builds fluency — fix all six."],
+        "doc": _doc([
+            _b("b1", "Proofreading Practice: fix every mistake below."),
+            _b("b2", "We recieve new library books every month."),
+            _b("b3", "The two teams practice on seperate fields."),
+            _b("b4", "It is definately going to rain this afternoon."),
+            _b("b5", "Please adress the envelope neatly."),
+            _b("b6", "The bake sale was a succesful event."),
+            _b("b7", "The power outage occured during the storm."),
+        ]),
+        "tasks": [
+            _t("t1", "Replace 'recieve' with 'receive'", {"kind": "text_replaced", "block": "b2", "remove": "recieve", "add": "receive"}),
+            _t("t2", "Replace 'seperate' with 'separate'", {"kind": "text_replaced", "block": "b3", "remove": "seperate", "add": "separate"}),
+            _t("t3", "Replace 'definately' with 'definitely'", {"kind": "text_replaced", "block": "b4", "remove": "definately", "add": "definitely"}),
+            _t("t4", "Replace 'adress' with 'address'", {"kind": "text_replaced", "block": "b5", "remove": "adress", "add": "address"}),
+            _t("t5", "Replace 'succesful' with 'successful'", {"kind": "text_replaced", "block": "b6", "remove": "succesful", "add": "successful"}),
+            _t("t6", "Replace 'occured' with 'occurred'", {"kind": "text_replaced", "block": "b7", "remove": "occured", "add": "occurred"}),
+        ],
+        "points": 80,
+    },
+    {
+        "id": "docs-d9", "track": "docs", "order": 12.2, "is_drill": True, "block_cp": "docs-cp3",
+        "title": "Tables Drill", "chunk": "Build & fill a table",
+        "instruction": ["## Skill Drill", "Insert a table and fill in its cells with headings and data.", "Repetition builds fluency — fill at least 8 cells."],
+        "doc": _doc([
+            _b("b1", "Tables Drill: build a class schedule."),
+            _b("b2", "Insert a 4-column, 3-row table, then type in the cells (day, subject, room, time)."),
+        ]),
+        "tasks": [
+            _t("t1", "Insert a table with 4 columns and 3 rows", {"kind": "table", "cols": 4, "rows": 3}),
+            _t("t2", "Type content into at least 8 table cells", {"kind": "table_cells_filled", "min": 8}),
+        ],
+        "points": 80,
+    },
+    {
+        "id": "docs-d10", "track": "docs", "order": 12.3, "is_drill": True, "block_cp": "docs-cp3",
+        "title": "Headers & Footers Drill", "chunk": "Header title + page numbers",
+        "instruction": ["## Skill Drill", "Add a header title and turn on footer page numbers — the finishing touches on any report."],
+        "doc": _doc([
+            _b("b1", "Headers & Footers Drill"),
+            _b("b2", "Add a header that says 'Class Notes', then turn on page numbers in the footer."),
+        ]),
+        "tasks": [
+            _t("t1", "Add a header that says 'Class Notes'", {"kind": "header_contains", "value": "Class Notes"}),
+            _t("t2", "Turn on page numbers in the footer", {"kind": "footer_pagenum"}),
+        ],
+        "points": 80,
+    },
 ]
 
 BLOCK_TASKS = {"docs": DOCS_BLOCK_TASKS}
@@ -1419,6 +1470,13 @@ def _check_one(check, doc):
             cells = t.get("cells") or []
             r, c = check["row"], check["col"]
             return r < len(cells) and c < len(cells[r]) and bool((cells[r][c] or "").strip())
+        if kind == "table_cells_filled":
+            t = _first_table(doc)
+            if not t:
+                return False
+            cells = t.get("cells") or []
+            n = sum(1 for row in cells for cell in row if (cell or "").strip())
+            return n >= check["min"]
         if kind == "exported":
             return bool(doc.get("exported"))
         # ---- sheets kinds ----
