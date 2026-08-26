@@ -1359,8 +1359,107 @@ DOCS_DRILLS = [
     },
 ]
 
-BLOCK_TASKS = {"docs": DOCS_BLOCK_TASKS}
-DRILLS = {"docs": DOCS_DRILLS}
+def _inbox(n):
+    senders = [("Ms. Lee", "ms.lee@horizonmiddle.edu"), ("Coach Ray", "coach.ray@horizonmiddle.edu"),
+               ("Principal Ortiz", "principal@horizonmiddle.edu"), ("Mr. Diaz", "mr.diaz@horizonmiddle.edu"),
+               ("Library", "library@horizonmiddle.edu"), ("Science Club", "scienceclub@horizonmiddle.edu"),
+               ("Ms. Park", "ms.park@horizonmiddle.edu"), ("Yearbook", "yearbook@horizonmiddle.edu"),
+               ("Band", "band@horizonmiddle.edu"), ("Nurse", "nurse@horizonmiddle.edu"),
+               ("Cafeteria", "cafeteria@horizonmiddle.edu"), ("Art Room", "art@horizonmiddle.edu")]
+    subs = ["Study group Wednesday", "Practice moved to 4pm", "Assembly on Friday", "Field trip form due",
+            "Books are ready for pickup", "Rocket build night", "Great job on your essay", "Photo day reminder",
+            "Concert tickets", "Health form reminder", "New lunch menu", "Poster contest"]
+    return _edoc([_msg(f"in{i+1}", "inbox", senders[i][0], senders[i][1], subs[i],
+                       "Quick note — please read when you get a chance. Thanks!", date="Aug 21") for i in range(n)])
+
+EMAIL_BLOCK_TASKS = [
+    {
+        "id": "email-task1", "track": "email", "order": 4.5, "is_block_task": True, "block_cp": "email-cp1",
+        "title": "Block 1 Task · Triage Your Inbox", "chunk": "Apply Block 1 · Open & search many emails",
+        "instruction": ["## Block Task — real practice", "Practice **finding and opening** email repeatedly, and use **search**.", "You must pass this task to unlock the Checkpoint."],
+        "doc": _inbox(12),
+        "tasks": [
+            _t("t1", "Open and read at least 8 emails", {"kind": "opened_count", "min": 8}),
+            _t("t2", "Use search to find an email", {"kind": "searched"}),
+            _t("t3", "Open and read at least 10 emails", {"kind": "opened_count", "min": 10}),
+        ], "points": 150,
+    },
+    {
+        "id": "email-task2", "track": "email", "order": 8.5, "is_block_task": True, "block_cp": "email-cp2",
+        "title": "Block 2 Task · Answer the Morning Mail", "chunk": "Apply Block 2 · Reply, Forward & Compose (+ review)",
+        "instruction": ["## Block Task — real practice", "Use **Reply**, **Forward**, and **Compose new** — with a greeting and sign-off each time.", "You must pass this task to unlock the Checkpoint."],
+        "doc": _edoc([
+            _msg("e1", "inbox", "Ms. Lee", "ms.lee@horizonmiddle.edu", "Study group Wednesday", "Can you join us after school?", read=True),
+            _msg("e2", "inbox", "Mr. Diaz", "mr.diaz@horizonmiddle.edu", "Field trip form", "Please send this to your parents.", read=True),
+        ]),
+        "tasks": [
+            _t("t1", "Send at least 3 emails in total", {"kind": "sent_count", "min": 3}),
+            _t("t2", "Send a Reply (keep the 'Re:' subject)", {"kind": "subject_prefix", "sentKind": "reply", "prefix": "Re:"}),
+            _t("t3", "Greeting + sign-off on your reply", {"kind": "has_greeting_signoff", "sentKind": "reply"}),
+            _t("t4", "Forward an email (keep the 'Fwd:' subject)", {"kind": "subject_prefix", "sentKind": "forward", "prefix": "Fwd:"}),
+            _t("t5", "Compose a NEW email with a subject line", {"kind": "subject_nonempty", "sentKind": "new"}),
+            _t("t6", "Review: open at least 2 emails first", {"kind": "opened_count", "min": 2}),
+        ], "points": 150,
+    },
+    {
+        "id": "email-task3", "track": "email", "order": 14.5, "is_block_task": True, "block_cp": "email-cp3",
+        "title": "Block 3 Task · Send a Polished Email", "chunk": "Apply Block 3 · Recipients, Attachments & Formatting (+ review)",
+        "instruction": ["## Block Task — real practice", "Compose a professional email with the right **recipients**, an **attachment**, and **formatting**.", "You must pass this task to unlock the Checkpoint."],
+        "doc": _edoc([_msg("e1", "inbox", "Mr. Diaz", "mr.diaz@horizonmiddle.edu", "Field trip form", "Please reply with the signed form attached.", read=True)]),
+        "tasks": [
+            _t("t1", "Compose a NEW email with a subject", {"kind": "subject_nonempty", "sentKind": "new"}),
+            _t("t2", "Add at least one person on CC", {"kind": "cc_min", "sentKind": "new", "min": 1}),
+            _t("t3", "Bold at least one detail", {"kind": "formatting", "sentKind": "new", "feature": "bold"}),
+            _t("t4", "Use a bulleted list", {"kind": "formatting", "sentKind": "new", "feature": "bullets"}),
+            _t("t5", "Add a signature", {"kind": "formatting", "sentKind": "new", "feature": "signature"}),
+            _t("t6", "Write a real message (20+ words)", {"kind": "body_min_words", "sentKind": "new", "min": 20}),
+            _t("t7", "Reply to Mr. Diaz and attach a file", {"kind": "has_attachment", "sentKind": "reply"}),
+            _t("t8", "Review: send at least 2 emails in total", {"kind": "sent_count", "min": 2}),
+        ], "points": 150,
+    },
+]
+
+
+def _edrill(did, cp, order, title, chunk, instruction, doc, tasks):
+    return {"id": did, "track": "email", "order": order, "is_drill": True, "block_cp": cp,
+            "title": title, "chunk": chunk, "instruction": ["## Skill Drill", instruction], "doc": doc, "tasks": tasks, "points": 80}
+
+
+EMAIL_DRILLS = [
+    _edrill("email-d1", "email-cp1", 4.1, "Inbox Reading Drill", "Open many emails",
+            "Open and read at least 10 emails.", _inbox(12),
+            [_t("t1", "Open and read at least 10 emails", {"kind": "opened_count", "min": 10})]),
+    _edrill("email-d2", "email-cp1", 4.2, "Search Drill", "Find with search",
+            "Use the search bar to find an email.", _inbox(10),
+            [_t("t1", "Use search", {"kind": "searched"}), _t("t2", "Open at least 3 emails", {"kind": "opened_count", "min": 3})]),
+    _edrill("email-d3", "email-cp2", 8.1, "Compose Drill", "Send several emails",
+            "Compose and send at least 3 new emails, each with a subject.", _edoc([]),
+            [_t("t1", "Send at least 3 new emails", {"kind": "sent_count", "sentKind": "new", "min": 3}),
+             _t("t2", "Write a subject line", {"kind": "subject_nonempty", "sentKind": "new"})]),
+    _edrill("email-d4", "email-cp2", 8.2, "Reply Drill", "Reply with etiquette",
+            "Reply to the email, keep the 'Re:' subject, and use a greeting + sign-off.",
+            _edoc([_msg("e1", "inbox", "Ms. Park", "ms.park@horizonmiddle.edu", "Great essay!", "I really enjoyed reading your work.", read=True)]),
+            [_t("t1", "Send a reply", {"kind": "sent_exists", "sentKind": "reply"}),
+             _t("t2", "Keep the 'Re:' subject", {"kind": "subject_prefix", "sentKind": "reply", "prefix": "Re:"}),
+             _t("t3", "Greeting + sign-off", {"kind": "has_greeting_signoff", "sentKind": "reply"})]),
+    _edrill("email-d5", "email-cp3", 14.1, "Recipients Drill", "To / CC / BCC",
+            "Compose a new email and use CC for at least 2 people.", _edoc([]),
+            [_t("t1", "Compose a new email with a subject", {"kind": "subject_nonempty", "sentKind": "new"}),
+             _t("t2", "CC at least 2 people", {"kind": "cc_min", "sentKind": "new", "min": 2})]),
+    _edrill("email-d6", "email-cp3", 14.2, "Attachment Drill", "Attach a file",
+            "Reply and attach a file from the library.",
+            _edoc([_msg("e1", "inbox", "Mr. Diaz", "mr.diaz@horizonmiddle.edu", "Field trip form", "Please send the signed form.", read=True)]),
+            [_t("t1", "Send a reply", {"kind": "sent_exists", "sentKind": "reply"}),
+             _t("t2", "Attach a file", {"kind": "has_attachment", "sentKind": "reply"})]),
+    _edrill("email-d7", "email-cp3", 14.3, "Formatting Drill", "Bold, bullets & signature",
+            "Compose a new email using bold, a bulleted list, and a signature.", _edoc([]),
+            [_t("t1", "Bold at least one detail", {"kind": "formatting", "sentKind": "new", "feature": "bold"}),
+             _t("t2", "Use a bulleted list", {"kind": "formatting", "sentKind": "new", "feature": "bullets"}),
+             _t("t3", "Add a signature", {"kind": "formatting", "sentKind": "new", "feature": "signature"})]),
+]
+
+BLOCK_TASKS = {"docs": DOCS_BLOCK_TASKS, "email": EMAIL_BLOCK_TASKS}
+DRILLS = {"docs": DOCS_DRILLS, "email": EMAIL_DRILLS}
 ALL_BLOCK_TASKS = [t for tasks in BLOCK_TASKS.values() for t in tasks]
 ALL_DRILLS = [d for ds in DRILLS.values() for d in ds]
 BLOCK_TASK_BY_CP = {t["block_cp"]: t for t in ALL_BLOCK_TASKS}
@@ -1559,8 +1658,15 @@ def _check_one(check, doc):
         if kind in ("email_opened", "searched", "sent_exists", "subject_prefix", "subject_nonempty",
                     "subject_and_to", "to_includes", "cc_includes", "bcc_includes", "cc_min",
                     "has_greeting", "has_signoff", "has_greeting_signoff", "has_attachment",
-                    "body_min_words", "formatting"):
+                    "body_min_words", "formatting", "sent_count", "opened_count"):
             msgs = doc.get("messages") or []
+            if kind == "sent_count":
+                sk = check.get("sentKind")
+                n = sum(1 for x in msgs if x.get("folder") == "sent" and (sk is None or x.get("kind") == sk))
+                return n >= check["min"]
+            if kind == "opened_count":
+                n = sum(1 for x in msgs if x.get("folder") == "inbox" and x.get("read"))
+                return n >= check["min"]
             if kind == "email_opened":
                 return any(m.get("id") == check["id"] and m.get("read") for m in msgs)
             if kind == "searched":

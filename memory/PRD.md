@@ -181,6 +181,13 @@ Gamified education platform. Stack: React + FastAPI + MongoDB. Auth: Google sign
 - ✅ Drills & Block Tasks already **award Horizon Points and count in all rankings** (Total, This Week, Class/Teacher/School/Team) — unchanged.
 - ✅ Verified: backend shapes correct (totals docs {lessons:12,drills:10,tasks:3}; 3 task columns), seeded-data screenshot shows the 3 groups rendering, frontend compiles. ⚠️ Requires redeploy for production.
 
+## Implemented (2026-06) — Iteration 20: Email track Block Tasks + Skill Drills
+- ✅ **Email Block Tasks (3)**: `email-task1` Triage Inbox (open ≥10 + search), `email-task2` Reply/Forward/Compose (send ≥3, Re:/Fwd:, greeting+signoff), `email-task3` polished email (CC, attachment, bold/bullets/signature, 20+ words) + review. 150 pts, gate their checkpoints.
+- ✅ **Email Skill Drills (7)**: Inbox Reading, Search (cp1); Compose (send ≥3), Reply (cp2); Recipients (CC≥2), Attachment, Formatting (cp3). 80 pts each.
+- ✅ New grader checks `sent_count` and `opened_count` power the "do it N times" repetition for email.
+- ✅ Reports (Lessons/Drills/Block Tasks) and Test Scores (Block Task columns) already span all tracks, so Email is covered with no further changes.
+- ✅ Verified: grading unit tests (task1 100, d3 100), Email hub screenshot shows drills + Block Task card + Checkpoint. ⚠️ Requires redeploy for production. Sheets & Slides tracks still pending.
+
 ## Backlog / Remaining (older)
 - P1: Repurpose Guide Review Queue to flag struggling Explorers (reflections removed).
 - P1: Guide authoring of quests. Rank-movement indicators.
