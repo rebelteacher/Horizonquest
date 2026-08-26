@@ -608,7 +608,12 @@ async def studio_reports(expedition_id: Optional[str] = None, guide=Depends(get_
     if guide.get("role") != "guide":
         raise HTTPException(status_code=403, detail="Guides only")
     tracks = ["docs", "sheets", "slides", "email"]
-    totals = {t: len(skillstudio.MISSIONS.get(t, [])) for t in tracks}
+    totals = {t: {"lessons": len(skillstudio.MISSIONS.get(t, [])),
+                  "drills": len(skillstudio.drills_for(t)),
+                  "tasks": len(skillstudio.block_tasks_for(t))} for t in tracks}
+    id_sets = {t: ({m["id"] for m in skillstudio.MISSIONS.get(t, [])},
+                   {d["id"] for d in skillstudio.drills_for(t)},
+                   {b["id"] for b in skillstudio.block_tasks_for(t)}) for t in tracks}
     exps = await db.expeditions.find({"guide_id": guide["user_id"]}, {"_id": 0, "expedition_id": 1}).to_list(200)
     my_exp_ids = [e["expedition_id"] for e in exps]
     if expedition_id:
@@ -625,17 +630,22 @@ async def studio_reports(expedition_id: Optional[str] = None, guide=Depends(get_
         prog = await db.studio_progress.find({"user_id": ex["user_id"]}, {"_id": 0}).to_list(500)
         if not prog:
             continue
+        def _avg(items):
+            return round(sum(p.get("score", 0) for p in items) / len(items)) if items else None
         by_track = {}
         for t in tracks:
             tp = [p for p in prog if p.get("track") == t]
-            if tp:
-                by_track[t] = {
-                    "attempted": len(tp),
-                    "total": totals[t],
-                    "mastered": sum(1 for p in tp if p.get("mastery")),
-                    "avg": round(sum(p.get("score", 0) for p in tp) / len(tp)),
-                    "missions": {p["mission_id"]: {"score": p.get("score", 0), "grade": p.get("grade", "F"), "mastery": p.get("mastery", False)} for p in tp},
-                }
+            if not tp:
+                continue
+            lids, dids, tids = id_sets[t]
+            lessons = [p for p in tp if p["mission_id"] in lids]
+            drills = [p for p in tp if p["mission_id"] in dids]
+            tasks = [p for p in tp if p["mission_id"] in tids]
+            by_track[t] = {
+                "lessons": {"mastered": sum(1 for p in lessons if p.get("mastery")), "total": totals[t]["lessons"], "avg": _avg(lessons)},
+                "drills": {"done": sum(1 for p in drills if p.get("score", 0) >= 60), "total": totals[t]["drills"], "avg": _avg(drills)},
+                "tasks": {"passed": sum(1 for p in tasks if p.get("score", 0) >= 60), "total": totals[t]["tasks"], "avg": _avg(tasks)},
+            }
         last = max((p.get("updated_at", "") for p in prog), default="")
         rows.append({"user_id": ex["user_id"], "name": ex.get("name", ""), "email": ex.get("email", ""), "tracks": by_track, "last_active": last})
     rows.sort(key=lambda r: r["name"].lower())
@@ -904,7 +914,13 @@ async def assessment_reports(expedition_id: Optional[str] = None, guide=Depends(
         member_query = None
     members = await db.users.find(member_query, {"_id": 0, "user_id": 1, "name": 1, "email": 1}).to_list(2000) if member_query else []
     all_ids = [cid for cids in assessments.TRACK_CHECKPOINTS.values() for cid in cids] + [assessments.FINAL_ID]
-    columns = [{"id": cid, "title": assessments.assessment_meta(cid)["title"]} for cid in all_ids]
+    columns = [{"id": cid, "title": assessments.assessment_meta(cid)["title"], "short": assessments.assessment_meta(cid)["title"], "kind": "test"} for cid in all_ids]
+    # Block Tasks (the graded skills assessment before each checkpoint) as extra columns
+    task_ids = []
+    for tr, tasks in skillstudio.BLOCK_TASKS.items():
+        for bt in tasks:
+            columns.append({"id": bt["id"], "title": bt["title"], "short": bt["title"].split(" · ")[0], "kind": "task"})
+            task_ids.append(bt["id"])
     member_ids = [m["user_id"] for m in members]
     best = {}
     if member_ids:
@@ -915,10 +931,18 @@ async def assessment_reports(expedition_id: Optional[str] = None, guide=Depends(
             k = (a["user_id"], a["assessment_id"])
             if a.get("score") is not None and (k not in best or a["score"] > best[k]):
                 best[k] = a["score"]
+        # Block task scores come from studio_progress (best score already stored there)
+        if task_ids:
+            tprog = await db.studio_progress.find(
+                {"user_id": {"$in": member_ids}, "mission_id": {"$in": task_ids}},
+                {"_id": 0, "user_id": 1, "mission_id": 1, "score": 1}).to_list(20000)
+            for p in tprog:
+                best[(p["user_id"], p["mission_id"])] = p.get("score")
+    col_ids = [c["id"] for c in columns]
     rows = []
     for mem in members:
         rows.append({"user_id": mem["user_id"], "name": mem.get("name", ""), "email": mem.get("email", ""),
-                     "scores": {cid: best.get((mem["user_id"], cid)) for cid in all_ids}})
+                     "scores": {cid: best.get((mem["user_id"], cid)) for cid in col_ids}})
     rows.sort(key=lambda r: (r["name"] or r["email"]).lower())
     return {"columns": columns, "students": rows}
 

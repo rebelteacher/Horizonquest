@@ -175,6 +175,12 @@ Gamified education platform. Stack: React + FastAPI + MongoDB. Auth: Google sign
 - ✅ New grader check `table_cells_filled` (count non-empty table cells ≥ min).
 - ✅ Verified: all 3 drills grade 100 on correct submissions; StudioHub Block 3 shows the 3 drill chips + Block Task + Checkpoint. ⚠️ Requires redeploy for production.
 
+## Implemented (2026-06) — Iteration 19: Reports split into Lessons / Drills / Block Tasks
+- ✅ **Guide Reports tab** now separates each track into three clear groups — **Lessons** (x/12 mastered · avg), **Drills** (x/10 done · avg), **Block Tasks** (x/3 passed · avg) — so daily practice and the pre-checkpoint skills assessment are no longer blended (fixes the misleading "15/12"). CSV export expanded to match.
+- ✅ **Test Scores tab** gains **Block Task %** columns (Block 1/2/3 Task) alongside checkpoints & final, so a teacher can use the Block Task as a test grade too. Block task scores pulled from `studio_progress`.
+- ✅ Drills & Block Tasks already **award Horizon Points and count in all rankings** (Total, This Week, Class/Teacher/School/Team) — unchanged.
+- ✅ Verified: backend shapes correct (totals docs {lessons:12,drills:10,tasks:3}; 3 task columns), seeded-data screenshot shows the 3 groups rendering, frontend compiles. ⚠️ Requires redeploy for production.
+
 ## Backlog / Remaining (older)
 - P1: Repurpose Guide Review Queue to flag struggling Explorers (reflections removed).
 - P1: Guide authoring of quests. Rank-movement indicators.

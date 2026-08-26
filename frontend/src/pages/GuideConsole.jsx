@@ -653,7 +653,7 @@ function TestScoresTab({ expeditions = [] }) {
           <thead>
             <tr className="text-left text-xs text-muted-foreground">
               <th className="py-2 pr-3 font-medium sticky left-0 bg-transparent">Explorer</th>
-              {data.columns.map((c) => <th key={c.id} className="py-2 px-2 font-medium text-center whitespace-nowrap"><span title={c.title}>{label(c.id)}</span></th>)}
+              {data.columns.map((c) => <th key={c.id} className="py-2 px-2 font-medium text-center whitespace-nowrap"><span title={c.title} className={c.kind === "task" ? "text-[#a5b4fc]" : ""}>{c.short || label(c.id)}</span></th>)}
               <th className="py-2 pl-3 font-medium text-center whitespace-nowrap">Report</th>
             </tr>
           </thead>
@@ -695,13 +695,15 @@ function ReportsTab({ expeditions = [] }) {
   const exportCSV = () => {
     const esc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
     const header = ["Explorer", "Email"];
-    TRACKS.forEach((t) => { header.push(`${t.name} Avg %`, `${t.name} Mastered`, `${t.name} Total`); });
+    TRACKS.forEach((t) => { header.push(`${t.name} Lessons Mastered`, `${t.name} Lessons Avg%`, `${t.name} Drills Done`, `${t.name} Drills Avg%`, `${t.name} Block Tasks Passed`, `${t.name} Block Tasks Avg%`); });
     const rows = [header.map(esc).join(",")];
     data.students.forEach((s) => {
       const row = [s.name || s.email, s.email];
       TRACKS.forEach((t) => {
         const tr = s.tracks[t.id];
-        row.push(tr ? tr.avg : "", tr ? tr.mastered : "", data.totals[t.id] ?? "");
+        const tot = data.totals[t.id];
+        if (tr) row.push(`${tr.lessons.mastered}/${tr.lessons.total}`, tr.lessons.avg ?? "", `${tr.drills.done}/${tr.drills.total}`, tr.drills.avg ?? "", `${tr.tasks.passed}/${tr.tasks.total}`, tr.tasks.avg ?? "");
+        else row.push(`0/${tot.lessons}`, "", `0/${tot.drills}`, "", `0/${tot.tasks}`, "");
       });
       rows.push(row.map(esc).join(","));
     });
@@ -714,12 +716,16 @@ function ReportsTab({ expeditions = [] }) {
     URL.revokeObjectURL(url);
   };
 
+  const statLine = (label, done, total, avg, color) => (
+    <p className="text-[11px] leading-tight"><span className="text-muted-foreground">{label} </span><span style={{ color }}>{done}/{total}</span>{avg != null && <span className="text-slate-400"> · {avg}%</span>}</p>
+  );
+
   return (
     <div>
       <div className="flex items-start justify-between gap-4 mb-4 flex-wrap">
         <div className="flex items-center gap-3 flex-wrap">
           <ClassPicker expeditions={expeditions} value={expId} onChange={setExpId} />
-          <p className="text-sm text-muted-foreground">Skill Studio scores per Explorer. Each cell shows missions mastered / total and the average score.</p>
+          <p className="text-sm text-muted-foreground">Skill Studio grades per Explorer — <span className="text-slate-300">Lessons</span> (daily), <span className="text-[#34D399]">Drills</span> (practice) & <span className="text-[#a5b4fc]">Block Tasks</span> (the skills assessment before each checkpoint). Shows completed/total · average.</p>
         </div>
         {data && data.students.length > 0 && <button data-testid="reports-export-csv-btn" onClick={exportCSV} className="inline-flex items-center gap-2 shrink-0 px-3 h-9 rounded-md bg-[#22D3EE] text-[#04121f] text-sm font-medium hover:bg-[#22D3EE]/90 transition-colors">
           <Download className="w-4 h-4" /> Export CSV
@@ -733,7 +739,7 @@ function ReportsTab({ expeditions = [] }) {
           <thead>
             <tr className="text-left text-xs uppercase tracking-widest text-muted-foreground">
               <th className="py-2 pr-4">Explorer</th>
-              {TRACKS.map((t) => <th key={t.id} className="py-2 px-3 text-center">{t.name} <span className="opacity-50">/{data.totals[t.id]}</span></th>)}
+              {TRACKS.map((t) => <th key={t.id} className="py-2 px-3 text-center">{t.name}</th>)}
             </tr>
           </thead>
           <tbody>
@@ -746,11 +752,12 @@ function ReportsTab({ expeditions = [] }) {
                 {TRACKS.map((t) => {
                   const tr = s.tracks[t.id];
                   return (
-                    <td key={t.id} className="py-2.5 px-3 text-center">
+                    <td key={t.id} className="py-2.5 px-3 text-center align-top">
                       {tr ? (
-                        <div>
-                          <span className="font-mono-data" style={{ color: gradeColor(tr.avg) }}>{tr.avg}%</span>
-                          <p className="text-[11px] text-muted-foreground">{tr.mastered}/{tr.total} mastered</p>
+                        <div className="inline-block text-left space-y-0.5">
+                          {statLine("Lessons", tr.lessons.mastered, tr.lessons.total, tr.lessons.avg, gradeColor(tr.lessons.avg ?? 0))}
+                          {statLine("Drills", tr.drills.done, tr.drills.total, tr.drills.avg, "#34D399")}
+                          {statLine("Block Tasks", tr.tasks.passed, tr.tasks.total, tr.tasks.avg, "#a5b4fc")}
                         </div>
                       ) : <span className="text-slate-600">—</span>}
                     </td>
