@@ -167,3 +167,33 @@ class TestXlsxExport:
     def test_bad_expedition_404(self, guide):
         r = guide.get(f"{BASE_URL}/studio/reports/all", params={"expedition_id": "nope-123"}, timeout=30)
         assert r.status_code == 404
+
+
+def test_null_score_attempt_does_not_break_report(guide):
+    """Regression: a completed assessment_attempt with score=null must NOT 500 the report
+    (it previously threw 'NoneType > int' and the UI showed 'No activity')."""
+    import asyncio
+    from dotenv import load_dotenv
+    load_dotenv()
+    from motor.motor_asyncio import AsyncIOMotorClient
+
+    async def _seed():
+        c = AsyncIOMotorClient(os.environ["MONGO_URL"]); db = c[os.environ["DB_NAME"]]
+        await db.assessment_attempts.insert_many([
+            {"user_id": "em-exp", "assessment_id": "email-cp1", "status": "completed", "score": 90, "passed": True, "_seed_null": 1},
+            {"user_id": "em-exp", "assessment_id": "email-cp1", "status": "completed", "score": None, "passed": False, "_seed_null": 1},
+        ])
+
+    async def _cleanup():
+        c = AsyncIOMotorClient(os.environ["MONGO_URL"]); db = c[os.environ["DB_NAME"]]
+        await db.assessment_attempts.delete_many({"_seed_null": 1})
+
+    asyncio.get_event_loop().run_until_complete(_seed())
+    try:
+        r = guide.get(f"{BASE_URL}/studio/reports/all", timeout=60)
+        assert r.status_code == 200, r.text[:400]
+        assert len(r.json()["students"]) >= 1
+        rx = guide.get(f"{BASE_URL}/studio/reports/export.xlsx", timeout=60)
+        assert rx.status_code == 200
+    finally:
+        asyncio.get_event_loop().run_until_complete(_cleanup())

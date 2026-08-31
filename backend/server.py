@@ -744,7 +744,12 @@ async def studio_reports(expedition_id: Optional[str] = None, guide=Depends(get_
         ).to_list(1000)
         best_cp = {}
         for a in cp_attempts:
-            cid, sc = a.get("assessment_id"), a.get("score", 0)
+            cid = a.get("assessment_id")
+            if not cid:
+                continue
+            sc = a.get("score")
+            if sc is None:
+                continue
             if cid not in best_cp or sc > best_cp[cid]["score"]:
                 best_cp[cid] = {"score": sc, "passed": bool(a.get("passed"))}
         if not prog and not best_cp:
@@ -754,29 +759,33 @@ async def studio_reports(expedition_id: Optional[str] = None, guide=Depends(get_
             # Average of COMPLETED items in the group; blank until at least one is attempted.
             if not rows_present:
                 return None
-            return round(sum(p.get("score", 0) for p in rows_present) / len(rows_present))
+            return round(sum((p.get("score") or 0) for p in rows_present) / len(rows_present))
 
         by_track = {}
-        for t in tracks:
-            tp = [p for p in prog if p.get("track") == t]
-            has_cp = any(cid in best_cp for cid in assessments.TRACK_CHECKPOINTS.get(t, []))
-            if not tp and not has_cp:
-                continue
-            pbid = {p["mission_id"]: p for p in tp}
-            blocks = []
-            for bm in block_meta[t]:
-                lrows = [pbid[i] for i in bm["lessons"] if i in pbid]
-                drows = [pbid[i] for i in bm["drills"] if i in pbid]
-                task_score = round(pbid[bm["task"]].get("score", 0)) if (bm["task"] and bm["task"] in pbid) else None
-                cpb = best_cp.get(bm["cp"])
-                blocks.append({
-                    "index": bm["index"],
-                    "lessons": {"avg": _grp_avg(lrows), "done": len(lrows), "total": len(bm["lessons"])},
-                    "skills": {"avg": _grp_avg(drows), "done": len(drows), "total": len(bm["drills"])},
-                    "task": {"score": task_score, "has": bool(bm["task"])},
-                    "checkpoint": {"score": round(cpb["score"]) if cpb else None, "passed": bool(cpb and cpb["passed"])},
-                })
-            by_track[t] = {"blocks": blocks, "writing_flag": any(p.get("unresolved_writing", 0) > 0 for p in tp)}
+        try:
+            for t in tracks:
+                tp = [p for p in prog if p.get("track") == t]
+                has_cp = any(cid in best_cp for cid in assessments.TRACK_CHECKPOINTS.get(t, []))
+                if not tp and not has_cp:
+                    continue
+                pbid = {p["mission_id"]: p for p in tp if p.get("mission_id")}
+                blocks = []
+                for bm in block_meta[t]:
+                    lrows = [pbid[i] for i in bm["lessons"] if i in pbid]
+                    drows = [pbid[i] for i in bm["drills"] if i in pbid]
+                    task_row = pbid.get(bm["task"]) if bm["task"] else None
+                    task_score = round(task_row.get("score") or 0) if task_row else None
+                    cpb = best_cp.get(bm["cp"])
+                    blocks.append({
+                        "index": bm["index"],
+                        "lessons": {"avg": _grp_avg(lrows), "done": len(lrows), "total": len(bm["lessons"])},
+                        "skills": {"avg": _grp_avg(drows), "done": len(drows), "total": len(bm["drills"])},
+                        "task": {"score": task_score, "has": bool(bm["task"])},
+                        "checkpoint": {"score": round(cpb["score"]), "passed": bool(cpb["passed"])} if cpb else {"score": None, "passed": False},
+                    })
+                by_track[t] = {"blocks": blocks, "writing_flag": any(p.get("unresolved_writing", 0) > 0 for p in tp)}
+        except Exception as e:
+            logger.error(f"reports: skipping malformed data for {ex.get('user_id')}: {e}")
         last = max((p.get("updated_at", "") for p in prog), default="")
         rows.append({"user_id": ex["user_id"], "name": ex.get("name", ""), "email": ex.get("email", ""), "tracks": by_track, "last_active": last})
     rows.sort(key=lambda r: (r["name"] or r["email"]).lower())
