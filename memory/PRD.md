@@ -188,6 +188,15 @@ Gamified education platform. Stack: React + FastAPI + MongoDB. Auth: Google sign
 - ✅ Reports (Lessons/Drills/Block Tasks) and Test Scores (Block Task columns) already span all tracks, so Email is covered with no further changes.
 - ✅ Verified: grading unit tests (task1 100, d3 100), Email hub screenshot shows drills + Block Task card + Checkpoint. ⚠️ Requires redeploy for production. Sheets & Slides tracks still pending.
 
+## Reworked (2026-06) — Iteration 25: Email WYSIWYG compose editor (real bold + bullets)
+- 🐞 **Complaint:** the Email compose used markdown markers — clicking Bold inserted literal `**text**` and bullets didn't continue on Enter — confusing 7th graders.
+- ✅ Replaced the compose `<textarea>` with a `contentEditable` **rich editor** (`RichBody` in `EmailClientCore.jsx`): the **B button makes text visually bold**, the bullet button makes a real list that **continues on Enter** (and exits on empty Enter), plus a Signature insert and a Bold/Bullet active (pressed) state.
+- ✅ Output is serialized back to the exact plain-text markdown the grader already reads (`**bold**`, `• ` bullets, `—` signature) via `htmlToText()`/`serializeNode()`, so grading is unchanged (email-m9 still grades A, 6/6). `textToHtml()` restores formatting for drafts + the Sent reading pane.
+- ✅ Sent/reading pane and message-list row snippets now render/strip formatting — students never see raw `**` or `• ` anywhere. Fixed a serializer newline gap (greeting no longer glued to the first sentence); scoped the compose placeholder to the editor only; reset stale "Writing tips" on compose open/close.
+- ✅ The compose live red-squiggly overlay was replaced by a "Writing tips" panel (contentEditable can't host the textarea overlay); the reading-pane squiggly + submit-time writing gate are unchanged.
+- ✅ Verified: iteration_29 (bold WYSIWYG, bullet-Enter, grading A 6/6, 100%) + iteration_30 (sent-view formatting, greeting newline, tips reset, active-state, draft round-trip, no XSS, zero console errors). jsdom logic tests confirm serialization. ⚠️ Production-affecting — requires redeploy.
+- 📌 Known separate UX (pre-existing, not this change): resubmitting an already-mastered mission with a fresh doc shows the sticky best grade (A) while the task list reads 0/6 — contradictory messaging worth addressing later.
+
 ## Hotfix (2026-06) — Iteration 24: "grades disappeared" (Reports 500 on null score)
 - 🐞 **Symptom:** production Guide Console → Reports showed "No Skill Studio activity in this class yet" for a full class that had grades the day before. Grades were NEVER lost — the DB was intact.
 - 🔎 **Root cause (reproduced):** the new block-gradebook endpoint compared `score > best_score`; a real `assessment_attempts` doc with `score: null` raised `TypeError: '>' not supported between NoneType and int` → the endpoint 500'd → the frontend fell back to its empty-state. Preview's clean seed data never had a null score, so it slipped through.

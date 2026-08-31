@@ -1,0 +1,35 @@
+{
+  "summary": "Frontend-only in-browser verification of the 4 follow-up fixes on /studio/email/email-m9 (explorer em-exp, cookie session_token=em_exp_tok injected before goto). ALL 4 FIXES CONFIRMED WORKING. (1) SENT READING PANE FORMATTING (was MEDIUM): composed 'Hi Team,' / bold '6:30 PM on Friday' sentence / 2-item bullet list / signature, sent it, opened it from Sent -> [email-reading-pane] .hq-richbody innerHTML = '<div>Hi Team,</div><div>Our concert starts at <b>6:30 PM on Friday</b>&nbsp;in the school gym.</div><ul><li>Bring your instrument</li><li>Wear the blue shirt</li></ul><div>—</div>...'; computed font-weight of the bold span = 700, ul list-style-type = disc, 2 <li>; pane innerText contains NO '**' and NO '•' character. (2) GREETING NEWLINE (was MEDIUM): reading-pane lines = ['Hi Team,', 'Our concert starts at 6:30 PM on Friday in the school gym.', 'Bring your instrument', 'Wear the blue shirt', '—', 'Jordan Rivera', 'Horizon Middle School'] - greeting is on its own line, no 'Hi Team,Our concert...' merge; same verified in a reopened draft. (3) WRITING TIPS RESET: 'Check my writing' produced [email-writing-tips] (7 issues), closing via [email-compose-close] removed it, and a fresh Compose opened with 0 tips panels and an empty body. (4) BOLD/BULLET ACTIVE STATE: [email-fmt-bold] aria-pressed false -> true on click with the highlighted #818CF8 class, back to false when toggled off; [email-fmt-bullets] aria-pressed=true + highlighted while the caret is inside the list. GRADING REGRESSION PASSES: compose+send+Submit in the SAME session => Mission Graded 'A', Score 100%, 6/6 tasks, studio-task-t1..t6 all '-done' (t2 bold, t3 bullets, t4 signature) - serialization still yields '**', '• ', '—'. DRAFT ROUND-TRIP PASSES: bold + 2 bullets saved via [email-savedraft-btn], reopened from Drafts with 1 <b>, 2 <li>, no raw '**'/'•', greeting on its own line. Compose remains WYSIWYG (editor innerText never shows '**'). ZERO console errors across all 4 runs (only the tool's own pre-cookie 401 /api/auth/me on first navigation).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "EmailClientCore message list (snippetOf)", "issue": "The row preview in the Sent/Drafts list still shows the RAW markers to the student: 'Friday concert details — Hi Team, Our concert starts at **6:30 PM on Friday** in the school gym...' and drafts show '— Hello club, Meet at **4 PM** toda…'. Same literal-asterisk confusion the reading-pane fix removed, just now only in the list snippet. Fix: strip markdown markers in snippetOf (e.g. body.replace(/\\*\\*/g,'').replace(/(^|\\n)\\s*•\\s+/g,'$1')).", "selector": "[data-testid^='email-item-']", "priority": "LOW-MEDIUM"},
+      {"component": "RichBody signature insert", "issue": "Cosmetic (pre-existing, from iteration_29): inserting the Signature right after exiting a bullet list leaves ~3 blank lines before the em dash, so the sent email has a large empty gap before '—'.", "selector": "[data-testid='email-fmt-signature']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Email reading pane", "issues": [".hq-richbody carries the ':empty:before' placeholder rule 'Write your message…' - it is now shared with the read-only reading pane, so an email with an empty body would render the compose placeholder text to the student. Consider scoping the placeholder to the editor (e.g. [contenteditable].hq-richbody:empty:before)."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Optional LOW-MEDIUM: strip '**' and '• ' from the message-list snippet (snippetOf) so students never see raw markers in the Sent/Drafts row previews.",
+    "Optional LOW: scope the '.hq-richbody:empty:before' placeholder to the contenteditable editor only (the reading pane now reuses the class).",
+    "Optional LOW: reduce the blank-line gap when the signature is inserted just after exiting a bullet list.",
+    "Note (pre-existing backend/UX, not part of this fix set): submitting an already-mastered mission with a fresh/empty doc returns the sticky best grade ('A', Score 100%) while the task list shows '0/6 tasks' and 'Red items still need work' - contradictory messaging. Reproduced by reloading email-m9 (the doc resets to the seed; only drafts persist) and submitting immediately."
+  ],
+  "critical_code_review_comments": [
+    "serializeNode now prepends '\\n' before li/div/p when the accumulated output does not end with a newline - verified in-browser: a bare leading text node ('Hi Team,') is correctly separated from the following <div>.",
+    "Reading pane uses dangerouslySetInnerHTML with textToHtml(open.body); textToHtml escapes HTML before applying the ** -> <b> substitution, so typed '<script>' cannot escape - no XSS path found.",
+    "setBodyIssues([]) is now reset in startCompose, editDraft and the compose close handler - stale tips no longer persist (verified).",
+    "RichBody active-state relies on document.queryCommandState + a selectionchange listener guarded by document.activeElement === ref.current; works, but the state is not reset when the editor loses focus (button can stay highlighted after clicking away). Minor."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "not tested (frontend-only request)", "frontend": "100% of the 7 requested scenarios pass"},
+  "seed_data_creation": "Sent 2 emails (session-only, not persisted) and saved 2 drafts in em-exp's email-m9 studio doc; submitted email-m9 twice (A/100%, +0 HP since already mastered). Cleaned up afterwards: PUT /api/studio/email/email-m9/drafts with an empty list (200) so the Drafts folder is clean for the next run.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "Explorer em-exp / session_token em_exp_tok (cookie must be added BEFORE page.goto)",
+  "context_for_next_testing_agent": "All 4 follow-up fixes verified in-browser (sent-view formatting, greeting newline, tips reset, bold/bullet active state) plus grading A 6/6 and draft round-trip. IMPORTANT gotcha: the studio doc is rebuilt from the mission seed on every page load (StudioMission.jsx) and only DRAFTS are fetched back from /studio/email/<id>/drafts - so a Sent email does NOT survive a reload; always compose+send+submit within one page session, and when reopening a draft filter the row by its unique subject instead of using .first (old drafts from previous iterations linger).",
+  "rca_of_the_issue": "No new defects in the fixed areas. Remaining literal '**' visibility is confined to snippetOf(), which formats the row preview straight from the stored plain-text body and was not covered by the reading-pane fix."
+}

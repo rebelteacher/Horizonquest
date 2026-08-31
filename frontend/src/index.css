@@ -130,3 +130,14 @@
   text-decoration-thickness: 1.5px;
 }
 
+/* Rich email compose editor (contentEditable): visible bold + bullet lists */
+.hq-richbody ul { list-style: disc; padding-left: 1.5em; margin: 0.15em 0; }
+.hq-richbody ol { list-style: decimal; padding-left: 1.5em; margin: 0.15em 0; }
+.hq-richbody li { margin: 0.1em 0; }
+.hq-richbody b, .hq-richbody strong { font-weight: 700; }
+[contenteditable].hq-richbody:empty:before {
+  content: "Write your message…";
+  color: #94a3b8;
+  pointer-events: none;
+}
+

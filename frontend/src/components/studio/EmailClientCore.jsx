@@ -2,7 +2,111 @@ import { useRef, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { Inbox, Send, FileText, Trash2, Search, Reply, ReplyAll, Forward, Paperclip, Bold, List, PenSquare, X, Star, GripVertical, ArrowLeft, Save, SpellCheck, Loader2 } from "lucide-react";
-import { SquigglyBackdrop, SquigglyText } from "./Squiggly";
+import { SquigglyText } from "./Squiggly";
+
+// ---- Rich compose editor: real bold + bullets, serialized back to the plain-text
+// markdown the grader expects (**bold**, "• " bullets, "—" signature). ----
+const escapeHtml = (s) => (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+function serializeNode(node) {
+  let out = "";
+  node.childNodes.forEach((n) => {
+    if (n.nodeType === 3) { out += n.textContent; return; }
+    if (n.nodeType !== 1) return;
+    const tag = n.tagName.toLowerCase();
+    if (tag === "br") { out += "\n"; return; }
+    if (tag === "b" || tag === "strong") { const inner = serializeNode(n); out += inner.trim() ? `**${inner}**` : inner; return; }
+    if (tag === "span") {
+      const fw = n.style.fontWeight; const bold = fw === "bold" || parseInt(fw, 10) >= 600;
+      const inner = serializeNode(n); out += bold && inner.trim() ? `**${inner}**` : inner; return;
+    }
+    if (tag === "li") { if (out && !out.endsWith("\n")) out += "\n"; out += `• ${serializeNode(n).trim()}\n`; return; }
+    if (tag === "ul" || tag === "ol") { out += serializeNode(n); return; }
+    if (tag === "div" || tag === "p") {
+      if (out && !out.endsWith("\n")) out += "\n";
+      const inner = serializeNode(n); out += inner; if (!inner.endsWith("\n")) out += "\n"; return;
+    }
+    out += serializeNode(n);
+  });
+  return out;
+}
+
+function htmlToText(html) {
+  const d = document.createElement("div");
+  d.innerHTML = html || "";
+  return serializeNode(d).replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").replace(/\n+$/g, "");
+}
+
+function textToHtml(text) {
+  if (!text) return "";
+  const lines = text.split("\n");
+  const html = [];
+  let i = 0;
+  const inline = (l) => escapeHtml(l).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
+  while (i < lines.length) {
+    if (/^\s*(•|-)\s+/.test(lines[i])) {
+      html.push("<ul>");
+      while (i < lines.length && /^\s*(•|-)\s+/.test(lines[i])) {
+        html.push(`<li>${inline(lines[i].replace(/^\s*(•|-)\s+/, ""))}</li>`);
+        i += 1;
+      }
+      html.push("</ul>");
+    } else {
+      html.push(`<div>${inline(lines[i]) || "<br>"}</div>`);
+      i += 1;
+    }
+  }
+  return html.join("");
+}
+
+function RichBody({ initialHtml, onChange, config, proofread, onCheck, checking }) {
+  const ref = useRef(null);
+  const [active, setActive] = useState({ bold: false, bullet: false });
+  const syncActive = () => {
+    if (!ref.current || document.activeElement !== ref.current) return;
+    try { setActive({ bold: document.queryCommandState("bold"), bullet: document.queryCommandState("insertUnorderedList") }); } catch (e) { /* noop */ }
+  };
+  useEffect(() => {
+    try { document.execCommand("styleWithCSS", false, false); } catch (e) { /* noop */ }
+    if (ref.current) ref.current.innerHTML = initialHtml || "";
+    document.addEventListener("selectionchange", syncActive);
+    return () => document.removeEventListener("selectionchange", syncActive);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const emit = () => { if (ref.current) onChange(ref.current.innerHTML); };
+  const exec = (cmd) => (e) => { e.preventDefault(); ref.current?.focus(); try { document.execCommand(cmd); } catch (x) { /* noop */ } emit(); syncActive(); };
+  const insertSig = (e) => {
+    e.preventDefault(); ref.current?.focus();
+    try { document.execCommand("insertHTML", false, "<br>" + escapeHtml(config.signature || "").replace(/\n/g, "<br>")); } catch (x) { /* noop */ }
+    emit();
+  };
+  const btn = (on) => `w-8 h-8 flex items-center justify-center rounded ${on ? "bg-[#818CF8] text-[#04121f]" : "text-slate-200 hover:bg-white/10"}`;
+  return (
+    <>
+      <div className="flex items-center gap-1 border border-slate-600 rounded-md px-1 bg-slate-800/60 w-max">
+        <button type="button" data-testid="email-fmt-bold" aria-pressed={active.bold} title="Bold (select text, then click)" onMouseDown={exec("bold")} className={btn(active.bold)}><Bold className="w-4 h-4" /></button>
+        <button type="button" data-testid="email-fmt-bullets" aria-pressed={active.bullet} title="Bullet list (press Enter for the next bullet)" onMouseDown={exec("insertUnorderedList")} className={btn(active.bullet)}><List className="w-4 h-4" /></button>
+        <button type="button" data-testid="email-fmt-signature" title="Insert signature" onMouseDown={insertSig} className="px-2 h-8 text-xs text-slate-200 hover:bg-white/10 rounded">Signature</button>
+        {proofread && (
+          <button type="button" data-testid="email-check-writing-btn" title="Check my writing" onMouseDown={(e) => { e.preventDefault(); onCheck(htmlToText(ref.current?.innerHTML || "")); }} disabled={checking} className="ml-1 inline-flex items-center gap-1.5 px-2 h-8 text-xs text-[#a5b4fc] hover:bg-[#818CF8]/15 rounded disabled:opacity-50">
+            {checking ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <SpellCheck className="w-3.5 h-3.5" />} Check my writing
+          </button>
+        )}
+      </div>
+      <div
+        ref={ref}
+        data-testid="email-body"
+        contentEditable
+        suppressContentEditableWarning
+        onInput={emit}
+        onKeyUp={syncActive}
+        onMouseUp={syncActive}
+        className="hq-richbody min-h-[168px] rounded-md bg-slate-800 border border-slate-600 px-3 py-2 text-sm text-white outline-none focus:border-[#818CF8] overflow-y-auto"
+        style={{ maxHeight: "260px" }}
+      />
+    </>
+  );
+}
 
 const FOLDERS = [
   { id: "inbox", name: "Inbox", icon: Inbox },
@@ -16,7 +120,7 @@ const studentPortion = (body) => {
   const i = (body || "").indexOf("\n---");
   return (i >= 0 ? (body || "").slice(0, i) : body || "").trim();
 };
-const snippetOf = (m) => (m.body || "").replace(/\s*\n+\s*/g, " ").trim().slice(0, 80);
+const snippetOf = (m) => (m.body || "").replace(/\*\*(.+?)\*\*/g, "$1").replace(/(^|\n)\s*(•|-)\s+/g, "$1").replace(/\s*\n+\s*/g, " ").trim().slice(0, 80);
 
 export default function EmailClientCore({ doc, setDoc, config, proofread, readingIssues = [] }) {
   const messages = doc.messages || [];
@@ -29,12 +133,11 @@ export default function EmailClientCore({ doc, setDoc, config, proofread, readin
   const [drag, setDrag] = useState(null);
   const [bodyIssues, setBodyIssues] = useState([]);
   const [checking, setChecking] = useState(false);
-  const bodyRef = useRef(null);
   const panelRef = useRef(null);
 
-  const checkWriting = async () => {
+  const checkWriting = async (rawText) => {
     if (!proofread) return;
-    const text = studentPortion(compose.body || "");
+    const text = studentPortion(rawText != null ? rawText : (compose.body || ""));
     if (text.split(/\s+/).filter(Boolean).length < 3) {
       toast.info("Write a few sentences first, then I can check your writing.");
       return;
@@ -44,7 +147,7 @@ export default function EmailClientCore({ doc, setDoc, config, proofread, readin
       const issues = await proofread(text);
       setBodyIssues(issues);
       if (!issues.length) toast.success("Nice writing — no spelling or grammar issues found! ⚓");
-      else toast.warning(`Found ${issues.length} thing${issues.length > 1 ? "s" : ""} to fix — see the red underlines below.`);
+      else toast.warning(`Found ${issues.length} thing${issues.length > 1 ? "s" : ""} to fix — see the tips below.`);
     } catch (e) {
       toast.error("The Writing Coach was unavailable. Try again in a moment.");
     } finally {
@@ -68,9 +171,9 @@ export default function EmailClientCore({ doc, setDoc, config, proofread, readin
     if (!m.read) setDoc({ ...doc, messages: messages.map((x) => (x.id === m.id ? { ...x, read: true } : x)) });
   };
   const editDraft = (m) => {
-    setAttachOpen(false); setPos({ x: null, y: null }); setOpenId(null);
+    setAttachOpen(false); setPos({ x: null, y: null }); setOpenId(null); setBodyIssues([]);
     setCompose({
-      mode: m.kind === "new" ? "new" : m.kind, kind: m.kind || "new", draftId: m.id,
+      mode: m.kind === "new" ? "new" : m.kind, kind: m.kind || "new", draftId: m.id, _id: Date.now(),
       to: (m.to || []).join(", "), cc: (m.cc || []).join(", "), bcc: (m.bcc || []).join(", "),
       subject: m.subject || "", body: m.body || "", attachments: m.attachments || [],
       showCc: !!((m.cc || []).length || (m.bcc || []).length),
@@ -113,20 +216,16 @@ export default function EmailClientCore({ doc, setDoc, config, proofread, readin
     const s = open;
     setAttachOpen(false);
     setPos({ x: null, y: null });
-    if (mode === "new") setCompose({ mode: "new", kind: "new", to: "", cc: "", bcc: "", subject: "", body: "", attachments: [], showCc: false });
-    else if (mode === "reply") setCompose({ mode, kind: "reply", to: s.fromEmail, cc: "", bcc: "", subject: s.subject.startsWith("Re:") ? s.subject : `Re: ${s.subject}`, body: `\n\n---\n${s.fromName} wrote:\n${s.body}`, attachments: [], showCc: false });
-    else if (mode === "replyall") setCompose({ mode, kind: "replyall", to: s.fromEmail, cc: (s.cc || []).join(", "), bcc: "", subject: s.subject.startsWith("Re:") ? s.subject : `Re: ${s.subject}`, body: `\n\n---\n${s.fromName} wrote:\n${s.body}`, attachments: [], showCc: true });
-    else if (mode === "forward") setCompose({ mode, kind: "forward", to: "", cc: "", bcc: "", subject: s.subject.startsWith("Fwd:") ? s.subject : `Fwd: ${s.subject}`, body: `\n\n---\nForwarded message from ${s.fromName}:\n${s.body}`, attachments: [], showCc: false });
+    setBodyIssues([]);
+    if (mode === "new") setCompose({ mode: "new", kind: "new", _id: Date.now(), to: "", cc: "", bcc: "", subject: "", body: "", attachments: [], showCc: false });
+    else if (mode === "reply") setCompose({ mode, kind: "reply", _id: Date.now(), to: s.fromEmail, cc: "", bcc: "", subject: s.subject.startsWith("Re:") ? s.subject : `Re: ${s.subject}`, body: `\n\n---\n${s.fromName} wrote:\n${s.body}`, attachments: [], showCc: false });
+    else if (mode === "replyall") setCompose({ mode, kind: "replyall", _id: Date.now(), to: s.fromEmail, cc: (s.cc || []).join(", "), bcc: "", subject: s.subject.startsWith("Re:") ? s.subject : `Re: ${s.subject}`, body: `\n\n---\n${s.fromName} wrote:\n${s.body}`, attachments: [], showCc: true });
+    else if (mode === "forward") setCompose({ mode, kind: "forward", _id: Date.now(), to: "", cc: "", bcc: "", subject: s.subject.startsWith("Fwd:") ? s.subject : `Fwd: ${s.subject}`, body: `\n\n---\nForwarded message from ${s.fromName}:\n${s.body}`, attachments: [], showCc: false });
   };
 
   const setC = (patch) => setCompose((c) => ({ ...c, ...patch }));
-  const insertAtCursor = (text, wrap) => {
-    const el = bodyRef.current; const b = compose.body;
-    if (!el) { setC({ body: b + text }); return; }
-    const s = el.selectionStart, e = el.selectionEnd;
-    const nb = wrap ? b.slice(0, s) + wrap[0] + (b.slice(s, e) || "text") + wrap[1] + b.slice(e) : b.slice(0, s) + text + b.slice(e);
-    setC({ body: nb });
-  };
+
+  const onBodyChange = (html) => setCompose((c) => ({ ...c, bodyHtml: html, body: htmlToText(html) }));
 
   const send = () => {
     const c = compose;
@@ -238,10 +337,10 @@ export default function EmailClientCore({ doc, setDoc, config, proofread, readin
               </div>
               {open.bcc?.length ? <p className="text-[11px] text-slate-500 mt-1 italic">Bcc is a hidden copy — normally only the sender can see it.</p> : null}
               {open.attachments?.length ? <div className="mt-2 flex flex-wrap gap-2">{open.attachments.map((a, i) => <span key={i} className="inline-flex items-center gap-1 text-xs bg-white/5 rounded px-2 py-1 text-slate-300"><Paperclip className="w-3 h-3" />{a.name}</span>)}</div> : null}
-              <div className="mt-3 text-slate-200 text-sm whitespace-pre-wrap leading-relaxed">
+              <div className="mt-3 text-slate-200 text-sm leading-relaxed hq-richbody">
                 {open.folder === "sent" && readingIssues.length > 0
-                  ? <SquigglyText value={open.body} issues={readingIssues} />
-                  : open.body}
+                  ? <span className="whitespace-pre-wrap"><SquigglyText value={open.body} issues={readingIssues} /></span>
+                  : <span dangerouslySetInnerHTML={{ __html: textToHtml(open.body) }} />}
               </div>
               {open.folder === "inbox" && (
                 <div className="flex flex-wrap gap-2 mt-5">
@@ -263,7 +362,7 @@ export default function EmailClientCore({ doc, setDoc, config, proofread, readin
           <div data-testid="email-compose-header" onMouseDown={startDrag} onTouchStart={startDrag}
             className="flex items-center justify-between px-4 py-2.5 border-b border-white/10 cursor-move select-none bg-white/[0.04] rounded-t-xl">
             <span className="flex items-center gap-1.5 text-sm font-medium text-white capitalize"><GripVertical className="w-4 h-4 text-slate-500" />{compose.mode === "new" ? "New message" : compose.mode} <span className="text-[10px] font-normal text-slate-500 ml-1 normal-case">· drag to move</span></span>
-            <button data-testid="email-compose-close" onClick={() => setCompose(null)} className="text-slate-400 hover:text-white"><X className="w-4 h-4" /></button>
+            <button data-testid="email-compose-close" onClick={() => { setCompose(null); setBodyIssues([]); }} className="text-slate-400 hover:text-white"><X className="w-4 h-4" /></button>
           </div>
           <div className="p-4 space-y-2">
             <input data-testid="email-to" value={compose.to} onChange={(e) => setC({ to: e.target.value })} placeholder="To" className="w-full h-9 rounded-md bg-slate-800 border border-slate-600 px-2 text-sm text-white placeholder:text-slate-400 outline-none focus:border-[#818CF8]" />
@@ -275,20 +374,27 @@ export default function EmailClientCore({ doc, setDoc, config, proofread, readin
               </>
             )}
             <input data-testid="email-subject" value={compose.subject} onChange={(e) => setC({ subject: e.target.value })} placeholder="Subject" className="w-full h-9 rounded-md bg-slate-800 border border-slate-600 px-2 text-sm text-white placeholder:text-slate-400 outline-none focus:border-[#818CF8]" />
-            <div className="flex items-center gap-1 border border-slate-600 rounded-md px-1 bg-slate-800/60 w-max">
-              <button data-testid="email-fmt-bold" title="Bold" onClick={() => insertAtCursor(null, ["**", "**"])} className="w-8 h-8 flex items-center justify-center text-slate-200 hover:bg-white/10 rounded"><Bold className="w-4 h-4" /></button>
-              <button data-testid="email-fmt-bullets" title="Bullet list" onClick={() => insertAtCursor("\n• ")} className="w-8 h-8 flex items-center justify-center text-slate-200 hover:bg-white/10 rounded"><List className="w-4 h-4" /></button>
-              <button data-testid="email-fmt-signature" title="Insert signature" onClick={() => setC({ body: compose.body + config.signature })} className="px-2 h-8 text-xs text-slate-200 hover:bg-white/10 rounded">Signature</button>
-              {proofread && (
-                <button data-testid="email-check-writing-btn" title="Check my writing" onClick={checkWriting} disabled={checking} className="ml-1 inline-flex items-center gap-1.5 px-2 h-8 text-xs text-[#a5b4fc] hover:bg-[#818CF8]/15 rounded disabled:opacity-50">
-                  {checking ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <SpellCheck className="w-3.5 h-3.5" />} Check my writing
-                </button>
-              )}
-            </div>
-            <div className="relative rounded-md bg-slate-800 border border-slate-600 focus-within:border-[#818CF8]">
-              {bodyIssues.length > 0 && <SquigglyBackdrop value={compose.body} issues={bodyIssues} className="px-2 py-2 text-sm leading-normal text-white" />}
-              <textarea ref={bodyRef} data-testid="email-body" value={compose.body} onChange={(e) => setC({ body: e.target.value })} rows={7} placeholder="Write your message…" className="relative w-full rounded-md bg-transparent px-2 py-2 text-sm text-white placeholder:text-slate-400 outline-none resize-none" />
-            </div>
+            <RichBody
+              key={compose._id}
+              initialHtml={compose.bodyHtml != null ? compose.bodyHtml : textToHtml(compose.body || "")}
+              onChange={onBodyChange}
+              config={config}
+              proofread={proofread}
+              onCheck={checkWriting}
+              checking={checking}
+            />
+            {bodyIssues.length > 0 && (
+              <div data-testid="email-writing-tips" className="rounded-md border border-[#818CF8]/30 bg-[#818CF8]/10 p-2.5 space-y-1.5">
+                <p className="text-[11px] uppercase tracking-widest text-[#a5b4fc] flex items-center gap-1.5"><SpellCheck className="w-3.5 h-3.5" /> Writing tips ({bodyIssues.length})</p>
+                {bodyIssues.slice(0, 6).map((iss, i) => (
+                  <p key={i} className="text-xs text-slate-200">
+                    <span className="line-through text-[#fb7185]">{iss.text}</span>
+                    {iss.suggestion && <> → <span className="text-emerald-300 font-medium">{iss.suggestion}</span></>}
+                    <span className="text-slate-400"> — {iss.message}</span>
+                  </p>
+                ))}
+              </div>
+            )}
             {compose.attachments.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {compose.attachments.map((a, i) => <span key={i} className="inline-flex items-center gap-1 text-xs bg-[#818CF8]/15 text-[#a5b4fc] rounded px-2 py-1">{a.name}<button data-testid={`email-att-remove-${i}`} onClick={() => setC({ attachments: compose.attachments.filter((_, x) => x !== i) })}><X className="w-3 h-3" /></button></span>)}
